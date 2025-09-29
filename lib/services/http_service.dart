@@ -1,0 +1,266 @@
+import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/auth_models.dart';
+
+class HttpService {
+  static const String baseUrl =
+      'https://eservices.dim.gov.az/buraxilishScan/api/api';
+  static const String jwtTokenKey = 'jwt_token';
+  static const String authKey = 'auth';
+
+  late final Dio _dio;
+
+  HttpService() {
+    _dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    // Add interceptor for JWT token
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await getToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          await removeToken();
+        }
+        handler.next(error);
+      },
+    ));
+  }
+
+  // Get stored JWT token
+  Future<String?> getToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tokenData = prefs.getString(jwtTokenKey);
+
+      if (tokenData != null) {
+        final tokenJson = jsonDecode(tokenData) as Map<String, dynamic>;
+        final token = AccessTokenModel.fromJson(tokenJson);
+
+        if (!token.isExpired) {
+          return token.token;
+        } else {
+          // Token expired, remove it
+          await removeToken();
+          return null;
+        }
+      }
+      return null;
+    } catch (error) {
+      print('Error getting token: $error');
+      return null;
+    }
+  }
+
+  // Store JWT token
+  Future<void> storeToken(AccessTokenModel token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(jwtTokenKey, jsonEncode(token.toJson()));
+    } catch (error) {
+      print('Error storing token: $error');
+    }
+  }
+
+  // Remove JWT token
+  Future<void> removeToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(jwtTokenKey);
+      await prefs.remove(authKey);
+    } catch (error) {
+      print('Error removing token: $error');
+    }
+  }
+
+  // Store auth status
+  Future<void> storeAuth(bool isAuthenticated) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(authKey, isAuthenticated);
+    } catch (error) {
+      print('Error storing auth: $error');
+    }
+  }
+
+  // Get auth status
+  Future<bool> getAuth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(authKey) ?? false;
+    } catch (error) {
+      print('Error getting auth: $error');
+      return false;
+    }
+  }
+
+  // Login request (no token needed)
+  Future<LoginResponse> login(
+      String userName, String password, String examDate) async {
+    try {
+      final loginData = LoginModel(
+        userName: userName,
+        password: password,
+        examDate: examDate,
+      );
+
+      final response = await _dio.post(
+        '/auth/login',
+        data: loginData.toJson(),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      return LoginResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data as Map<String, dynamic>? ?? {};
+        return LoginResponse(
+          data: AccessTokenModel(token: '', expiration: ''),
+          success: false,
+          message: errorData['message'] ?? 'Giriş məlumatları səhvdir!',
+        );
+      } else {
+        return LoginResponse(
+          data: AccessTokenModel(token: '', expiration: ''),
+          success: false,
+          message: 'Əlaqə xətası baş verdi',
+        );
+      }
+    }
+  }
+
+  // Get exam dates
+  Future<ExamDates> getExamDates() async {
+    try {
+      final response = await _dio.get('/buraxilishes/getallexamdate');
+      print('getExamDates response: ${response.data}'); // Добавляем логирование
+
+      // Проверяем структуру ответа как в React Native
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data != null && data['success'] == true && data['data'] != null) {
+          return ExamDates.fromJson(data);
+        } else {
+          print('Invalid response structure: $data');
+          return ExamDates(
+            data: [],
+            success: false,
+            message: data?['message'] ??
+                'İmtahan tarixlərini əldə etmək mümkün olmadı!',
+          );
+        }
+      } else {
+        print('HTTP error: ${response.statusCode}');
+        return ExamDates(
+          data: [],
+          success: false,
+          message: 'İmtahan tarixlərini əldə etmək mümkün olmadı!',
+        );
+      }
+    } on DioException catch (e) {
+      print('DioException: ${e.message}');
+      print('Response data: ${e.response?.data}');
+      return ExamDates(
+        data: [],
+        success: false,
+        message: e.response?.data?['message'] ?? 'İnternet bağlantı yoxdur!',
+      );
+    } catch (e) {
+      print('General error: $e');
+      return ExamDates(
+        data: [],
+        success: false,
+        message: 'İmtahan tarixlərini əldə etmək mümkün olmadı!',
+      );
+    }
+  }
+
+  // Change password request (requires authentication)
+  Future<ResponseModel> changePassword(
+      ChangePasswordModel changePasswordData) async {
+    try {
+      final response = await _dio.post(
+        '/password/changepassword',
+        data: changePasswordData.toJson(),
+      );
+
+      return ResponseModel.fromJson(response.data);
+    } on DioException catch (e) {
+      final errorData = e.response?.data as Map<String, dynamic>? ?? {};
+      return ResponseModel(
+        success: false,
+        message: errorData['message'] ?? 'Parol dəyişdirilərkən xəta baş verdi',
+      );
+    }
+  }
+
+  // TParol endpoints (require authentication)
+  Future<Response> getAllTParols() async {
+    return await _dio.get('/tparols/getall');
+  }
+
+  Future<Response> getTParolByBina(int bina) async {
+    return await _dio.get('/tparols/getbybina?bina=$bina');
+  }
+
+  Future<Response> getAllBuildingInExamDate(String examDate) async {
+    return await _dio
+        .get('/tparols/getallbuildinginexamdate?examDate=$examDate');
+  }
+
+  // SupervisorBuilding endpoints (require authentication)
+  Future<Response> getAllSupervisorBuildings() async {
+    return await _dio.get('/supervisorbuildings/getall');
+  }
+
+  Future<Response> getSupervisorBuildingByCode(int buildingCode) async {
+    return await _dio.get(
+        '/supervisorbuildings/getbybuildingcode?buildingCode=$buildingCode');
+  }
+
+  Future<Response> addSupervisorBuilding(
+      Map<String, dynamic> supervisorBuilding) async {
+    return await _dio.post('/supervisorbuildings/add',
+        data: supervisorBuilding);
+  }
+
+  Future<Response> updateSupervisorBuilding(
+      Map<String, dynamic> supervisorBuilding) async {
+    return await _dio.post('/supervisorbuildings/update',
+        data: supervisorBuilding);
+  }
+
+  Future<Response> deleteSupervisorBuilding(
+      Map<String, dynamic> supervisorBuilding) async {
+    return await _dio.post('/supervisorbuildings/delete',
+        data: supervisorBuilding);
+  }
+
+  // Clear all data
+  Future<void> clearAllData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (error) {
+      print('Error clearing data: $error');
+    }
+  }
+}
