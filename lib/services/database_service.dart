@@ -539,6 +539,44 @@ class DatabaseService {
     return femaleEndings.contains(lastChar) ? 0 : 1; // 0 = female, 1 = male
   }
 
+  /// Clear all participants from offline database
+  static Future<void> clearAllParticipants() async {
+    final db = await database;
+    await db.delete(_participantsTable);
+  }
+
+  /// Clear all supervisors from offline database
+  static Future<void> clearAllSupervisors() async {
+    final db = await database;
+    await db.delete(_supervisorsTable);
+  }
+
+  /// Clear all registered participants
+  static Future<void> clearAllRegisteredParticipants() async {
+    final db = await database;
+    await db.delete(_registeredParticipantsTable);
+  }
+
+  /// Clear all registered supervisors
+  static Future<void> clearAllRegisteredSupervisors() async {
+    final db = await database;
+    await db.delete(_registeredSupervisorsTable);
+  }
+
+  /// Get all participants (for offline database management)
+  static Future<List<Participant>> getAllParticipants() async {
+    final db = await database;
+    final results = await db.query(_participantsTable);
+    return results.map((map) => _participantFromMap(map)).toList();
+  }
+
+  /// Get all supervisors (for offline database management)
+  static Future<List<Supervisor>> getAllSupervisors() async {
+    final db = await database;
+    final results = await db.query(_supervisorsTable);
+    return results.map((map) => _supervisorFromMap(map)).toList();
+  }
+
   /// Close database connection
   static Future<void> close() async {
     final db = _database;

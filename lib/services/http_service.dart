@@ -640,4 +640,88 @@ class HttpService {
       print('Error storing supervisor details: $error');
     }
   }
+
+  /// Get all participants by building and exam date (for offline download)
+  Future<List<Participant>> getParticipantsByBuilding({
+    required String buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      // Convert exam date to proper format
+      final formattedDate = _formatExamDateForApi(examDate);
+      
+      final response = await _dio.get(
+        '/buraxilishes/GetAllParticipantInBuildingAndExamDate',
+        queryParameters: {
+          'bina': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Participant.fromJson(json)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('Error getting participants by building: $e');
+      return [];
+    }
+  }
+
+  /// Get all supervisors by building and exam date (for offline download)
+  Future<List<Supervisor>> getSupervisorsByBuilding({
+    required String buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      // Convert exam date to proper format
+      final formattedDate = _formatExamDateForApi(examDate);
+      
+      final response = await _dio.get(
+        '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
+        queryParameters: {
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Supervisor.fromJson(json)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('Error getting supervisors by building: $e');
+      return [];
+    }
+  }
+
+  /// Convert exam date from Azerbaijani format to API format
+  String _formatExamDateForApi(String examDate) {
+    try {
+      // Example: "29 sentyabr 2025-ci il" -> "09/29/2025"
+      final monthsMap = {
+        'yanvar': '01', 'fevral': '02', 'mart': '03', 'aprel': '04',
+        'may': '05', 'iyun': '06', 'iyul': '07', 'avqust': '08',
+        'sentyabr': '09', 'oktyabr': '10', 'noyabr': '11', 'dekabr': '12'
+      };
+
+      final parts = examDate.toLowerCase().split(' ');
+      if (parts.length >= 3) {
+        final day = parts[0].padLeft(2, '0');
+        final month = monthsMap[parts[1]] ?? '01';
+        final year = parts[2].replaceAll(RegExp(r'[^\d]'), '');
+        
+        return '$month/$day/$year';
+      }
+      
+      return examDate;
+    } catch (e) {
+      print('Error formatting exam date: $e');
+      return examDate;
+    }
+  }
 }

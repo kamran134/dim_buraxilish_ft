@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
+import 'offline_database_screen.dart';
 import '../design/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -264,7 +265,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
         break;
       case '/database':
-        _showComingSoonDialog('Oflayn baza');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const OfflineDatabaseScreen(),
+          ),
+        );
         break;
       case '/settings':
         _showComingSoonDialog('Ayarlar');
