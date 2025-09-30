@@ -263,10 +263,8 @@ class SupervisorProvider with ChangeNotifier {
           _isRepeatEntry = false;
           _supervisorMessage = null;
 
-          // Save the supervisor to local database for statistics (only in online mode)
-          if (_isOnlineMode) {
-            await _saveSupervisorToLocalDB(_currentSupervisor!);
-          }
+          // Save the supervisor to local database for statistics
+          await _saveSupervisorToLocalDB(_currentSupervisor!);
 
           // Update statistics when new supervisor is registered
           await _updateSupervisorStatistics();
