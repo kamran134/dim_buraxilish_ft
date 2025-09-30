@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
+import '../pages/statistics_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -255,7 +256,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _showComingSoonDialog('Göndərilməmiş məlumatlar');
         break;
       case '/statistics':
-        _showComingSoonDialog('Statistika');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const StatisticsPage(),
+          ),
+        );
         break;
       case '/database':
         _showComingSoonDialog('Oflayn baza');
