@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
-import '../pages/statistics_page.dart';
+import 'statistics_screen.dart';
 import '../design/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -259,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case '/statistics':
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const StatisticsPage(),
+            builder: (context) => const StatisticsScreen(),
           ),
         );
         break;

@@ -6,15 +6,15 @@ import '../providers/participant_provider.dart';
 import '../providers/supervisor_provider.dart';
 import '../design/app_colors.dart';
 
-/// Страница для просмотра зарегистрированных людей из локальной базы данных
-class DatabasePeoplePage extends StatefulWidget {
-  const DatabasePeoplePage({super.key});
+/// Экран для просмотра зарегистрированных людей из локальной базы данных
+class DatabasePeopleScreen extends StatefulWidget {
+  const DatabasePeopleScreen({super.key});
 
   @override
-  State<DatabasePeoplePage> createState() => _DatabasePeoplePageState();
+  State<DatabasePeopleScreen> createState() => _DatabasePeopleScreenState();
 }
 
-class _DatabasePeoplePageState extends State<DatabasePeoplePage>
+class _DatabasePeopleScreenState extends State<DatabasePeopleScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Participant> _registeredParticipants = [];

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/statistics_type.dart';
@@ -8,14 +9,14 @@ import '../design/app_colors.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 
-class StatisticsPage extends StatefulWidget {
-  const StatisticsPage({Key? key}) : super(key: key);
+class StatisticsScreen extends StatefulWidget {
+  const StatisticsScreen({Key? key}) : super(key: key);
 
   @override
-  State<StatisticsPage> createState() => _StatisticsPageState();
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage>
+class _StatisticsScreenState extends State<StatisticsScreen>
     with TickerProviderStateMixin {
   StatisticsPeopleType _currentType = StatisticsPeopleType.statistics;
   late AnimationController _refreshController;
@@ -480,28 +481,14 @@ class _ParticipantCard extends StatelessWidget {
                         participant.photo != 'null'
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(25),
-                        child: Image.network(
-                          participant.photo!,
+                        child: Image.memory(
+                          base64Decode(participant.photo!),
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
-                              ),
-                            );
-                          },
                           errorBuilder: (context, error, stackTrace) {
                             print(
-                                'Photo load error for ${participant.isN}: $error');
+                                'Photo decode error for ${participant.isN}: $error');
                             return const Icon(
                               Icons.person,
                               color: Colors.white,
@@ -653,28 +640,14 @@ class _SupervisorCard extends StatelessWidget {
                 child: supervisor.image.isNotEmpty && supervisor.image != 'null'
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(25),
-                        child: Image.network(
-                          supervisor.image,
+                        child: Image.memory(
+                          base64Decode(supervisor.image),
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
-                              ),
-                            );
-                          },
                           errorBuilder: (context, error, stackTrace) {
                             print(
-                                'Image load error for supervisor ${supervisor.cardNumber}: $error');
+                                'Image decode error for supervisor ${supervisor.cardNumber}: $error');
                             return const Icon(
                               Icons.supervisor_account,
                               color: Colors.white,

@@ -3,13 +3,13 @@ import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../design/app_colors.dart';
 
-class RegisteredPeoplePage extends StatefulWidget {
+class RegisteredPeopleScreen extends StatefulWidget {
   final List<Participant>? participants;
   final List<Supervisor>? supervisors;
   final bool isParticipants;
   final String? errorMessage;
 
-  const RegisteredPeoplePage({
+  const RegisteredPeopleScreen({
     Key? key,
     this.participants,
     this.supervisors,
@@ -18,10 +18,10 @@ class RegisteredPeoplePage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<RegisteredPeoplePage> createState() => _RegisteredPeoplePageState();
+  State<RegisteredPeopleScreen> createState() => _RegisteredPeopleScreenState();
 }
 
-class _RegisteredPeoplePageState extends State<RegisteredPeoplePage> {
+class _RegisteredPeopleScreenState extends State<RegisteredPeopleScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   List<Participant> _filteredParticipants = [];
