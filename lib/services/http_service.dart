@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
+import '../models/supervisor_models.dart';
 
 class HttpService {
   static const String baseUrl =
@@ -370,6 +371,115 @@ class HttpService {
       await prefs.clear();
     } catch (error) {
       print('Error clearing data: $error');
+    }
+  }
+
+  // =========== SUPERVISOR METHODS ===========
+
+  /// Scan supervisor QR code and get supervisor info (online mode)
+  Future<SupervisorResponse> scanSupervisor({
+    required String cardNumber,
+    required String building,
+    required String examDate,
+  }) async {
+    try {
+      print(
+          'Scanning supervisor: $cardNumber, building: $building, examDate: $examDate');
+
+      final response = await _dio.post(
+        '/checksupervisoratbinaandexamdate',
+        data: {
+          'cardNumber': cardNumber,
+          'building': building,
+          'examDate': examDate,
+        },
+      );
+
+      print('Supervisor scan response status: ${response.statusCode}');
+      print('Supervisor scan response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        return SupervisorResponse.fromJson(response.data);
+      } else {
+        return SupervisorResponse(
+          success: false,
+          message: 'Server error: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      print('Dio error scanning supervisor: $e');
+      if (e.response != null) {
+        print('Error response data: ${e.response!.data}');
+        try {
+          return SupervisorResponse.fromJson(e.response!.data);
+        } catch (parseError) {
+          print('Error parsing error response: $parseError');
+          return SupervisorResponse(
+            success: false,
+            message: 'Nəzarətçi məlumatları oxunarkən xəta baş verdi',
+          );
+        }
+      } else {
+        return SupervisorResponse(
+          success: false,
+          message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
+        );
+      }
+    } catch (error) {
+      print('General error scanning supervisor: $error');
+      return SupervisorResponse(
+        success: false,
+        message: 'Gözlənilməz xəta baş verdi',
+      );
+    }
+  }
+
+  /// Get supervisor from offline database
+  Future<SupervisorResponse> getSupervisorFromOfflineDB(
+      String cardNumber) async {
+    try {
+      print('Getting supervisor from offline DB: $cardNumber');
+
+      // For now, return a mock response indicating offline mode is not implemented
+      // In React Native, this would query the local SQLite database
+      return SupervisorResponse(
+        success: false,
+        message: 'Oflayn rejim hələ hazırda əlçatan deyil',
+      );
+    } catch (error) {
+      print('Error getting supervisor from offline DB: $error');
+      return SupervisorResponse(
+        success: false,
+        message: 'Lokal bazadan məlumat oxunarkən xəta baş verdi',
+      );
+    }
+  }
+
+  /// Get supervisor details/statistics from storage
+  Future<SupervisorDetails?> getSupervisorDetailsFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final detailsData = prefs.getString('supervisor_details');
+
+      if (detailsData != null) {
+        final detailsJson = jsonDecode(detailsData) as Map<String, dynamic>;
+        return SupervisorDetails.fromJson(detailsJson);
+      }
+
+      return null;
+    } catch (error) {
+      print('Error getting supervisor details from storage: $error');
+      return null;
+    }
+  }
+
+  /// Store supervisor details/statistics
+  Future<void> storeSupervisorDetails(SupervisorDetails details) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('supervisor_details', jsonEncode(details.toJson()));
+    } catch (error) {
+      print('Error storing supervisor details: $error');
     }
   }
 }

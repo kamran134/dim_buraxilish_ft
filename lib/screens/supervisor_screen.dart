@@ -1,22 +1,22 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/participant_models.dart';
-import '../providers/participant_provider.dart';
+import '../models/supervisor_models.dart';
+import '../providers/supervisor_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
 
-class ParticipantScreen extends StatefulWidget {
-  const ParticipantScreen({super.key});
+class SupervisorScreen extends StatefulWidget {
+  const SupervisorScreen({super.key});
 
   @override
-  State<ParticipantScreen> createState() => _ParticipantScreenState();
+  State<SupervisorScreen> createState() => _SupervisorScreenState();
 }
 
-class _ParticipantScreenState extends State<ParticipantScreen>
+class _SupervisorScreenState extends State<SupervisorScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _scaleController;
@@ -28,16 +28,16 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     super.initState();
     _initializeAnimations();
 
-    // Load exam details when screen initializes
+    // Load supervisor details when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<ParticipantProvider>();
+      final provider = context.read<SupervisorProvider>();
 
       // Set authentication error callback
       provider.setAuthenticationErrorCallback(() {
         _handleAuthenticationError();
       });
 
-      provider.loadExamDetails();
+      provider.loadSupervisorDetails();
     });
   }
 
@@ -83,16 +83,16 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Consumer<ParticipantProvider>(
+      body: Consumer<SupervisorProvider>(
         builder: (context, provider, child) {
           switch (provider.screenState) {
-            case ParticipantScreenState.initial:
+            case SupervisorScreenState.initial:
               return _buildInitialView(provider, isDarkMode);
-            case ParticipantScreenState.scanning:
+            case SupervisorScreenState.scanning:
               return _buildScanningView(provider);
-            case ParticipantScreenState.scanned:
+            case SupervisorScreenState.scanned:
               return _buildScannedView(provider, isDarkMode);
-            case ParticipantScreenState.error:
+            case SupervisorScreenState.error:
               return _buildErrorView(provider, isDarkMode);
           }
         },
@@ -100,7 +100,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildInitialView(ParticipantProvider provider, bool isDarkMode) {
+  Widget _buildInitialView(SupervisorProvider provider, bool isDarkMode) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -113,9 +113,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   const Color(0xFF475569),
                 ]
               : [
-                  const Color(0xFF667eea),
+                  const Color(0xFFf093fb),
+                  const Color(0xFFf5576c),
                   const Color(0xFF764ba2),
-                  const Color(0xFF374657),
                 ],
         ),
       ),
@@ -137,7 +137,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   ),
                   const Expanded(
                     child: Text(
-                      'İmtahan iştirakçıları',
+                      'Nəzarətçilər',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -179,13 +179,13 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                           child: const Column(
                             children: [
                               Icon(
-                                Icons.school,
+                                Icons.supervisor_account,
                                 size: 64,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 20),
                               Text(
-                                'İmtahan iştirakçıları',
+                                'Nəzarətçilər',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -195,7 +195,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'QR kod skaneri ilə iştirakçı məlumatlarını oxuyun',
+                                'QR kod skaneri ilə nəzarətçi məlumatlarını oxuyun',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 16,
@@ -216,8 +216,8 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                       child: Column(
                         children: [
                           _buildActionButton(
-                            onPressed: () => provider.setScreenState(
-                                ParticipantScreenState.scanning),
+                            onPressed: () => provider
+                                .setScreenState(SupervisorScreenState.scanning),
                             icon: Icons.qr_code_scanner,
                             title: 'Skan et',
                             backgroundColor: const Color(0xFFe74c3c),
@@ -225,11 +225,11 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                           const SizedBox(height: 16),
                           _buildActionButton(
                             onPressed: () =>
-                                ManualInputDialog.showParticipantDialog(
+                                ManualInputDialog.showSupervisorDialog(
                               context,
                               (input) {
                                 Navigator.of(context).pop();
-                                provider.enterParticipantManually(input);
+                                provider.scanSupervisor(input);
                               },
                             ),
                             icon: Icons.keyboard,
@@ -298,21 +298,21 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildScanningView(ParticipantProvider provider) {
+  Widget _buildScanningView(SupervisorProvider provider) {
     return QRScannerWidget(
-      scannerType: 'participant',
+      scannerType: 'supervisor',
       onScan: (code) {
-        provider.scanParticipant(code);
+        provider.scanSupervisor(code);
       },
       onClose: () {
-        provider.setScreenState(ParticipantScreenState.initial);
+        provider.setScreenState(SupervisorScreenState.initial);
       },
     );
   }
 
-  Widget _buildScannedView(ParticipantProvider provider, bool isDarkMode) {
-    final participant = provider.currentParticipant!;
-    final examDetails = provider.examDetails;
+  Widget _buildScannedView(SupervisorProvider provider, bool isDarkMode) {
+    final supervisor = provider.currentSupervisor!;
+    final supervisorDetails = provider.supervisorDetails;
 
     return Container(
       decoration: BoxDecoration(
@@ -326,9 +326,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   const Color(0xFF475569),
                 ]
               : [
-                  const Color(0xFF667eea),
+                  const Color(0xFFf093fb),
+                  const Color(0xFFf5576c),
                   const Color(0xFF764ba2),
-                  const Color(0xFF374657),
                 ],
         ),
       ),
@@ -341,7 +341,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => provider.reset(),
+                    onPressed: () => provider.resetToInitial(),
                     icon: const Icon(
                       Icons.arrow_back,
                       color: Colors.white,
@@ -350,7 +350,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   ),
                   const Expanded(
                     child: Text(
-                      'İştirakçı məlumatları',
+                      'Nəzarətçi məlumatları',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -399,7 +399,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                         ),
                       ),
 
-                    // Participant Info Card
+                    // Supervisor Info Card
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -446,14 +446,14 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 width: 3,
                               ),
                             ),
-                            child: participant.photo != null
+                            child: supervisor.image.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(9),
-                                    child: _buildParticipantPhoto(
-                                        participant.photo!),
+                                    child:
+                                        _buildSupervisorPhoto(supervisor.image),
                                   )
                                 : const Icon(
-                                    Icons.person,
+                                    Icons.supervisor_account,
                                     size: 80,
                                     color: Colors.grey,
                                   ),
@@ -463,7 +463,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
 
                           // Name
                           Text(
-                            participant.fullName,
+                            supervisor.fullName,
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
@@ -474,7 +474,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
 
                           const SizedBox(height: 8),
 
-                          // İş nömrəsi under name
+                          // Card number under name
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -489,7 +489,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                               ),
                             ),
                             child: Text(
-                              'İş nömrəsi: ${participant.isN}',
+                              'Vəsiqə nömrəsi: ${supervisor.cardNumber}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -511,9 +511,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 flex: 3,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    provider.reset();
+                                    provider.resetToInitial();
                                     provider.setScreenState(
-                                        ParticipantScreenState.scanning);
+                                        SupervisorScreenState.scanning);
                                   },
                                   icon: const Icon(Icons.qr_code_scanner,
                                       size: 18),
@@ -548,7 +548,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                           const SizedBox(height: 20),
 
                           // Details in two columns
-                          _buildDetailsGrid(participant),
+                          _buildDetailsGrid(supervisor),
                         ],
                       ),
                     ),
@@ -556,7 +556,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                     const SizedBox(height: 20),
 
                     // Statistics Card
-                    if (examDetails != null)
+                    if (supervisorDetails != null)
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -579,7 +579,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 Expanded(
                                   child: _buildStatItem(
                                     'Qeydiyyatlı',
-                                    examDetails.totalRegisteredCount.toString(),
+                                    supervisorDetails.regPersonCount.toString(),
                                     Colors.green,
                                     Icons.check_circle,
                                   ),
@@ -592,7 +592,8 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 Expanded(
                                   child: _buildStatItem(
                                     'Qeydiyyatsız',
-                                    examDetails.notRegisteredCount.toString(),
+                                    supervisorDetails.unregisteredCount
+                                        .toString(),
                                     Colors.red,
                                     Icons.cancel,
                                   ),
@@ -614,7 +615,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildErrorView(ParticipantProvider provider, bool isDarkMode) {
+  Widget _buildErrorView(SupervisorProvider provider, bool isDarkMode) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -627,9 +628,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   const Color(0xFF475569),
                 ]
               : [
-                  const Color(0xFF667eea),
+                  const Color(0xFFf093fb),
+                  const Color(0xFFf5576c),
                   const Color(0xFF764ba2),
-                  const Color(0xFF374657),
                 ],
         ),
       ),
@@ -683,7 +684,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () => provider.reset(),
+                              onPressed: () => provider.resetToInitial(),
                               style: OutlinedButton.styleFrom(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 12),
@@ -698,7 +699,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () => provider.setScreenState(
-                                  ParticipantScreenState.scanning),
+                                  SupervisorScreenState.scanning),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
@@ -755,7 +756,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildOnlineToggle(ParticipantProvider provider) {
+  Widget _buildOnlineToggle(SupervisorProvider provider) {
     return GestureDetector(
       onTap: () => provider.toggleOnlineMode(),
       child: Container(
@@ -805,7 +806,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildDetailsGrid(Participant participant) {
+  Widget _buildDetailsGrid(Supervisor supervisor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -814,31 +815,32 @@ class _ParticipantScreenState extends State<ParticipantScreen>
       ),
       child: Column(
         children: [
-          // First row: Mərtəbə and Zal
+          // First row: Building Code and Building Name
           Row(
             children: [
               Expanded(
-                child: _buildDetailItem('Mərtəbə', participant.mertebe),
+                child: _buildDetailItem(
+                    'Bina kodu', supervisor.buildingCode.toString()),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildDetailItem('Zal', participant.zal),
+                child: _buildDetailItem('Bina adı', supervisor.buildingName),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Second row: Sıra and Yer
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem('Sıra', participant.sira),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDetailItem('Yer', participant.yer),
-              ),
-            ],
-          ),
+          if (supervisor.registerDate.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            // Second row: Register Date (if available)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDetailItem(
+                      'Qeydiyyat tarixi', supervisor.registerDate),
+                ),
+                Expanded(child: Container()), // Empty space
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -866,30 +868,6 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -937,7 +915,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildParticipantPhoto(String photoData) {
+  Widget _buildSupervisorPhoto(String photoData) {
     try {
       // Try to decode as base64 if it looks like base64 data
       if (photoData.startsWith('data:image') || photoData.length > 100) {
@@ -954,9 +932,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           bytes,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            print('Error loading participant photo: $error');
+            print('Error loading supervisor photo: $error');
             return const Icon(
-              Icons.person,
+              Icons.supervisor_account,
               size: 60,
               color: Colors.grey,
             );
@@ -965,15 +943,15 @@ class _ParticipantScreenState extends State<ParticipantScreen>
       } else {
         // If not base64, show placeholder
         return const Icon(
-          Icons.person,
+          Icons.supervisor_account,
           size: 60,
           color: Colors.grey,
         );
       }
     } catch (e) {
-      print('Error decoding participant photo: $e');
+      print('Error decoding supervisor photo: $e');
       return const Icon(
-        Icons.person,
+        Icons.supervisor_account,
         size: 60,
         color: Colors.grey,
       );

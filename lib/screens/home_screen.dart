@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'participant_screen.dart';
+import 'supervisor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -244,7 +245,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
         break;
       case '/supervisors':
-        _showComingSoonDialog('Nəzarətçilər');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const SupervisorScreen(),
+          ),
+        );
         break;
       case '/offline-data':
         _showComingSoonDialog('Göndərilməmiş məlumatlar');

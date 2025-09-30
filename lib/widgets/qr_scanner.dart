@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'manual_input_dialog.dart';
 
 class QRScannerWidget extends StatefulWidget {
   final Function(String) onScan;
   final VoidCallback onClose;
+  final String? scannerType; // 'participant' or 'supervisor'
 
   const QRScannerWidget({
     super.key,
     required this.onScan,
     required this.onClose,
+    this.scannerType = 'participant',
   });
 
   @override
@@ -22,9 +25,7 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  final TextEditingController _manualInputController = TextEditingController();
   bool _isFlashOn = false;
-  bool _showManualInput = false;
 
   @override
   void initState() {
@@ -50,7 +51,6 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
   void dispose() {
     controller.dispose();
     _fadeController.dispose();
-    _manualInputController.dispose();
     super.dispose();
   }
 
@@ -74,13 +74,6 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
     }
   }
 
-  void _submitManualInput() {
-    final code = _manualInputController.text.trim();
-    if (code.isNotEmpty) {
-      widget.onScan(code);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,178 +81,106 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
       body: Stack(
         children: [
           // Camera Scanner
-          if (!_showManualInput)
-            MobileScanner(
-              controller: controller,
-              onDetect: _onDetect,
-            ),
+          MobileScanner(
+            controller: controller,
+            onDetect: _onDetect,
+          ),
 
-          // Dark overlay for manual input
-          if (_showManualInput)
-            Container(
-              color: Colors.black87,
+          // Overlay with scanning frame
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+              ),
               child: Center(
                 child: Container(
-                  margin: const EdgeInsets.all(20),
-                  padding: const EdgeInsets.all(20),
+                  width: 280,
+                  height: 280,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Stack(
                     children: [
-                      const Text(
-                        'İş nömrəsini əllə daxil edin',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _manualInputController,
-                        keyboardType: TextInputType.number,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: 'İş nömrəsi',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.numbers),
-                        ),
-                        onSubmitted: (_) => _submitManualInput(),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showManualInput = false;
-                                });
-                              },
-                              child: const Text('Ləğv et'),
+                      // Corner decorations
+                      const Positioned(
+                        top: -2,
+                        left: -2,
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: Colors.green, width: 4),
+                                left: BorderSide(color: Colors.green, width: 4),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _submitManualInput,
-                              child: const Text('Yoxla'),
+                        ),
+                      ),
+                      const Positioned(
+                        top: -2,
+                        right: -2,
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: Colors.green, width: 4),
+                                right:
+                                    BorderSide(color: Colors.green, width: 4),
+                              ),
                             ),
                           ),
-                        ],
+                        ),
+                      ),
+                      const Positioned(
+                        bottom: -2,
+                        left: -2,
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom:
+                                    BorderSide(color: Colors.green, width: 4),
+                                left: BorderSide(color: Colors.green, width: 4),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Positioned(
+                        bottom: -2,
+                        right: -2,
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom:
+                                    BorderSide(color: Colors.green, width: 4),
+                                right:
+                                    BorderSide(color: Colors.green, width: 4),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-
-          // Overlay with scanning frame
-          if (!_showManualInput)
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 280,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Corner decorations
-                        const Positioned(
-                          top: -2,
-                          left: -2,
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top:
-                                      BorderSide(color: Colors.green, width: 4),
-                                  left:
-                                      BorderSide(color: Colors.green, width: 4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Positioned(
-                          top: -2,
-                          right: -2,
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top:
-                                      BorderSide(color: Colors.green, width: 4),
-                                  right:
-                                      BorderSide(color: Colors.green, width: 4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Positioned(
-                          bottom: -2,
-                          left: -2,
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom:
-                                      BorderSide(color: Colors.green, width: 4),
-                                  left:
-                                      BorderSide(color: Colors.green, width: 4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Positioned(
-                          bottom: -2,
-                          right: -2,
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom:
-                                      BorderSide(color: Colors.green, width: 4),
-                                  right:
-                                      BorderSide(color: Colors.green, width: 4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          ),
 
           // Top controls
           SafeArea(
@@ -283,20 +204,19 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
                   ),
                   const Spacer(),
                   // Flash toggle
-                  if (!_showManualInput)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        onPressed: _toggleFlash,
-                        icon: Icon(
-                          _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                          color: _isFlashOn ? Colors.yellow : Colors.white,
-                        ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      onPressed: _toggleFlash,
+                      icon: Icon(
+                        _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                        color: _isFlashOn ? Colors.yellow : Colors.white,
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -335,15 +255,26 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: () {
-                        setState(() {
-                          _showManualInput = !_showManualInput;
-                        });
+                        if (widget.scannerType == 'supervisor') {
+                          ManualInputDialog.showSupervisorDialog(
+                            context,
+                            (input) {
+                              Navigator.of(context).pop();
+                              widget.onScan(input);
+                            },
+                          );
+                        } else {
+                          ManualInputDialog.showParticipantDialog(
+                            context,
+                            (input) {
+                              Navigator.of(context).pop();
+                              widget.onScan(input);
+                            },
+                          );
+                        }
                       },
-                      icon: Icon(
-                          _showManualInput ? Icons.camera_alt : Icons.keyboard),
-                      label: Text(_showManualInput
-                          ? 'Kameraya qayıt'
-                          : 'Əllə daxil et'),
+                      icon: const Icon(Icons.keyboard),
+                      label: const Text('Əllə daxil et'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.9),
                         foregroundColor: Colors.black87,

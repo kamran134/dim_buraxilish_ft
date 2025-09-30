@@ -1,3 +1,5 @@
+import 'participant_models.dart';
+
 class Auth {
   final int bina;
   final String examDate;
@@ -169,11 +171,17 @@ class ResponseModel {
 
 class LoginResponse extends ResponseModel {
   final AccessTokenModel data;
+  final String? token;
+  final UserProfile? user;
+  final ExamDetails? examDetails;
 
   LoginResponse({
     required this.data,
     required bool success,
     required String message,
+    this.token,
+    this.user,
+    this.examDetails,
   }) : super(success: success, message: message);
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -181,6 +189,13 @@ class LoginResponse extends ResponseModel {
       data: AccessTokenModel.fromJson(json['data'] as Map<String, dynamic>),
       success: json['success'] as bool,
       message: json['message'] as String,
+      token: json['token'] as String?,
+      user: json['user'] != null
+          ? UserProfile.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
+      examDetails: json['examDetails'] != null
+          ? ExamDetails.fromJson(json['examDetails'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -190,6 +205,9 @@ class LoginResponse extends ResponseModel {
       'data': data.toJson(),
       'success': success,
       'message': message,
+      if (token != null) 'token': token,
+      if (user != null) 'user': user!.toJson(),
+      if (examDetails != null) 'examDetails': examDetails!.toJson(),
     };
   }
 }
@@ -218,6 +236,42 @@ class ChangePasswordModel {
       'userName': userName,
       'currentPassword': currentPassword,
       'newPassword': newPassword,
+    };
+  }
+}
+
+class UserProfile {
+  final String userName;
+  final String? fullName;
+  final String? role;
+  final int? bina;
+  final String? examDate;
+
+  UserProfile({
+    required this.userName,
+    this.fullName,
+    this.role,
+    this.bina,
+    this.examDate,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      userName: json['userName'] as String,
+      fullName: json['fullName'] as String?,
+      role: json['role'] as String?,
+      bina: json['bina'] as int?,
+      examDate: json['examDate'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userName': userName,
+      if (fullName != null) 'fullName': fullName,
+      if (role != null) 'role': role,
+      if (bina != null) 'bina': bina,
+      if (examDate != null) 'examDate': examDate,
     };
   }
 }

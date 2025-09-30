@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import '../screens/supervisor_screen.dart';
+import '../screens/participant_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -114,7 +116,7 @@ class AppDrawer extends StatelessWidget {
                       title: 'İmtahan iştirakçıları',
                       onTap: () {
                         Navigator.pop(context);
-                        _showComingSoonDialog(context, 'İmtahan iştirakçıları');
+                        _navigateToParticipantScreen(context);
                       },
                     ),
                     _buildDrawerItem(
@@ -123,7 +125,7 @@ class AppDrawer extends StatelessWidget {
                       title: 'Nəzarətçilər',
                       onTap: () {
                         Navigator.pop(context);
-                        _showComingSoonDialog(context, 'Nəzarətçilər');
+                        _navigateToSupervisorScreen(context);
                       },
                     ),
                     _buildDrawerItem(
@@ -347,6 +349,22 @@ class AppDrawer extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  void _navigateToParticipantScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ParticipantScreen(),
+      ),
+    );
+  }
+
+  void _navigateToSupervisorScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SupervisorScreen(),
+      ),
     );
   }
 
