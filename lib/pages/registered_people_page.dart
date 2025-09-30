@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
-import '../providers/participant_provider.dart';
-import '../providers/supervisor_provider.dart';
 import '../design/app_colors.dart';
 
 class RegisteredPeoplePage extends StatefulWidget {
