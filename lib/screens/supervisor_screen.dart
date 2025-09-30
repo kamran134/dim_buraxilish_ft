@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
+import '../design/app_colors.dart';
 
 class SupervisorScreen extends StatefulWidget {
   const SupervisorScreen({super.key});
@@ -220,7 +221,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                                 .setScreenState(SupervisorScreenState.scanning),
                             icon: Icons.qr_code_scanner,
                             title: 'Skan et',
-                            backgroundColor: const Color(0xFFe74c3c),
+                            backgroundColor: AppColors.buttonRed,
                           ),
                           const SizedBox(height: 16),
                           _buildActionButton(
@@ -234,7 +235,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                             ),
                             icon: Icons.keyboard,
                             title: 'Əllə daxil et',
-                            backgroundColor: const Color(0xFF3498db),
+                            backgroundColor: AppColors.buttonBlue,
                           ),
                         ],
                       ),

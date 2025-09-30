@@ -5,6 +5,7 @@ import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../utils/date_formatter.dart';
+import 'database_service.dart';
 
 class HttpService {
   static const String baseUrl =
@@ -376,15 +377,11 @@ class HttpService {
     }
   }
 
-  // Offline participant methods (placeholder - would need SQLite integration)
+  // Offline participant methods
   Future<Participant?> getParticipantFromOfflineDB(int workNumber) async {
     try {
-      // TODO: Implement SQLite query
-      // This would query: SELECT * FROM enrollees WHERE is_N = $workNumber
       print('Searching participant offline: $workNumber');
-
-      // For now, return null to indicate offline DB is not implemented
-      return null;
+      return await DatabaseService.getParticipantByWorkNumber(workNumber);
     } catch (e) {
       print('Error getting participant from offline DB: $e');
       return null;
@@ -393,11 +390,45 @@ class HttpService {
 
   Future<void> registerParticipantOffline(int workNumber) async {
     try {
-      // TODO: Implement SQLite update
-      // This would update: UPDATE registered_enrollees SET qeydiyyat = ? WHERE is_N = ?
       print('Registering participant offline: $workNumber');
+      final participant =
+          await DatabaseService.getParticipantByWorkNumber(workNumber);
+      if (participant != null) {
+        final now = DateTime.now().toIso8601String();
+        await DatabaseService.registerParticipant(participant, now);
+      }
     } catch (e) {
       print('Error registering participant offline: $e');
+    }
+  }
+
+  /// Get all registered participants from database
+  Future<List<Participant>> getRegisteredParticipants() async {
+    try {
+      return await DatabaseService.getRegisteredParticipants();
+    } catch (e) {
+      print('Error getting registered participants: $e');
+      return [];
+    }
+  }
+
+  /// Save participants to offline database
+  Future<void> saveParticipantsOffline(List<Participant> participants) async {
+    try {
+      await DatabaseService.saveParticipants(participants);
+      print('Saved ${participants.length} participants to offline database');
+    } catch (e) {
+      print('Error saving participants offline: $e');
+    }
+  }
+
+  /// Check if offline database has data
+  Future<bool> hasOfflineData() async {
+    try {
+      return await DatabaseService.hasOfflineData();
+    } catch (e) {
+      print('Error checking offline data: $e');
+      return false;
     }
   }
 
@@ -480,18 +511,62 @@ class HttpService {
     try {
       print('Getting supervisor from offline DB: $cardNumber');
 
-      // For now, return a mock response indicating offline mode is not implemented
-      // In React Native, this would query the local SQLite database
-      return SupervisorResponse(
-        success: false,
-        message: 'Oflayn rejim hələ hazırda əlçatan deyil',
-      );
+      final supervisor =
+          await DatabaseService.getSupervisorByCardNumber(cardNumber);
+
+      if (supervisor != null) {
+        return SupervisorResponse(
+          success: true,
+          message: 'Nəzarətçi tapıldı',
+          data: supervisor,
+        );
+      } else {
+        return SupervisorResponse(
+          success: false,
+          message: 'Nəzarətçi tapılmadı',
+        );
+      }
     } catch (error) {
       print('Error getting supervisor from offline DB: $error');
       return SupervisorResponse(
         success: false,
         message: 'Lokal bazadan məlumat oxunarkən xəta baş verdi',
       );
+    }
+  }
+
+  /// Register supervisor offline
+  Future<void> registerSupervisorOffline(String cardNumber) async {
+    try {
+      print('Registering supervisor offline: $cardNumber');
+      final supervisor =
+          await DatabaseService.getSupervisorByCardNumber(cardNumber);
+      if (supervisor != null) {
+        final now = DateTime.now().toIso8601String();
+        await DatabaseService.registerSupervisor(supervisor, now);
+      }
+    } catch (e) {
+      print('Error registering supervisor offline: $e');
+    }
+  }
+
+  /// Get all registered supervisors from database
+  Future<List<Supervisor>> getRegisteredSupervisors() async {
+    try {
+      return await DatabaseService.getRegisteredSupervisors();
+    } catch (e) {
+      print('Error getting registered supervisors: $e');
+      return [];
+    }
+  }
+
+  /// Save supervisors to offline database
+  Future<void> saveSupervisorsOffline(List<Supervisor> supervisors) async {
+    try {
+      await DatabaseService.saveSupervisors(supervisors);
+      print('Saved ${supervisors.length} supervisors to offline database');
+    } catch (e) {
+      print('Error saving supervisors offline: $e');
     }
   }
 

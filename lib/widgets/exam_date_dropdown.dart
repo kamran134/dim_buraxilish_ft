@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -89,7 +90,7 @@ class ExamDateDropdown extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
-                color: Color(0xFF1E3A8A),
+                color: AppColors.deepBlue,
                 width: 2,
               ),
             ),

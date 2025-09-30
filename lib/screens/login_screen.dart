@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
@@ -143,9 +144,9 @@ class _LoginScreenState extends State<LoginScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF1E3A8A), // Deep blue
-              Color(0xFF3B82F6), // Blue
-              Color(0xFF60A5FA), // Light blue
+              AppColors.deepBlue, // Deep blue
+              AppColors.splashBlue, // Blue
+              AppColors.splashLightBlue, // Light blue
             ],
           ),
         ),
@@ -239,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen>
               end: Alignment.bottomRight,
               colors: [
                 Colors.white,
-                Color(0xFFF3F4F6),
+                AppColors.splashLightGrey,
               ],
             ),
             boxShadow: [
@@ -253,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen>
           child: const Icon(
             Icons.school,
             size: 50,
-            color: Color(0xFF1E3A8A),
+            color: AppColors.deepBlue,
           ),
         ),
         const SizedBox(height: 24),
@@ -361,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen>
       isLoading: _isLoading,
       onPressed: _handleLogin,
       backgroundColor: Colors.white,
-      textColor: const Color(0xFF1E3A8A),
+      textColor: AppColors.deepBlue,
       icon: Icons.login,
     );
   }

@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/supervisor_screen.dart';
 import '../screens/participant_screen.dart';
+import '../design/app_colors.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -18,9 +19,9 @@ class AppDrawer extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
-              Color(0xFF374657),
+              AppColors.lightBlue,
+              AppColors.darkBlue,
+              AppColors.primaryBlue,
             ],
           ),
         ),
@@ -386,7 +387,7 @@ class AppDrawer extends StatelessWidget {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF667eea),
+              backgroundColor: AppColors.lightBlue,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

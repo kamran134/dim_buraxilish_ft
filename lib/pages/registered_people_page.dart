@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
+import '../providers/participant_provider.dart';
+import '../providers/supervisor_provider.dart';
+import '../design/app_colors.dart';
 
 class RegisteredPeoplePage extends StatefulWidget {
   final List<Participant>? participants;
@@ -90,7 +94,7 @@ class _RegisteredPeoplePageState extends State<RegisteredPeoplePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF374657),
+      backgroundColor: AppColors.primaryBlue,
       appBar: AppBar(
         title: Text(
           widget.isParticipants ? 'İştirakçılar' : 'Nəzarətçilər',
@@ -99,7 +103,7 @@ class _RegisteredPeoplePageState extends State<RegisteredPeoplePage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF374657),
+        backgroundColor: AppColors.primaryBlue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -261,7 +265,7 @@ class _ParticipantCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.8),
+                  color: AppColors.successGreen.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: const Icon(
@@ -387,7 +391,7 @@ class _SupervisorCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF677EEA).withOpacity(0.9),
+                  color: AppColors.statisticsBlue.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: const Icon(

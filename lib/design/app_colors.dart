@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+
+/// Цветовая палитра приложения
+class AppColors {
+  AppColors._();
+
+  /// Основной синий цвет
+  static const Color primaryBlue = Color(0xFF374657);
+
+  /// Дополнительные цвета
+  static const Color lightBlue = Color(0xFF667eea);
+  static const Color darkBlue = Color(0xFF764ba2);
+
+  /// Цвета градиентов
+  static const List<Color> participantGradient = [
+    Color(0xFF667eea),
+    Color(0xFF764ba2)
+  ];
+
+  static const List<Color> supervisorGradient = [
+    Color(0xFFf093fb),
+    Color(0xFFf5576c)
+  ];
+
+  /// Цвета статистики
+  static const Color statisticsBlue = Color(0xFF677EEA);
+  static const Color successGreen = Color(0xFF4CAF50);
+  static const Color errorRed = Color(0xFFF44336);
+
+  /// Фоновые цвета
+  static const Color backgroundDark = Color(0xFF1e293b);
+  static const Color backgroundMedium = Color(0xFF334155);
+  static const Color backgroundLight = Color(0xFF475569);
+
+  /// Цвета кнопок
+  static const Color buttonBlue = Color(0xFF3498db);
+  static const Color buttonRed = Color(0xFFe74c3c);
+
+  /// Дополнительные цвета для UI
+  static const Color borderGrey = Color(0xFFE5E5E5);
+  static const Color textGrey = Color(0xFF9E9E9E);
+  static const Color cardBackground = Colors.white;
+
+  /// Дополнительные градиенты
+  static const List<Color> orangeGradient = [
+    Color(0xFFe67e22),
+    Color(0xFFd35400)
+  ];
+
+  static const List<Color> greenGradient = [
+    Color(0xFF16a085),
+    Color(0xFF27ae60)
+  ];
+
+  static const List<Color> purpleGradient = [
+    Color(0xFF8e44ad),
+    Color(0xFF9b59b6)
+  ];
+
+  static const List<Color> blueGradient = [
+    Color(0xFF3498db),
+    Color(0xFF2980b9)
+  ];
+
+  /// Светлые цвета
+  static const Color lightBackground = Color(0xFFf8fafc);
+  static const Color lightGrey = Color(0xFFe2e8f0);
+
+  /// Глубокий синий
+  static const Color deepBlue = Color(0xFF1E3A8A);
+
+  /// Дополнительные цвета для splash screen
+  static const Color splashBlue = Color(0xFF3B82F6);
+  static const Color splashLightBlue = Color(0xFF60A5FA);
+  static const Color splashLightGrey = Color(0xFFF3F4F6);
+
+  /// Цвета для статусов
+  static const Color registeredGreen = Color(0xFF4CAF50);
+  static const Color notRegisteredRed = Color(0xFFf44336);
+}

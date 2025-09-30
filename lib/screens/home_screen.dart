@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import '../pages/statistics_page.dart';
+import '../design/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,37 +22,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     MenuItemData(
       title: 'İmtahan iştirakçıları',
       icon: Icons.school,
-      gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
+      gradient: AppColors.participantGradient,
       route: '/participants',
     ),
     MenuItemData(
       title: 'Nəzarətçilər',
       icon: Icons.supervisor_account,
-      gradient: const [Color(0xFFf093fb), Color(0xFFf5576c)],
+      gradient: AppColors.supervisorGradient,
       route: '/supervisors',
     ),
     MenuItemData(
       title: 'Göndərilməmiş\nməlumatlar',
       icon: Icons.signal_cellular_off,
-      gradient: const [Color(0xFFe67e22), Color(0xFFd35400)],
+      gradient: AppColors.orangeGradient,
       route: '/offline-data',
     ),
     MenuItemData(
       title: 'Statistika',
       icon: Icons.analytics,
-      gradient: const [Color(0xFF16a085), Color(0xFF27ae60)],
+      gradient: AppColors.greenGradient,
       route: '/statistics',
     ),
     MenuItemData(
       title: 'Oflayn baza',
       icon: Icons.storage,
-      gradient: const [Color(0xFF8e44ad), Color(0xFF9b59b6)],
+      gradient: AppColors.purpleGradient,
       route: '/database',
     ),
     MenuItemData(
       title: 'Ayarlar',
       icon: Icons.settings,
-      gradient: const [Color(0xFF3498db), Color(0xFF2980b9)],
+      gradient: AppColors.blueGradient,
       route: '/settings',
     ),
   ];
@@ -119,13 +120,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             end: Alignment.bottomCenter,
             colors: isDarkMode
                 ? [
-                    const Color(0xFF1e293b),
-                    const Color(0xFF334155),
-                    const Color(0xFF475569),
+                    AppColors.backgroundDark,
+                    AppColors.backgroundMedium,
+                    AppColors.backgroundLight,
                   ]
                 : [
-                    const Color(0xFFf8fafc),
-                    const Color(0xFFe2e8f0),
+                    AppColors.lightBackground,
+                    AppColors.lightGrey,
                   ],
           ),
         ),
@@ -153,9 +154,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Color(0xFF667eea),
-                        Color(0xFF764ba2),
-                        Color(0xFF374657),
+                        AppColors.lightBlue,
+                        AppColors.darkBlue,
+                        AppColors.primaryBlue,
                       ],
                     ),
                   ),

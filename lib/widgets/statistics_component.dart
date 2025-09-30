@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/statistics_card.dart';
+import '../design/app_colors.dart';
 
 class StatisticsComponent extends StatelessWidget {
   final int allMan;
@@ -38,7 +39,7 @@ class StatisticsComponent extends StatelessWidget {
           StatisticsCard(
             title: 'Ümumi statistika',
             icon: Icons.bar_chart,
-            backgroundColor: const Color(0xFF677EEA).withOpacity(0.9),
+            backgroundColor: AppColors.statisticsBlue.withOpacity(0.9),
             items: [
               StatisticItem(
                 icon: Icons.supervisor_account,
@@ -69,7 +70,7 @@ class StatisticsComponent extends StatelessWidget {
           StatisticsCard(
             title: 'Qeydiyyatdan keçənlər',
             icon: Icons.check_circle,
-            backgroundColor: const Color(0xFF4CAF50).withOpacity(0.8),
+            backgroundColor: AppColors.successGreen.withOpacity(0.8),
             items: [
               StatisticItem(
                 icon: Icons.supervisor_account,
@@ -100,7 +101,7 @@ class StatisticsComponent extends StatelessWidget {
           StatisticsCard(
             title: 'Qeydiyyatdan keçməyənlər',
             icon: Icons.cancel,
-            backgroundColor: const Color(0xFFF44336).withOpacity(0.9),
+            backgroundColor: AppColors.errorRed.withOpacity(0.9),
             items: [
               StatisticItem(
                 icon: Icons.supervisor_account,

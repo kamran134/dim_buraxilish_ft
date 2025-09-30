@@ -97,6 +97,43 @@ class SupervisorProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Initialize offline database (check if data exists)
+  Future<void> initializeOfflineDatabase() async {
+    try {
+      final hasData = await _httpService.hasOfflineData();
+      setOfflineDatabaseAvailability(hasData);
+      print('Supervisor offline database initialized: hasData=$hasData');
+    } catch (e) {
+      print('Error initializing supervisor offline database: $e');
+      setOfflineDatabaseAvailability(false);
+    }
+  }
+
+  // Load offline data (supervisors) - call this when user logs in or needs to sync
+  Future<void> loadOfflineSupervisors(List<Supervisor> supervisors) async {
+    try {
+      _setLoading(true);
+      await _httpService.saveSupervisorsOffline(supervisors);
+      setOfflineDatabaseAvailability(true);
+      _setSuccess('${supervisors.length} nəzarətçi oflayn bazaya yükləndi');
+    } catch (e) {
+      print('Error loading offline supervisors: $e');
+      _setError('Oflayn məlumatlar yüklənərkən xəta baş verdi');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Get registered supervisors for statistics
+  Future<List<Supervisor>> getRegisteredSupervisors() async {
+    try {
+      return await _httpService.getRegisteredSupervisors();
+    } catch (e) {
+      print('Error getting registered supervisors: $e');
+      return [];
+    }
+  }
+
   // Set authentication error callback
   void setAuthenticationErrorCallback(VoidCallback? callback) {
     _onAuthenticationError = callback;
@@ -203,6 +240,13 @@ class SupervisorProvider with ChangeNotifier {
       } else {
         // Offline mode: check local database
         response = await _httpService.getSupervisorFromOfflineDB(qrCode);
+
+        // If supervisor found and not repeat, register offline
+        if (response.success &&
+            response.data != null &&
+            !response.message.toLowerCase().contains('təkrar')) {
+          await _httpService.registerSupervisorOffline(qrCode);
+        }
       }
 
       if (response.success && response.data != null) {

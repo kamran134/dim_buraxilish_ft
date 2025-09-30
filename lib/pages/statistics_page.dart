@@ -5,6 +5,7 @@ import '../providers/participant_provider.dart';
 import '../providers/supervisor_provider.dart';
 import '../widgets/statistics_component.dart';
 import 'registered_people_page.dart';
+import '../design/app_colors.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({Key? key}) : super(key: key);
@@ -74,7 +75,7 @@ class _StatisticsPageState extends State<StatisticsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF374657),
+      backgroundColor: AppColors.primaryBlue,
       appBar: AppBar(
         title: const Text(
           'Statistika',
@@ -83,7 +84,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF374657),
+        backgroundColor: AppColors.primaryBlue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -136,7 +137,7 @@ class _StatisticsPageState extends State<StatisticsPage>
           height: 48,
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF374657).withOpacity(0.8)
+                ? AppColors.primaryBlue.withOpacity(0.8)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
             boxShadow: isActive

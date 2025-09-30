@@ -77,6 +77,43 @@ class ParticipantProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Initialize offline database (check if data exists)
+  Future<void> initializeOfflineDatabase() async {
+    try {
+      final hasData = await _httpService.hasOfflineData();
+      setOfflineDatabaseAvailability(hasData);
+      print('Offline database initialized: hasData=$hasData');
+    } catch (e) {
+      print('Error initializing offline database: $e');
+      setOfflineDatabaseAvailability(false);
+    }
+  }
+
+  // Load offline data (participants) - call this when user logs in or needs to sync
+  Future<void> loadOfflineParticipants(List<Participant> participants) async {
+    try {
+      _setLoading(true);
+      await _httpService.saveParticipantsOffline(participants);
+      setOfflineDatabaseAvailability(true);
+      _setSuccess('${participants.length} iştirakçı oflayn bazaya yükləndi');
+    } catch (e) {
+      print('Error loading offline participants: $e');
+      _setError('Oflayn məlumatlar yüklənərkən xəta baş verdi');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Get registered participants for statistics
+  Future<List<Participant>> getRegisteredParticipants() async {
+    try {
+      return await _httpService.getRegisteredParticipants();
+    } catch (e) {
+      print('Error getting registered participants: $e');
+      return [];
+    }
+  }
+
   // Set authentication error callback
   void setAuthenticationErrorCallback(VoidCallback? callback) {
     _onAuthenticationError = callback;
