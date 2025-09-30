@@ -1,0 +1,1006 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/participant_models.dart';
+import '../providers/participant_provider.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/qr_scanner.dart';
+import 'login_screen.dart';
+
+class ParticipantScreen extends StatefulWidget {
+  const ParticipantScreen({super.key});
+
+  @override
+  State<ParticipantScreen> createState() => _ParticipantScreenState();
+}
+
+class _ParticipantScreenState extends State<ParticipantScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+
+    // Load exam details when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ParticipantProvider>();
+
+      // Set authentication error callback
+      provider.setAuthenticationErrorCallback(() {
+        _handleAuthenticationError();
+      });
+
+      provider.loadExamDetails();
+    });
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeIn,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    ));
+
+    _fadeController.forward();
+    _scaleController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: Consumer<ParticipantProvider>(
+        builder: (context, provider, child) {
+          switch (provider.screenState) {
+            case ParticipantScreenState.initial:
+              return _buildInitialView(provider, isDarkMode);
+            case ParticipantScreenState.scanning:
+              return _buildScanningView(provider);
+            case ParticipantScreenState.scanned:
+              return _buildScannedView(provider, isDarkMode);
+            case ParticipantScreenState.error:
+              return _buildErrorView(provider, isDarkMode);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildInitialView(ParticipantProvider provider, bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  const Color(0xFF1e293b),
+                  const Color(0xFF334155),
+                  const Color(0xFF475569),
+                ]
+              : [
+                  const Color(0xFF667eea),
+                  const Color(0xFF764ba2),
+                  const Color(0xFF374657),
+                ],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'İmtahan iştirakçıları',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 48), // Balance the back button
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Welcome Section
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Container(
+                          padding: const EdgeInsets.all(30),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: const Column(
+                            children: [
+                              Icon(
+                                Icons.school,
+                                size: 64,
+                                color: Colors.white,
+                              ),
+                              SizedBox(height: 20),
+                              Text(
+                                'İmtahan iştirakçıları',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'QR kod skaneri ilə iştirakçı məlumatlarını oxuyun',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Action Buttons
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
+                        children: [
+                          _buildActionButton(
+                            onPressed: () => provider.setScreenState(
+                                ParticipantScreenState.scanning),
+                            icon: Icons.qr_code_scanner,
+                            title: 'Skan et',
+                            backgroundColor: const Color(0xFFe74c3c),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildActionButton(
+                            onPressed: () => _showManualInputDialog(provider),
+                            icon: Icons.keyboard,
+                            title: 'Əllə daxil et',
+                            backgroundColor: const Color(0xFF3498db),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // Online/Offline Toggle
+                    if (provider.hasOfflineDatabase)
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: _buildOnlineToggle(provider),
+                      ),
+
+                    // Loading indicator
+                    if (provider.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 20),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      ),
+
+                    // Error Display (only show if not loading and there's an error)
+                    if (!provider.isLoading && provider.errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  provider.errorMessage!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanningView(ParticipantProvider provider) {
+    return QRScannerWidget(
+      onScan: (code) {
+        provider.scanParticipant(code);
+      },
+      onClose: () {
+        provider.setScreenState(ParticipantScreenState.initial);
+      },
+    );
+  }
+
+  Widget _buildScannedView(ParticipantProvider provider, bool isDarkMode) {
+    final participant = provider.currentParticipant!;
+    final examDetails = provider.examDetails;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  const Color(0xFF1e293b),
+                  const Color(0xFF334155),
+                  const Color(0xFF475569),
+                ]
+              : [
+                  const Color(0xFF667eea),
+                  const Color(0xFF764ba2),
+                  const Color(0xFF374657),
+                ],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => provider.reset(),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'İştirakçı məlumatları',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // Success message
+                    if (provider.successMessage != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                provider.successMessage!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Participant Info Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Repeat entry message - shown above photo if it's a repeat entry
+                          if (provider.isRepeatEntry)
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 16),
+                              child: Text(
+                                'TƏKRAR GİRİŞ',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red[700],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+
+                          // Photo placeholder
+                          Container(
+                            width: double.infinity,
+                            height: 280,
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: provider.isRepeatEntry
+                                    ? Colors.red[700]!
+                                    : Colors.green,
+                                width: 3,
+                              ),
+                            ),
+                            child: participant.photo != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: _buildParticipantPhoto(
+                                        participant.photo!),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 80,
+                                    color: Colors.grey,
+                                  ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Name
+                          Text(
+                            participant.fullName,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // İş nömrəsi under name
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.blue.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              'İş nömrəsi: ${participant.isN}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Next Button - moved here for quick access
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Container(), // spacer
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    provider.reset();
+                                    provider.setScreenState(
+                                        ParticipantScreenState.scanning);
+                                  },
+                                  icon: const Icon(Icons.qr_code_scanner,
+                                      size: 18),
+                                  label: const Text(
+                                    'Növbəti',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                      horizontal: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Container(), // spacer
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Details in two columns
+                          _buildDetailsGrid(participant),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Statistics Card
+                    if (examDetails != null)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Statistikalar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildStatItem(
+                                    'Qeydiyyatlı',
+                                    examDetails.totalRegisteredCount.toString(),
+                                    Colors.green,
+                                    Icons.check_circle,
+                                  ),
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 60,
+                                  color: Colors.white30,
+                                ),
+                                Expanded(
+                                  child: _buildStatItem(
+                                    'Qeydiyyatsız',
+                                    examDetails.notRegisteredCount.toString(),
+                                    Colors.red,
+                                    Icons.cancel,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView(ParticipantProvider provider, bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  const Color(0xFF1e293b),
+                  const Color(0xFF334155),
+                  const Color(0xFF475569),
+                ]
+              : [
+                  const Color(0xFF667eea),
+                  const Color(0xFF764ba2),
+                  const Color(0xFF374657),
+                ],
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 80,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Xəta baş verdi',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        provider.errorMessage ?? 'Naməlum xəta',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 30),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => provider.reset(),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Geri qayıt'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => provider.setScreenState(
+                                  ParticipantScreenState.scanning),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Yenidən skanla'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String title,
+    required Color backgroundColor,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 24),
+        label: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 4,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnlineToggle(ParticipantProvider provider) {
+    return GestureDetector(
+      onTap: () => provider.toggleOnlineMode(),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              provider.isOnlineMode ? Icons.wifi : Icons.wifi_off,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    provider.isOnlineMode ? 'Online rejim' : 'Oflayn rejim',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    provider.isOnlineMode
+                        ? 'İnternet bağlantısı aktivdir'
+                        : 'Lokal bazadan istifadə edilir',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: provider.isOnlineMode,
+              onChanged: (_) => provider.toggleOnlineMode(),
+              activeColor: Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailsGrid(Participant participant) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // First row: Mərtəbə and Zal
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem('Mərtəbə', participant.mertebe),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailItem('Zal', participant.zal),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Second row: Sıra and Yer
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem('Sıra', participant.sira),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailItem('Yer', participant.yer),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label:',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+      String label, String value, Color color, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showManualInputDialog(ParticipantProvider provider) {
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('İş nömrəsini daxil edin'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'İş nömrəsi',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Ləğv et'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              provider.enterParticipantManually(controller.text);
+            },
+            child: const Text('Yoxla'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleAuthenticationError() async {
+    if (!mounted) return;
+
+    // Clear authentication data
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.signOut();
+
+    if (!mounted) return;
+
+    // Navigate to login screen and replace all previous screens
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
+  }
+
+  Widget _buildParticipantPhoto(String photoData) {
+    try {
+      // Try to decode as base64 if it looks like base64 data
+      if (photoData.startsWith('data:image') || photoData.length > 100) {
+        // Remove data URL prefix if present
+        String base64String = photoData;
+        if (photoData.startsWith('data:image')) {
+          base64String = photoData.split(',').last;
+        }
+
+        // Decode base64 to bytes
+        final Uint8List bytes = base64Decode(base64String);
+
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            print('Error loading participant photo: $error');
+            return const Icon(
+              Icons.person,
+              size: 60,
+              color: Colors.grey,
+            );
+          },
+        );
+      } else {
+        // If not base64, show placeholder
+        return const Icon(
+          Icons.person,
+          size: 60,
+          color: Colors.grey,
+        );
+      }
+    } catch (e) {
+      print('Error decoding participant photo: $e');
+      return const Icon(
+        Icons.person,
+        size: 60,
+        color: Colors.grey,
+      );
+    }
+  }
+}

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
+import '../models/participant_models.dart';
 
 class HttpService {
   static const String baseUrl =
@@ -252,6 +253,114 @@ class HttpService {
       Map<String, dynamic> supervisorBuilding) async {
     return await _dio.post('/supervisorbuildings/delete',
         data: supervisorBuilding);
+  }
+
+  // Participant scanning methods
+
+  // Scan participant online (from React Native: checkjobnoatbinaandexamdate)
+  Future<ParticipantResponse> scanParticipant({
+    required String jobNo,
+    required String building,
+    required String examDate,
+  }) async {
+    try {
+      print(
+          'Scanning participant: jobNo=$jobNo, building=$building, examDate=$examDate');
+
+      final response = await _dio.get(
+        '/buraxilishes/checkjobnoatbinaandexamdate',
+        queryParameters: {
+          'jobNo': jobNo,
+          'bina': building,
+          'examDate': examDate,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return ParticipantResponse.fromJson(response.data);
+      } else {
+        return ParticipantResponse(
+          success: false,
+          message: 'İştiraki tapılmadı',
+        );
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return ParticipantResponse(
+          success: false,
+          message: 'Axtarılan şəxs tapılmadı!',
+        );
+      } else if (e.response?.statusCode == 401) {
+        return ParticipantResponse(
+          success: false,
+          message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
+        );
+      } else {
+        return ParticipantResponse(
+          success: false,
+          message: 'İnternet bağlantı yoxdur!',
+        );
+      }
+    } catch (e) {
+      print('Error scanning participant: $e');
+      return ParticipantResponse(
+        success: false,
+        message: 'Skan zamanı xəta baş verdi',
+      );
+    }
+  }
+
+  // Get exam details from storage
+  Future<ExamDetails?> getExamDetailsFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final examDetailsJson = prefs.getString('exam_details');
+
+      if (examDetailsJson != null) {
+        final examDetailsData =
+            jsonDecode(examDetailsJson) as Map<String, dynamic>;
+        return ExamDetails.fromJson(examDetailsData);
+      }
+      return null;
+    } catch (error) {
+      print('Error getting exam details from storage: $error');
+      return null;
+    }
+  }
+
+  // Store exam details
+  Future<void> storeExamDetails(ExamDetails examDetails) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('exam_details', jsonEncode(examDetails.toJson()));
+    } catch (error) {
+      print('Error storing exam details: $error');
+    }
+  }
+
+  // Offline participant methods (placeholder - would need SQLite integration)
+  Future<Participant?> getParticipantFromOfflineDB(int workNumber) async {
+    try {
+      // TODO: Implement SQLite query
+      // This would query: SELECT * FROM enrollees WHERE is_N = $workNumber
+      print('Searching participant offline: $workNumber');
+
+      // For now, return null to indicate offline DB is not implemented
+      return null;
+    } catch (e) {
+      print('Error getting participant from offline DB: $e');
+      return null;
+    }
+  }
+
+  Future<void> registerParticipantOffline(int workNumber) async {
+    try {
+      // TODO: Implement SQLite update
+      // This would update: UPDATE registered_enrollees SET qeydiyyat = ? WHERE is_N = ?
+      print('Registering participant offline: $workNumber');
+    } catch (e) {
+      print('Error registering participant offline: $e');
+    }
   }
 
   // Clear all data

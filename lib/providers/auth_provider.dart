@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
+import '../models/participant_models.dart';
 import '../services/http_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -77,6 +78,14 @@ class AuthProvider extends ChangeNotifier {
 
         // Extract bina from userName (following the original logic)
         final bina = int.tryParse(userName.substring(4)) ?? 0;
+
+        // Store exam details for participant scanning
+        final examDetails = ExamDetails(
+          kodBina: bina.toString(),
+          imtTarix: examDate,
+          adBina: 'Bina $bina', // This could be fetched from server
+        );
+        await _httpService.storeExamDetails(examDetails);
 
         // Update state
         _accessToken = response.data;

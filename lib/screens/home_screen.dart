@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'participant_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -236,7 +237,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Navigate to the respective screen
     switch (item.route) {
       case '/participants':
-        _showComingSoonDialog('İmtahan iştirakçıları');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const ParticipantScreen(),
+          ),
+        );
         break;
       case '/supervisors':
         _showComingSoonDialog('Nəzarətçilər');
