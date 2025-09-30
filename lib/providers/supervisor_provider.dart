@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
+import '../services/database_service.dart';
 
 /// Состояния экрана Supervisor
 enum SupervisorScreenState {
@@ -262,6 +263,11 @@ class SupervisorProvider with ChangeNotifier {
           _isRepeatEntry = false;
           _supervisorMessage = null;
 
+          // Save the supervisor to local database for statistics (only in online mode)
+          if (_isOnlineMode) {
+            await _saveSupervisorToLocalDB(_currentSupervisor!);
+          }
+
           // Update statistics when new supervisor is registered
           await _updateSupervisorStatistics();
         }
@@ -290,6 +296,18 @@ class SupervisorProvider with ChangeNotifier {
     _isRepeatEntry = false;
     clearMessages();
     notifyListeners();
+  }
+
+  // Save supervisor to local database for offline access and statistics
+  Future<void> _saveSupervisorToLocalDB(Supervisor supervisor) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      await DatabaseService.registerSupervisor(supervisor, now);
+      print('Saved supervisor ${supervisor.cardNumber} to local database');
+    } catch (e) {
+      print('Error saving supervisor to local database: $e');
+      // Don't show error to user, continue with normal flow
+    }
   }
 
   // Update supervisor statistics after successful registration

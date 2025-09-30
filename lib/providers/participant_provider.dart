@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
 import '../services/http_service.dart';
+import '../services/database_service.dart';
 
 class ParticipantProvider with ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -196,6 +197,20 @@ class ParticipantProvider with ChangeNotifier {
   }
 
   // Update participant statistics after successful registration
+  // Save participant to local database for offline access and statistics
+  Future<void> _saveParticipantToLocalDB(Participant participant) async {
+    try {
+      print(
+          'Saving participant ${participant.isN} to local database with photo: "${participant.photo}"');
+      final now = DateTime.now().toIso8601String();
+      await DatabaseService.registerParticipant(participant, now);
+      print('Saved participant ${participant.isN} to local database');
+    } catch (e) {
+      print('Error saving participant to local database: $e');
+      // Don't show error to user, continue with normal flow
+    }
+  }
+
   Future<void> _updateParticipantStatistics() async {
     try {
       if (_examDetails != null &&
@@ -253,6 +268,8 @@ class ParticipantProvider with ChangeNotifier {
 
         // Log the response message for debugging
         print('API Response message: "${response.message}"');
+        print(
+            'Received participant ${_currentParticipant!.isN} with photo: "${_currentParticipant!.photo}"');
 
         // Check if participant is already registered (TƏKRAR)
         // Convert to lowercase for case-insensitive comparison
@@ -268,6 +285,9 @@ class ParticipantProvider with ChangeNotifier {
           _isRepeatEntry = false;
           print('New participant registration');
           _setSuccess('İştirakçı tapıldı və qeydiyyata alındı');
+
+          // Save the participant to local database for statistics
+          await _saveParticipantToLocalDB(_currentParticipant!);
 
           // Update statistics when new participant is registered
           await _updateParticipantStatistics();

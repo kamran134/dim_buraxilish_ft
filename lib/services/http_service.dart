@@ -280,7 +280,10 @@ class HttpService {
       );
 
       if (response.statusCode == 200) {
-        return ParticipantResponse.fromJson(response.data);
+        print('API response data: ${response.data}');
+        final participantResponse = ParticipantResponse.fromJson(response.data);
+        print('Parsed participant photo: "${participantResponse.data?.photo}"');
+        return participantResponse;
       } else {
         return ParticipantResponse(
           success: false,
