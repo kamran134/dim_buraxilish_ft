@@ -121,22 +121,35 @@ class SupervisorProvider with ChangeNotifier {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails != null) {
         // Try to get supervisor details from API
+        final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+        final examDate = examDetails.imtTarix ?? '';
+
+        print(
+            'Loading supervisor details: buildingCode=$buildingCode, examDate=$examDate');
+
         final supervisorDetails = await _httpService.getSupervisorDetails(
-          buildingCode: int.tryParse(examDetails.kodBina ?? '0') ?? 0,
-          examDate: examDetails.imtTarix ?? '',
+          buildingCode: buildingCode,
+          examDate: examDate,
         );
 
         if (supervisorDetails != null) {
           _supervisorDetails = supervisorDetails;
+          print('Supervisor details loaded from API');
+          print('Total supervisors: ${supervisorDetails.allPersonCount}');
+          print('Registered supervisors: ${supervisorDetails.regPersonCount}');
+          print(
+              'Unregistered supervisors: ${supervisorDetails.unregisteredCount}');
         } else {
           // Fallback to storage if API fails
           _supervisorDetails =
               await _httpService.getSupervisorDetailsFromStorage();
+          print('Supervisor details loaded from storage');
         }
       } else {
         // Fallback to storage if no exam details
         _supervisorDetails =
             await _httpService.getSupervisorDetailsFromStorage();
+        print('Supervisor details loaded from storage (no exam details)');
       }
 
       // If still null, use default values
@@ -204,6 +217,9 @@ class SupervisorProvider with ChangeNotifier {
         } else {
           _isRepeatEntry = false;
           _supervisorMessage = null;
+
+          // Update statistics when new supervisor is registered
+          await _updateSupervisorStatistics();
         }
 
         setScreenState(SupervisorScreenState.scanned);
@@ -230,6 +246,35 @@ class SupervisorProvider with ChangeNotifier {
     _isRepeatEntry = false;
     clearMessages();
     notifyListeners();
+  }
+
+  // Update supervisor statistics after successful registration
+  Future<void> _updateSupervisorStatistics() async {
+    try {
+      final examDetails = await _httpService.getExamDetailsFromStorage();
+      if (examDetails != null &&
+          examDetails.kodBina != null &&
+          examDetails.imtTarix != null) {
+        final buildingCode = int.tryParse(examDetails.kodBina!);
+        if (buildingCode != null) {
+          print('Updating supervisor statistics after registration');
+          final updatedDetails = await _httpService.getSupervisorDetails(
+            buildingCode: buildingCode,
+            examDate: examDetails.imtTarix!,
+          );
+
+          if (updatedDetails != null) {
+            _supervisorDetails = updatedDetails;
+            print(
+                'Updated supervisor statistics: registered=${updatedDetails.regPersonCount}, unregistered=${updatedDetails.unregisteredCount}');
+            notifyListeners();
+          }
+        }
+      }
+    } catch (e) {
+      print('Error updating supervisor statistics: $e');
+      // Don't show error to user, statistics are not critical for functionality
+    }
   }
 
   // Clear supervisor info

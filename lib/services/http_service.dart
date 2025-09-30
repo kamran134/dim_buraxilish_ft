@@ -312,6 +312,42 @@ class HttpService {
     }
   }
 
+  /// Get exam details/statistics from API
+  Future<ExamDetails?> getExamDetails({
+    required int bina,
+    required String examDate,
+  }) async {
+    try {
+      print('Getting exam details: bina=$bina, examDate=$examDate');
+
+      final response = await _dio.get(
+        '/buraxilishes/getexamdetailsinexamdate',
+        queryParameters: {
+          'bina': bina,
+          'examDate': examDate,
+        },
+      );
+
+      print('Exam details response status: ${response.statusCode}');
+      print('Exam details response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        if (data != null) {
+          final details = ExamDetails.fromJson(data);
+          // Store in local storage
+          await storeExamDetails(details);
+          return details;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting exam details: $e');
+      return null;
+    }
+  }
+
   // Get exam details from storage
   Future<ExamDetails?> getExamDetailsFromStorage() async {
     try {

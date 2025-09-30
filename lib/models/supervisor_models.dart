@@ -90,7 +90,8 @@ class SupervisorResponse {
   factory SupervisorResponse.fromJson(Map<String, dynamic> json) {
     return SupervisorResponse(
       data: json['data'] != null ? Supervisor.fromJson(json['data']) : null,
-      success: json['success'] as bool? ?? false,
+      success: json['success'] as bool? ??
+          (json['data'] != null), // If no success field, use presence of data
       message: json['message'] as String? ?? '',
     );
   }
@@ -207,7 +208,7 @@ class SupervisorDetails {
     return SupervisorDetails(
       allPersonCount: json['allPersonCount'] as int? ?? 0,
       regPersonCount: json['regPersonCount'] as int? ?? 0,
-      buildingCode: json['buildingCode'] as int?,
+      buildingCode: (json['buildingCode'] as num?)?.toInt(),
       buildingName: json['buildingName'] as String?,
       examDate: json['examDate'] as String?,
       hallCount: json['hallCount'] as int?,

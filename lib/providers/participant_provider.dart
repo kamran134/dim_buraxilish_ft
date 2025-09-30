@@ -103,6 +103,15 @@ class ParticipantProvider with ChangeNotifier {
         _examDetails = examDetails;
         print(
             'Loaded exam details: kodBina=${examDetails.kodBina}, imtTarix=${examDetails.imtTarix}');
+
+        // Load updated statistics from API if we have building and exam date info
+        if (examDetails.kodBina != null && examDetails.imtTarix != null) {
+          final binaInt = int.tryParse(examDetails.kodBina!);
+          if (binaInt != null) {
+            await _loadStatistics(binaInt, examDetails.imtTarix!);
+          }
+        }
+
         // Don't show any success message, just load silently
       } else {
         // Try to get exam details from auth data if not in storage
@@ -123,6 +132,46 @@ class ParticipantProvider with ChangeNotifier {
       _setError('İmtahan detalları yüklənərkən xəta baş verdi');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Load statistics from API
+  Future<void> _loadStatistics(int bina, String examDate) async {
+    try {
+      print('Loading statistics: bina=$bina, examDate=$examDate');
+
+      final updatedDetails = await _httpService.getExamDetails(
+        bina: bina,
+        examDate: examDate,
+      );
+
+      if (updatedDetails != null) {
+        _examDetails = updatedDetails;
+        print('Updated exam details with statistics loaded');
+        print('Total registered: ${updatedDetails.totalRegisteredCount}');
+        print('Total not registered: ${updatedDetails.notRegisteredCount}');
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading statistics: $e');
+      // Don't show error to user, statistics are not critical for functionality
+    }
+  }
+
+  // Update participant statistics after successful registration
+  Future<void> _updateParticipantStatistics() async {
+    try {
+      if (_examDetails != null &&
+          _examDetails!.kodBina != null &&
+          _examDetails!.imtTarix != null) {
+        final binaInt = int.tryParse(_examDetails!.kodBina!);
+        if (binaInt != null) {
+          await _loadStatistics(binaInt, _examDetails!.imtTarix!);
+        }
+      }
+    } catch (e) {
+      print('Error updating participant statistics: $e');
+      // Don't show error to user, statistics are not critical for functionality
     }
   }
 
@@ -182,6 +231,9 @@ class ParticipantProvider with ChangeNotifier {
           _isRepeatEntry = false;
           print('New participant registration');
           _setSuccess('İştirakçı tapıldı və qeydiyyata alındı');
+
+          // Update statistics when new participant is registered
+          await _updateParticipantStatistics();
         }
 
         _screenState = ParticipantScreenState.scanned;
