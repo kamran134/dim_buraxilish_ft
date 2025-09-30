@@ -186,10 +186,18 @@ class SupervisorShort {
 class SupervisorDetails {
   final int allPersonCount;
   final int regPersonCount;
+  final int? buildingCode;
+  final String? buildingName;
+  final String? examDate;
+  final int? hallCount;
 
   const SupervisorDetails({
     required this.allPersonCount,
     required this.regPersonCount,
+    this.buildingCode,
+    this.buildingName,
+    this.examDate,
+    this.hallCount,
   });
 
   /// Количество незарегистрированных нəzarətçi
@@ -199,6 +207,10 @@ class SupervisorDetails {
     return SupervisorDetails(
       allPersonCount: json['allPersonCount'] as int? ?? 0,
       regPersonCount: json['regPersonCount'] as int? ?? 0,
+      buildingCode: json['buildingCode'] as int?,
+      buildingName: json['buildingName'] as String?,
+      examDate: json['examDate'] as String?,
+      hallCount: json['hallCount'] as int?,
     );
   }
 
@@ -206,6 +218,10 @@ class SupervisorDetails {
     return {
       'allPersonCount': allPersonCount,
       'regPersonCount': regPersonCount,
+      if (buildingCode != null) 'buildingCode': buildingCode,
+      if (buildingName != null) 'buildingName': buildingName,
+      if (examDate != null) 'examDate': examDate,
+      if (hallCount != null) 'hallCount': hallCount,
     };
   }
 }

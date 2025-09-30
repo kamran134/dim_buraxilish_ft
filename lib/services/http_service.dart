@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
+import '../utils/date_formatter.dart';
 
 class HttpService {
   static const String baseUrl =
@@ -379,19 +380,22 @@ class HttpService {
   /// Scan supervisor QR code and get supervisor info (online mode)
   Future<SupervisorResponse> scanSupervisor({
     required String cardNumber,
-    required String building,
+    required int buildingCode,
     required String examDate,
   }) async {
     try {
-      print(
-          'Scanning supervisor: $cardNumber, building: $building, examDate: $examDate');
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
 
-      final response = await _dio.post(
-        '/checksupervisoratbinaandexamdate',
-        data: {
+      print(
+          'Scanning supervisor: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
+
+      final response = await _dio.get(
+        '/supervisors/checksupervisor',
+        queryParameters: {
           'cardNumber': cardNumber,
-          'building': building,
-          'examDate': examDate,
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
         },
       );
 
@@ -452,6 +456,46 @@ class HttpService {
         success: false,
         message: 'Lokal bazadan məlumat oxunarkən xəta baş verdi',
       );
+    }
+  }
+
+  /// Get supervisor details/statistics from API
+  Future<SupervisorDetails?> getSupervisorDetails({
+    required int buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+
+      print(
+          'Getting supervisor details: buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
+
+      final response = await _dio.get(
+        '/supervisors/GetExamDetailsInExamDate',
+        queryParameters: {
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      print('Supervisor details response status: ${response.statusCode}');
+      print('Supervisor details response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        if (data != null) {
+          final details = SupervisorDetails.fromJson(data);
+          // Store in local storage
+          await storeSupervisorDetails(details);
+          return details;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting supervisor details: $e');
+      return null;
     }
   }
 

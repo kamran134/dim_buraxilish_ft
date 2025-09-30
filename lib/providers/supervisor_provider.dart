@@ -117,10 +117,30 @@ class SupervisorProvider with ChangeNotifier {
         return;
       }
 
-      // Load supervisor details from storage (if exists)
-      // For now, we can use mock data or implement proper storage later
-      // This would be similar to getSupervisorDetailsFromStorage in React Native
-      _supervisorDetails = const SupervisorDetails(
+      // Get exam details to use for the request
+      final examDetails = await _httpService.getExamDetailsFromStorage();
+      if (examDetails != null) {
+        // Try to get supervisor details from API
+        final supervisorDetails = await _httpService.getSupervisorDetails(
+          buildingCode: int.tryParse(examDetails.kodBina ?? '0') ?? 0,
+          examDate: examDetails.imtTarix ?? '',
+        );
+
+        if (supervisorDetails != null) {
+          _supervisorDetails = supervisorDetails;
+        } else {
+          // Fallback to storage if API fails
+          _supervisorDetails =
+              await _httpService.getSupervisorDetailsFromStorage();
+        }
+      } else {
+        // Fallback to storage if no exam details
+        _supervisorDetails =
+            await _httpService.getSupervisorDetailsFromStorage();
+      }
+
+      // If still null, use default values
+      _supervisorDetails ??= const SupervisorDetails(
         allPersonCount: 0,
         regPersonCount: 0,
       );
@@ -164,7 +184,7 @@ class SupervisorProvider with ChangeNotifier {
         // Online mode: make API call
         response = await _httpService.scanSupervisor(
           cardNumber: qrCode,
-          building: examDetails.kodBina.toString(),
+          buildingCode: int.tryParse(examDetails.kodBina ?? '0') ?? 0,
           examDate: examDetails.imtTarix ?? '',
         );
       } else {
