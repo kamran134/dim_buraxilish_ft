@@ -22,8 +22,8 @@ class AppDrawer extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.lightBlue,
-              AppColors.darkBlue,
+              AppColors.newBlueLight,
+              AppColors.newBlueDark,
               AppColors.primaryBlue,
             ],
           ),

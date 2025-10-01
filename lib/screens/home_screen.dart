@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/participant_provider.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
@@ -65,6 +67,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+
+    // Load exam details when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final participantProvider = context.read<ParticipantProvider>();
+      participantProvider.loadExamDetails();
+    });
 
     // Initialize animation controllers for each menu item
     _animationControllers = List.generate(
@@ -163,31 +171,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.lightBlue,
-                      AppColors.darkBlue,
+                      AppColors.newBlueLight,
+                      AppColors.newBlueDark,
                       AppColors.primaryBlue,
                     ],
                   ),
                 ),
                 child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(height: 40),
-                      Text(
-                        'Xoş gəldiniz',
-                        style: AppTextStyles.h1.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Buraxılış sistemini idarə edin',
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.lightGrey200,
-                        ),
-                      ),
-                    ],
+                  child: Consumer<ParticipantProvider>(
+                    builder: (context, participantProvider, child) {
+                      final examDetails = participantProvider.examDetails;
+                      final buildingCode = examDetails?.kodBina ?? '0000';
+                      final buildingName = examDetails?.adBina ??
+                          'Buraxılış sistemini idarə edin';
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(height: 40),
+                          Text(
+                            'BİNA $buildingCode',
+                            style: AppTextStyles.h1.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            buildingName,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: AppColors.lightGrey200,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

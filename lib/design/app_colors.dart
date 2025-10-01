@@ -5,15 +5,19 @@ class AppColors {
   AppColors._();
 
   /// Основной синий цвет
-  static const Color primaryBlue = Color(0xFF374657);
+  static const Color primaryBlue = Color(0xFF0046a3);
+
+  /// Новые синие цвета для градиентов
+  static const Color newBlueLight = Color(0xFF0c7bc5);
+  static const Color newBlueDark = Color(0xFF0046a3);
 
   /// Дополнительные цвета
-  static const Color lightBlue = Color(0xFF667eea);
+  static const Color lightBlue = Color(0xFF0c7bc5);
   static const Color white = Colors.white;
   static final Color whiteTransparent15 = Colors.white.withOpacity(0.15);
   static final Color whiteTransparent95 = Colors.white.withOpacity(0.95);
   static const Color white30 = Colors.white30;
-  static const Color darkBlue = Color(0xFF764ba2);
+  static const Color darkBlue = Color(0xFF0046a3);
 
   /// Цвета градиентов
   static const List<Color> participantGradient = [
