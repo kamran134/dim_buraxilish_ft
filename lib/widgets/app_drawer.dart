@@ -32,18 +32,18 @@ class AppDrawer extends StatelessWidget {
             // Header Section
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(25),
-                  bottomRight: Radius.circular(25),
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -52,44 +52,44 @@ class AppDrawer extends StatelessWidget {
                   children: [
                     // Logo placeholder (can be added later)
                     Container(
-                      width: 100,
-                      height: 100,
+                      width: 70,
+                      height: 70,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
                           ),
                         ],
                       ),
                       child: const Icon(
                         Icons.school,
-                        size: 50,
+                        size: 35,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     const Text(
                       'Dövlət İmtahan Mərkəzi',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 3),
                     Text(
                       'Buraxılış Sistemi',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: 0.3,
+                        letterSpacing: 0.2,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -102,85 +102,87 @@ class AppDrawer extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-                child: Column(
-                  children: [
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.home,
-                      title: 'Əsas',
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.school,
-                      title: 'İmtahan iştirakçıları',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToParticipantScreen(context);
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.supervisor_account,
-                      title: 'Nəzarətçilər',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToSupervisorScreen(context);
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.signal_cellular_off,
-                      title: 'Göndərilməmiş məlumatlar',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToUnsentDataScreen(context);
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.analytics,
-                      title: 'Statistika',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoonDialog(context, 'Statistika');
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.storage,
-                      title: 'Oflayn baza',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoonDialog(context, 'Oflayn baza');
-                      },
-                    ),
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.settings,
-                      title: 'Ayarlar',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToSettingsScreen(context);
-                      },
-                    ),
-                  ],
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.home,
+                        title: 'Əsas',
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.school,
+                        title: 'İmtahan iştirakçıları',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToParticipantScreen(context);
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.supervisor_account,
+                        title: 'Nəzarətçilər',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToSupervisorScreen(context);
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.signal_cellular_off,
+                        title: 'Göndərilməmiş məlumatlar',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToUnsentDataScreen(context);
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.analytics,
+                        title: 'Statistika',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showComingSoonDialog(context, 'Statistika');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.storage,
+                        title: 'Oflayn baza',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showComingSoonDialog(context, 'Oflayn baza');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        icon: Icons.settings,
+                        title: 'Ayarlar',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToSettingsScreen(context);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
             // Footer Section
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   // Logout Button
                   Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(15),
@@ -196,15 +198,15 @@ class AppDrawer extends StatelessWidget {
                       leading: const Icon(
                         Icons.exit_to_app,
                         color: Colors.white,
-                        size: 24,
+                        size: 20,
                       ),
                       title: const Text(
                         'Sistemdən çıxış',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       onTap: () => _showLogoutDialog(context),
@@ -216,7 +218,7 @@ class AppDrawer extends StatelessWidget {
                   // Footer Info
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.only(top: 20),
+                    padding: const EdgeInsets.only(top: 12),
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
@@ -231,16 +233,16 @@ class AppDrawer extends StatelessWidget {
                           'Versiya: 6.2.0',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 3),
                         Text(
                           'Dövlət İmtahan Mərkəzi Ⓒ 2025',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.w400,
                           ),
                           textAlign: TextAlign.center,
@@ -264,26 +266,26 @@ class AppDrawer extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(
         leading: Icon(
           icon,
           color: Colors.white,
-          size: 24,
+          size: 20,
         ),
         title: Text(
           title,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
         ),
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         hoverColor: Colors.white.withOpacity(0.1),
         splashColor: Colors.white.withOpacity(0.2),

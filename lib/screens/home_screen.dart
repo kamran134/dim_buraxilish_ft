@@ -116,118 +116,122 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDarkMode
-                ? [
-                    AppColors.backgroundDark,
-                    AppColors.backgroundMedium,
-                    AppColors.backgroundLight,
-                  ]
-                : [
-                    AppColors.lightBackground,
-                    AppColors.lightGrey,
-                  ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDarkMode
+              ? [
+                  AppColors.backgroundDark,
+                  AppColors.backgroundMedium,
+                  AppColors.backgroundLight,
+                ]
+              : [
+                  AppColors.lightBackground,
+                  AppColors.lightGrey,
+                ],
+        ),
+      ),
+      child: CustomScrollView(
+        controller: _scrollController,
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Custom App Bar
+          SliverAppBar(
+            expandedHeight: 200.0,
+            floating: false,
+            pinned: true,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () {
+                  // Find the closest Scaffold with a drawer
+                  final scaffoldState = Scaffold.maybeOf(context);
+                  if (scaffoldState != null && scaffoldState.hasDrawer) {
+                    scaffoldState.openDrawer();
+                  }
+                },
+              ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.lightBlue,
+                      AppColors.darkBlue,
+                      AppColors.primaryBlue,
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 40),
+                      Text(
+                        'Xoş gəldiniz',
+                        style: AppTextStyles.h1.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Buraxılış sistemini idarə edin',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.lightGrey200,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Custom App Bar
-            SliverAppBar(
-              expandedHeight: 200.0,
-              floating: false,
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
+
+          // Menu Grid
+          SliverPadding(
+            padding: const EdgeInsets.all(20.0),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                childAspectRatio: 1.0,
               ),
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.lightBlue,
-                        AppColors.darkBlue,
-                        AppColors.primaryBlue,
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(height: 40),
-                        Text(
-                          'Xoş gəldiniz',
-                          style: AppTextStyles.h1.copyWith(
-                            color: Colors.white,
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  return AnimatedBuilder(
+                    animation: _scaleAnimations[index],
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _scaleAnimations[index].value,
+                        child: FadeTransition(
+                          opacity: _fadeAnimations[index],
+                          child: MenuCard(
+                            item: _menuItems[index],
+                            onTap: () => _handleMenuTap(_menuItems[index]),
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Buraxılış sistemini idarə edin',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.lightGrey200,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                      );
+                    },
+                  );
+                },
+                childCount: _menuItems.length,
               ),
             ),
+          ),
 
-            // Menu Grid
-            SliverPadding(
-              padding: const EdgeInsets.all(20.0),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
-                  childAspectRatio: 1.0,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return AnimatedBuilder(
-                      animation: _scaleAnimations[index],
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _scaleAnimations[index].value,
-                          child: FadeTransition(
-                            opacity: _fadeAnimations[index],
-                            child: MenuCard(
-                              item: _menuItems[index],
-                              onTap: () => _handleMenuTap(_menuItems[index]),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  childCount: _menuItems.length,
-                ),
-              ),
-            ),
-
-            // Bottom padding
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 40),
-            ),
-          ],
-        ),
+          // Bottom padding
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 40),
+          ),
+        ],
       ),
     );
   }
