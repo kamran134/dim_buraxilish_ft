@@ -9,6 +9,8 @@ import '../providers/offline_database_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
+import 'supervisor_screen.dart';
+import 'statistics_screen.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 
@@ -104,6 +106,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           }
         },
       ),
+      bottomNavigationBar: _buildBottomNavigation(context),
     );
   }
 
@@ -1018,5 +1021,95 @@ class _ParticipantScreenState extends State<ParticipantScreen>
       // Не показываем ничего, когда нет офлайн базы
       return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildBottomNavigation(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.darkGradient2,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                  icon: Icons.school,
+                  label: 'İştirakçılar',
+                  isSelected: true, // Текущий экран
+                  onTap: () {}),
+              _buildNavItem(
+                  icon: Icons.supervisor_account,
+                  label: 'Nəzarətçilər',
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const SupervisorScreen(),
+                      ),
+                    );
+                  }),
+              _buildNavItem(
+                  icon: Icons.analytics,
+                  label: 'Statistika',
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const StatisticsScreen(),
+                      ),
+                    );
+                  }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey[300],
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey[300],
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
