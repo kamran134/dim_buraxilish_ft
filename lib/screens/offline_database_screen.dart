@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/offline_database_provider.dart';
 import '../widgets/common/loading_overlay.dart';
+import '../design/app_colors.dart';
 
 /// Screen for managing offline database
 /// Allows downloading and deleting offline data for participants and supervisors
@@ -12,15 +13,11 @@ class OfflineDatabaseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Oflayn baza',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.appBarTitle,
         ),
-        backgroundColor: const Color(0xFF667eea),
+        backgroundColor: AppColors.lightBlue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -30,8 +27,8 @@ class OfflineDatabaseScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
+              AppColors.lightBlue,
+              AppColors.darkBlue,
             ],
           ),
         ),
@@ -67,9 +64,7 @@ class OfflineDatabaseScreen extends StatelessWidget {
                           provider.hasOfflineData
                               ? 'Oflayn baza mövcuddur'
                               : 'Oflayn baza yoxdur',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                          style: AppTextStyles.h2.copyWith(
                             color: Colors.white,
                           ),
                           textAlign: TextAlign.center,
@@ -82,8 +77,7 @@ class OfflineDatabaseScreen extends StatelessWidget {
                           provider.hasOfflineData
                               ? 'İnternet əlaqəsi olmadığı halda iştirakçı və nəzarətçiləri skan edə bilərsiniz.'
                               : 'İnternet əlaqəsi olmadığı halda skan etmək üçün əvvəlcə bazanı yükləyin.',
-                          style: TextStyle(
-                            fontSize: 16,
+                          style: AppTextStyles.bodyLarge.copyWith(
                             color: Colors.white.withOpacity(0.9),
                           ),
                           textAlign: TextAlign.center,

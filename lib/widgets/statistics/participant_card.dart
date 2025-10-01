@@ -66,7 +66,7 @@ class ParticipantCard extends StatelessWidget {
                       '${participant.soy} ${participant.adi}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 16, // bodyLarge
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -75,7 +75,7 @@ class ParticipantCard extends StatelessWidget {
                         participant.baba,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
-                          fontSize: 14,
+                          fontSize: 14, // bodyMedium
                         ),
                       ),
                   ],
@@ -84,14 +84,14 @@ class ParticipantCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.2),
+                  color: AppColors.successGreen.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
                   'Qeydiyyatlı',
                   style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontSize: 12,
+                    color: AppColors.successGreen,
+                    fontSize: 12, // bodySmall
                     fontWeight: FontWeight.w500,
                   ),
                 ),

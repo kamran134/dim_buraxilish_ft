@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/supervisor_models.dart';
+import '../../design/app_colors.dart';
 
 /// Карточка супервизора для отображения в списке статистики
 class SupervisorCard extends StatelessWidget {
@@ -30,7 +31,7 @@ class SupervisorCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withOpacity(0.8),
+                  color: AppColors.materialBlue.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: supervisor.image.isNotEmpty && supervisor.image != 'null'
@@ -61,18 +62,16 @@ class SupervisorCard extends StatelessWidget {
                   children: [
                     Text(
                       '${supervisor.lastName} ${supervisor.firstName}',
-                      style: const TextStyle(
+                      style: AppTextStyles.bodyLarge.copyWith(
                         color: Colors.white,
-                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (supervisor.fatherName.isNotEmpty)
                       Text(
                         supervisor.fatherName,
-                        style: TextStyle(
+                        style: AppTextStyles.bodyMedium.copyWith(
                           color: Colors.white.withOpacity(0.8),
-                          fontSize: 14,
                         ),
                       ),
                   ],
@@ -81,14 +80,13 @@ class SupervisorCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.2),
+                  color: AppColors.materialGreen.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'Qeydiyyatlı',
-                  style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontSize: 12,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.materialGreen,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -129,17 +127,15 @@ class SupervisorCard extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '$label: ',
-            style: TextStyle(
+            style: AppTextStyles.bodyMedium.copyWith(
               color: Colors.white.withOpacity(0.7),
-              fontSize: 14,
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: AppTextStyles.bodyMedium.copyWith(
                 color: Colors.white,
-                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),

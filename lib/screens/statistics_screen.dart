@@ -77,12 +77,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Statistika',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.appBarTitle,
         ),
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,

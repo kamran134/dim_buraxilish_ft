@@ -9,6 +9,10 @@ class AppColors {
 
   /// Дополнительные цвета
   static const Color lightBlue = Color(0xFF667eea);
+  static const Color white = Colors.white;
+  static final Color whiteTransparent15 = Colors.white.withOpacity(0.15);
+  static final Color whiteTransparent95 = Colors.white.withOpacity(0.95);
+  static const Color white30 = Colors.white30;
   static const Color darkBlue = Color(0xFF764ba2);
 
   /// Цвета градиентов
@@ -77,4 +81,100 @@ class AppColors {
   /// Цвета для статусов
   static const Color registeredGreen = Color(0xFF4CAF50);
   static const Color notRegisteredRed = Color(0xFFf44336);
+
+  /// Material Design цвета
+  static const Color materialBlue = Color(0xFF2196F3);
+  static const Color materialGreen = Color(0xFF4CAF50);
+
+  /// Цвета кнопок (дополнительные)
+  static const Color redButton = Color(0xFFe74c3c);
+  static const Color blueButton = Color(0xFF3498db);
+
+  /// Темные фоновые оттенки
+  static const Color darkGradient1 = Color(0xFF1e293b);
+  static const Color darkGradient2 = Color(0xFF334155);
+  static const Color darkGradient3 = Color(0xFF475569);
+
+  /// Оттенки серого
+  static const Color lightGrey200 = Color(0xFFeeeeee);
+  static const Color darkGrey = Color(0xFF757575);
+  static const Color blackText = Color(0xDE000000); // Colors.black87
+
+  /// Оттенки красного
+  static const Color darkRed = Color(0xFFd32f2f); // Colors.red[700]
+
+  /// Оттенки оранжевого
+  static const Color orangeButton = Color(0xFFff9800); // Colors.orange.shade600
+}
+
+/// Система типографии приложения
+class AppTextStyles {
+  AppTextStyles._();
+
+  /// Заголовки
+  static const TextStyle h1 = TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.5,
+  );
+
+  static const TextStyle h2 = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+  );
+
+  static const TextStyle h3 = TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+  );
+
+  static const TextStyle h4 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+  );
+
+  static const TextStyle h5 = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// Основной текст
+  static const TextStyle bodyLarge = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+  );
+
+  static const TextStyle bodyMedium = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+  );
+
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// Кнопки
+  static const TextStyle button = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle buttonSmall = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// Подписи
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// AppBar
+  static const TextStyle appBarTitle = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
 }

@@ -9,6 +9,7 @@ import '../providers/offline_database_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
+import '../design/app_colors.dart';
 
 class ParticipantScreen extends StatefulWidget {
   const ParticipantScreen({super.key});
@@ -114,14 +115,14 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFF667eea),
-                  const Color(0xFF764ba2),
-                  const Color(0xFF374657),
+                  AppColors.lightBlue,
+                  AppColors.darkBlue,
+                  AppColors.primaryBlue,
                 ],
         ),
       ),
@@ -141,13 +142,11 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                       size: 28,
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'İmtahan iştirakçıları',
-                      style: TextStyle(
+                      style: AppTextStyles.h3.copyWith(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -182,7 +181,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                               ),
                             ],
                           ),
-                          child: const Column(
+                          child: Column(
                             children: [
                               Icon(
                                 Icons.school,
@@ -192,10 +191,8 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                               SizedBox(height: 20),
                               Text(
                                 'İmtahan iştirakçıları',
-                                style: TextStyle(
+                                style: AppTextStyles.h2.copyWith(
                                   color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -226,7 +223,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 ParticipantScreenState.scanning),
                             icon: Icons.qr_code_scanner,
                             title: 'Skan et',
-                            backgroundColor: const Color(0xFFe74c3c),
+                            backgroundColor: AppColors.redButton,
                           ),
                           const SizedBox(height: 16),
                           _buildActionButton(
@@ -240,7 +237,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                             ),
                             icon: Icons.keyboard,
                             title: 'Əllə daxil et',
-                            backgroundColor: const Color(0xFF3498db),
+                            backgroundColor: AppColors.blueButton,
                           ),
                         ],
                       ),
@@ -333,14 +330,14 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFF667eea),
-                  const Color(0xFF764ba2),
-                  const Color(0xFF374657),
+                  AppColors.lightBlue,
+                  AppColors.darkBlue,
+                  AppColors.primaryBlue,
                 ],
         ),
       ),
@@ -360,13 +357,11 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                       size: 28,
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'İştirakçı məlumatları',
-                      style: TextStyle(
+                      style: AppTextStyles.h3.copyWith(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -437,7 +432,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.red[700],
+                                  color: AppColors.darkRed,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -449,11 +444,11 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                             height: 280,
                             margin: const EdgeInsets.symmetric(horizontal: 20),
                             decoration: BoxDecoration(
-                              color: Colors.grey[200],
+                              color: AppColors.lightGrey200,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: provider.isRepeatEntry
-                                    ? Colors.red[700]!
+                                    ? AppColors.darkRed
                                     : Colors.green,
                                 width: 3,
                               ),
@@ -467,7 +462,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 : const Icon(
                                     Icons.person,
                                     size: 80,
-                                    color: Colors.grey,
+                                    color: AppColors.darkGrey,
                                   ),
                           ),
 
@@ -479,7 +474,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: Colors.black87,
+                              color: AppColors.blackText,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -605,7 +600,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                   child: _buildStatItem(
                                     'Qeydiyyatsız',
                                     examDetails.notRegisteredCount.toString(),
-                                    Colors.red,
+                                    AppColors.errorRed,
                                     Icons.cancel,
                                   ),
                                 ),
@@ -634,14 +629,14 @@ class _ParticipantScreenState extends State<ParticipantScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFF667eea),
-                  const Color(0xFF764ba2),
-                  const Color(0xFF374657),
+                  AppColors.lightBlue,
+                  AppColors.darkBlue,
+                  AppColors.primaryBlue,
                 ],
         ),
       ),
@@ -670,7 +665,7 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                       const Icon(
                         Icons.error_outline,
                         size: 80,
-                        color: Colors.red,
+                        color: AppColors.errorRed,
                       ),
                       const SizedBox(height: 20),
                       const Text(

@@ -163,27 +163,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-                  child: const SafeArea(
+                  child: SafeArea(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(height: 40),
                         Text(
                           'Xoş gəldiniz',
-                          style: TextStyle(
+                          style: AppTextStyles.h1.copyWith(
                             color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
                           ),
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Buraxılış sistemini idarə edin',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            color: AppColors.lightGrey200,
                           ),
                         ),
                       ],
@@ -400,9 +395,8 @@ class _MenuCardState extends State<MenuCard>
                         child: Text(
                           widget.item.title,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.white,
-                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             height: 1.2,
                             shadows: [

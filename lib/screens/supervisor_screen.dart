@@ -115,12 +115,12 @@ class _SupervisorScreenState extends State<SupervisorScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFFf093fb),
+                  AppColors.primaryBlue,
                   const Color(0xFFf5576c),
                   const Color(0xFF764ba2),
                 ],
@@ -136,19 +136,17 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back,
-                      color: Colors.white,
+                      color: AppColors.white,
                       size: 28,
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Nəzarətçilər',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                      style: AppTextStyles.h3.copyWith(
+                        color: AppColors.white,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -173,39 +171,36 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                         child: Container(
                           padding: const EdgeInsets.all(30),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: AppColors.whiteTransparent15,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: AppColors.blackText.withOpacity(0.2),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
                             ],
                           ),
-                          child: const Column(
+                          child: Column(
                             children: [
                               Icon(
                                 Icons.supervisor_account,
                                 size: 64,
-                                color: Colors.white,
+                                color: AppColors.white,
                               ),
                               SizedBox(height: 20),
                               Text(
                                 'Nəzarətçilər',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
+                                style: AppTextStyles.h2.copyWith(
+                                  color: AppColors.white,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                               SizedBox(height: 8),
                               Text(
                                 'QR kod skaneri ilə nəzarətçi məlumatlarını oxuyun',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  color: AppColors.lightGrey200,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -278,7 +273,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.9),
+                            color: AppColors.redButton.withOpacity(0.9),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -292,7 +287,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                                 child: Text(
                                   provider.errorMessage!,
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.white,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -334,14 +329,14 @@ class _SupervisorScreenState extends State<SupervisorScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFFf093fb),
-                  const Color(0xFFf5576c),
-                  const Color(0xFF764ba2),
+                  AppColors.lightBlue,
+                  AppColors.darkBlue,
+                  AppColors.primaryBlue,
                 ],
         ),
       ),
@@ -361,13 +356,11 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                       size: 28,
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Nəzarətçi məlumatları',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                      style: AppTextStyles.h3.copyWith(
+                        color: AppColors.white,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -416,7 +409,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: AppColors.whiteTransparent95,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -436,9 +429,9 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                               child: Text(
                                 'TƏKRAR GİRİŞ',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 20, // h4 equivalent
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.red[700],
+                                  color: AppColors.darkRed,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -454,7 +447,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: provider.isRepeatEntry
-                                    ? Colors.red[700]!
+                                    ? AppColors.darkRed
                                     : Colors.green,
                                 width: 3,
                               ),
@@ -477,10 +470,8 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                           // Name
                           Text(
                             supervisor.fullName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
+                            style: AppTextStyles.h3.copyWith(
+                              color: AppColors.blackText,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -539,7 +530,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
+                                    foregroundColor: AppColors.white,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
                                       horizontal: 12,
@@ -573,7 +564,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: AppColors.whiteTransparent15,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(
@@ -582,7 +573,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                               'Statistikalar',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 18, // h5 equivalent
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -600,14 +591,14 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                                 Container(
                                   width: 1,
                                   height: 60,
-                                  color: Colors.white30,
+                                  color: AppColors.white30,
                                 ),
                                 Expanded(
                                   child: _buildStatItem(
                                     'Qeydiyyatsız',
                                     supervisorDetails.unregisteredCount
                                         .toString(),
-                                    Colors.red,
+                                    AppColors.redButton,
                                     Icons.cancel,
                                   ),
                                 ),
@@ -636,14 +627,14 @@ class _SupervisorScreenState extends State<SupervisorScreen>
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1e293b),
-                  const Color(0xFF334155),
-                  const Color(0xFF475569),
+                  AppColors.darkGradient1,
+                  AppColors.darkGradient2,
+                  AppColors.darkGradient3,
                 ]
               : [
-                  const Color(0xFFf093fb),
-                  const Color(0xFFf5576c),
-                  const Color(0xFF764ba2),
+                  AppColors.darkBlue,
+                  AppColors.primaryBlue,
+                  AppColors.lightBlue,
                 ],
         ),
       ),
@@ -657,7 +648,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                 Container(
                   padding: const EdgeInsets.all(30),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: AppColors.whiteTransparent95,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -672,13 +663,13 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                       const Icon(
                         Icons.error_outline,
                         size: 80,
-                        color: Colors.red,
+                        color: AppColors.redButton,
                       ),
                       const SizedBox(height: 20),
                       const Text(
                         'Xəta baş verdi',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 24, // h2 equivalent
                           fontWeight: FontWeight.w700,
                           color: Colors.black87,
                         ),
@@ -802,7 +793,7 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                         : 'Lokal bazadan istifadə edilir',
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 12,
+                      fontSize: 12, // bodySmall equivalent
                     ),
                   ),
                 ],

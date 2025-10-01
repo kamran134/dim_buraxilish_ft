@@ -42,7 +42,7 @@ class StatisticsRefreshButton extends StatelessWidget {
             Text(
               'Yenilə',
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 16, // bodyLarge
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),

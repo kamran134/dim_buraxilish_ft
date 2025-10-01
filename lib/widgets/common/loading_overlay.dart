@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../design/app_colors.dart';
 
 /// A widget that displays a loading overlay on top of its child
 class LoadingOverlay extends StatelessWidget {
@@ -40,10 +41,7 @@ class LoadingOverlay extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           loadingText!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: AppTextStyles.button,
                         ),
                       ],
                     ],
