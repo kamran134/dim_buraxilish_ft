@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -408,10 +409,15 @@ class SettingsScreen extends StatelessWidget {
 
   void _performLogout(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    authProvider.signOut().then((_) {
-      // Navigate to login screen
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
+    
+    // First close any open dialogs
+    Navigator.of(context).pop();
+    
+    // Perform logout and immediate navigation
+    authProvider.signOut().whenComplete(() {
+      // Always navigate to login screen regardless of logout success/failure
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
       );
     });
