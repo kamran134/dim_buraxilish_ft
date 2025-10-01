@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/supervisor_screen.dart';
 import '../screens/participant_screen.dart';
+import '../screens/unsent_data_screen.dart';
 import '../design/app_colors.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -135,8 +136,7 @@ class AppDrawer extends StatelessWidget {
                       title: 'Göndərilməmiş məlumatlar',
                       onTap: () {
                         Navigator.pop(context);
-                        _showComingSoonDialog(
-                            context, 'Göndərilməmiş məlumatlar');
+                        _navigateToUnsentDataScreen(context);
                       },
                     ),
                     _buildDrawerItem(
@@ -365,6 +365,14 @@ class AppDrawer extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const SupervisorScreen(),
+      ),
+    );
+  }
+
+  void _navigateToUnsentDataScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const UnsentDataScreen(),
       ),
     );
   }

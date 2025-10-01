@@ -750,4 +750,122 @@ class HttpService {
       return examDate;
     }
   }
+
+  // =========== SYNC METHODS ===========
+
+  /// Sync registered participants to server
+  Future<ResponseModel> syncParticipants(List<Participant> participants) async {
+    try {
+      // Convert to short format like React Native
+      final participantsData = participants
+          .map((p) => {
+                'is_N': p.isN,
+                'bina': p.bina,
+                'imt_Tarix': p.imtTarix,
+                'qeydiyyat': p.qeydiyyat ?? '',
+              })
+          .toList();
+
+      print('Syncing ${participantsData.length} participants to server');
+      print('Participants data: $participantsData');
+
+      final response = await _dio.post(
+        '/buraxilishes/syncburaxilish',
+        data: participantsData,
+      );
+
+      print('Sync participants response status: ${response.statusCode}');
+      print('Sync participants response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return ResponseModel(
+          success: true,
+          message: 'İştirakçılar uğurla sinxronizasiya edildi',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message: response.data['message'] ??
+              'Sinxronizasiya zamanı xəta baş verdi',
+        );
+      }
+    } on DioException catch (e) {
+      print('Error syncing participants: $e');
+      if (e.response?.statusCode == 401) {
+        return ResponseModel(
+          success: false,
+          message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message: 'Sinxronizasiyada xəta. İnternetə qoşulmanı yoxlayın',
+        );
+      }
+    } catch (e) {
+      print('General error syncing participants: $e');
+      return ResponseModel(
+        success: false,
+        message: 'İştirakçıları sinxronizasiya etməkdə xəta baş verdi',
+      );
+    }
+  }
+
+  /// Sync registered supervisors to server
+  Future<ResponseModel> syncSupervisors(List<Supervisor> supervisors) async {
+    try {
+      // Convert to short format like React Native
+      final supervisorsData = supervisors
+          .map((s) => {
+                'cardNumber': s.cardNumber,
+                'buildingCode': s.buildingCode,
+                'examDate': s.examDate,
+                'registerDate': s.registerDate,
+              })
+          .toList();
+
+      print('Syncing ${supervisorsData.length} supervisors to server');
+      print('Supervisors data: $supervisorsData');
+
+      final response = await _dio.post(
+        '/supervisors/syncsupervisors',
+        data: supervisorsData,
+      );
+
+      print('Sync supervisors response status: ${response.statusCode}');
+      print('Sync supervisors response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return ResponseModel(
+          success: true,
+          message: 'Nəzarətçilər uğurla sinxronizasiya edildi',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message: response.data['message'] ??
+              'Sinxronizasiya zamanı xəta baş verdi',
+        );
+      }
+    } on DioException catch (e) {
+      print('Error syncing supervisors: $e');
+      if (e.response?.statusCode == 401) {
+        return ResponseModel(
+          success: false,
+          message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message: 'Nəzarətçilərdə sinxronizasiya getmədi. Məlumatlarda xəta',
+        );
+      }
+    } catch (e) {
+      print('General error syncing supervisors: $e');
+      return ResponseModel(
+        success: false,
+        message: 'Nəzarətçiləri sinxronizasiya etməkdə xəta baş verdi',
+      );
+    }
+  }
 }

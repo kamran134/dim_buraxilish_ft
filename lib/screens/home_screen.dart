@@ -4,6 +4,7 @@ import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
 import 'offline_database_screen.dart';
+import 'unsent_data_screen.dart';
 import '../design/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -255,7 +256,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
         break;
       case '/offline-data':
-        _showComingSoonDialog('Göndərilməmiş məlumatlar');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const UnsentDataScreen(),
+          ),
+        );
         break;
       case '/statistics':
         Navigator.of(context).push(

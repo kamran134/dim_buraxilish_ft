@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/participant_provider.dart';
 import 'providers/supervisor_provider.dart';
 import 'providers/offline_database_provider.dart';
+import 'providers/unsent_data_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ParticipantProvider()),
         ChangeNotifierProvider(create: (_) => SupervisorProvider()),
         ChangeNotifierProvider(create: (_) => OfflineDatabaseProvider()),
+        ChangeNotifierProvider(create: (_) => UnsentDataProvider()),
       ],
       child: MaterialApp(
         title: 'DİM Buraxılış Sistemi',
