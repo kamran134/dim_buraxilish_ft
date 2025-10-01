@@ -7,6 +7,7 @@ import '../screens/participant_screen.dart';
 import '../screens/unsent_data_screen.dart';
 import '../screens/settings_screen.dart';
 import '../design/app_colors.dart';
+import '../constants/app_version.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -254,7 +255,7 @@ class AppDrawer extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          'Versiya: 6.2.0',
+                          'Versiya: ${AppVersion.version}',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.7),
                             fontSize: 10,

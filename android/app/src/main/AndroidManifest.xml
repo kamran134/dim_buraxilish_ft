@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="dim_buraxilish_ft"
+        android:label="DİM Buraxılış"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

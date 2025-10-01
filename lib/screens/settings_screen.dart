@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import '../constants/app_version.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -326,7 +327,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Versiya 1.0.0',
+                'Versiya ${AppVersion.version}',
                 style: fontProvider.labelSmall,
               ),
               const SizedBox(height: 16),
@@ -409,10 +410,10 @@ class SettingsScreen extends StatelessWidget {
 
   void _performLogout(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     // First close any open dialogs
     Navigator.of(context).pop();
-    
+
     // Perform logout and immediate navigation
     authProvider.signOut().whenComplete(() {
       // Always navigate to login screen regardless of logout success/failure
