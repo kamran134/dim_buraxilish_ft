@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'design/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/participant_provider.dart';
 import 'providers/supervisor_provider.dart';
 import 'providers/offline_database_provider.dart';
 import 'providers/unsent_data_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/font_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -19,33 +20,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => FontProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ParticipantProvider()),
         ChangeNotifierProvider(create: (_) => SupervisorProvider()),
         ChangeNotifierProvider(create: (_) => OfflineDatabaseProvider()),
         ChangeNotifierProvider(create: (_) => UnsentDataProvider()),
       ],
-      child: MaterialApp(
-        title: 'DİM Buraxılış Sistemi',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: AppColors.deepBlue,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          fontFamily: 'System',
-        ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: AppColors.deepBlue,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-          fontFamily: 'System',
-        ),
-        themeMode: ThemeMode.system, // Follows system theme
-        home: const SplashScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'DİM Buraxılış Sistemi',
+            debugShowCheckedModeBanner: false,
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: themeProvider.flutterThemeMode,
+            home: const SplashScreen(),
+          );
+        },
       ),
     );
   }

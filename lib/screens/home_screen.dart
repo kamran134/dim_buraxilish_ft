@@ -5,6 +5,7 @@ import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
 import 'offline_database_screen.dart';
 import 'unsent_data_screen.dart';
+import 'settings_screen.dart';
 import '../design/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -277,7 +278,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
         break;
       case '/settings':
-        _showComingSoonDialog('Ayarlar');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const SettingsScreen(),
+          ),
+        );
         break;
     }
   }

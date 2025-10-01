@@ -5,6 +5,7 @@ import '../screens/login_screen.dart';
 import '../screens/supervisor_screen.dart';
 import '../screens/participant_screen.dart';
 import '../screens/unsent_data_screen.dart';
+import '../screens/settings_screen.dart';
 import '../design/app_colors.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -163,7 +164,7 @@ class AppDrawer extends StatelessWidget {
                       title: 'Ayarlar',
                       onTap: () {
                         Navigator.pop(context);
-                        _showComingSoonDialog(context, 'Ayarlar');
+                        _navigateToSettingsScreen(context);
                       },
                     ),
                   ],
@@ -322,21 +323,24 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pop(); // Close drawer
 
+                final navigator = Navigator.of(context);
                 final authProvider =
                     Provider.of<AuthProvider>(context, listen: false);
                 await authProvider.signOut();
 
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        const LoginScreen(),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                    transitionDuration: const Duration(milliseconds: 500),
-                  ),
-                );
+                if (context.mounted) {
+                  navigator.pushReplacement(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const LoginScreen(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      transitionDuration: const Duration(milliseconds: 500),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -373,6 +377,14 @@ class AppDrawer extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const UnsentDataScreen(),
+      ),
+    );
+  }
+
+  void _navigateToSettingsScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }
