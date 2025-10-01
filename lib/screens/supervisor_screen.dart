@@ -990,30 +990,8 @@ class _SupervisorScreenState extends State<SupervisorScreen>
         ),
       );
     } else {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.orange.withOpacity(0.5)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-            const SizedBox(width: 8),
-            const Text(
-              'Oflayn baza yüklənməyib. Menyu bölməsindən "Oflayn baza" əlavə edin.',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
+      // Не показываем ничего, когда нет офлайн базы
+      return const SizedBox.shrink();
     }
   }
 }

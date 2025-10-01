@@ -76,9 +76,9 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    return Container(
+      color: Colors.black,
+      child: Stack(
         children: [
           // Camera Scanner
           MobileScanner(
