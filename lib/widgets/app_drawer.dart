@@ -50,26 +50,50 @@ class AppDrawer extends StatelessWidget {
               child: SafeArea(
                 child: Column(
                   children: [
-                    // Logo placeholder (can be added later)
+                    // Logo with enhanced styling - изображение заполняет весь контейнер
                     Container(
                       width: 70,
                       height: 70,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius:
+                            BorderRadius.circular(20), // Увеличили radius
                         boxShadow: [
+                          // Основная тень
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 1,
+                          ),
+                          // Внутренняя подсветка
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, -2),
+                            spreadRadius: 0,
                           ),
                         ],
+                        // Градиентная граница
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.school,
-                        size: 35,
-                        color: Colors.white,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                            20), // Обрезаем изображение по radius
+                        child: Image.asset(
+                          'assets/images/logos/DIMLogo.png',
+                          fit: BoxFit.cover, // Заполняет весь контейнер
+                          width: 70,
+                          height: 70,
+                        ),
                       ),
+                      // child: const Icon(
+                      //   Icons.school,
+                      //   size: 35,
+                      //   color: Colors.white,
+                      // ),
                     ),
                     const SizedBox(height: 10),
                     const Text(
