@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -14,8 +15,10 @@ class ParticipantProvider with ChangeNotifier {
   String? _successMessage;
   bool _isLoading = false;
   bool _isOnlineMode = true;
-  bool _hasOfflineDatabase = false;
   bool _isRepeatEntry = false;
+
+  // Reference to OfflineDatabaseProvider
+  OfflineDatabaseProvider? _offlineDatabaseProvider;
 
   // Callback for authentication errors
   VoidCallback? _onAuthenticationError;
@@ -28,7 +31,8 @@ class ParticipantProvider with ChangeNotifier {
   String? get successMessage => _successMessage;
   bool get isLoading => _isLoading;
   bool get isOnlineMode => _isOnlineMode;
-  bool get hasOfflineDatabase => _hasOfflineDatabase;
+  bool get hasOfflineDatabase =>
+      _offlineDatabaseProvider?.hasOfflineData ?? false;
   bool get isRepeatEntry => _isRepeatEntry;
 
   // Set loading state
@@ -66,28 +70,27 @@ class ParticipantProvider with ChangeNotifier {
 
   // Toggle online/offline mode
   void toggleOnlineMode() {
-    if (_hasOfflineDatabase) {
-      _isOnlineMode = !_isOnlineMode;
-      notifyListeners();
+    // If switching to offline mode, check if database is available
+    if (_isOnlineMode && !hasOfflineDatabase) {
+      _setError('Oflayn rejimə keçmək üçün əvvəlcə lokal bazanı yükləyin!');
+      return;
     }
+
+    _isOnlineMode = !_isOnlineMode;
+    notifyListeners();
   }
 
-  // Set offline database availability
-  void setOfflineDatabaseAvailability(bool available) {
-    _hasOfflineDatabase = available;
+  // Set reference to OfflineDatabaseProvider
+  void setOfflineDatabaseProvider(OfflineDatabaseProvider provider) {
+    _offlineDatabaseProvider = provider;
     notifyListeners();
   }
 
   // Initialize offline database (check if data exists)
   Future<void> initializeOfflineDatabase() async {
-    try {
-      final hasData = await _httpService.hasOfflineData();
-      setOfflineDatabaseAvailability(hasData);
-      print('Offline database initialized: hasData=$hasData');
-    } catch (e) {
-      print('Error initializing offline database: $e');
-      setOfflineDatabaseAvailability(false);
-    }
+    // This is now handled by OfflineDatabaseProvider
+    // Just refresh the status
+    await _offlineDatabaseProvider?.refreshStatus();
   }
 
   // Load offline data (participants) - call this when user logs in or needs to sync
@@ -95,7 +98,8 @@ class ParticipantProvider with ChangeNotifier {
     try {
       _setLoading(true);
       await _httpService.saveParticipantsOffline(participants);
-      setOfflineDatabaseAvailability(true);
+      // Refresh offline database status through OfflineDatabaseProvider
+      await _offlineDatabaseProvider?.refreshStatus();
       _setSuccess('${participants.length} iştirakçı oflayn bazaya yükləndi');
     } catch (e) {
       print('Error loading offline participants: $e');

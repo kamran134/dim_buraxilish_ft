@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import 'offline_database_provider.dart';
 
 /// Состояния экрана Supervisor
 enum SupervisorScreenState {
@@ -24,8 +25,10 @@ class SupervisorProvider with ChangeNotifier {
       _supervisorMessage; // Сообщение для повторных входов или другие статусные сообщения
   bool _isLoading = false;
   bool _isOnlineMode = true;
-  bool _hasOfflineDatabase = false;
   bool _isRepeatEntry = false;
+
+  // Reference to OfflineDatabaseProvider
+  OfflineDatabaseProvider? _offlineDatabaseProvider;
 
   // Callback for authentication errors
   VoidCallback? _onAuthenticationError;
@@ -39,7 +42,8 @@ class SupervisorProvider with ChangeNotifier {
   String? get supervisorMessage => _supervisorMessage;
   bool get isLoading => _isLoading;
   bool get isOnlineMode => _isOnlineMode;
-  bool get hasOfflineDatabase => _hasOfflineDatabase;
+  bool get hasOfflineDatabase =>
+      _offlineDatabaseProvider?.hasOfflineData ?? false;
   bool get isRepeatEntry => _isRepeatEntry;
 
   // Set loading state
@@ -86,28 +90,27 @@ class SupervisorProvider with ChangeNotifier {
 
   // Toggle online/offline mode
   void toggleOnlineMode() {
-    if (_hasOfflineDatabase) {
-      _isOnlineMode = !_isOnlineMode;
-      notifyListeners();
+    // If switching to offline mode, check if database is available
+    if (_isOnlineMode && !hasOfflineDatabase) {
+      _setError('Oflayn rejimə keçmək üçün əvvəlcə lokal bazanı yükləyin!');
+      return;
     }
+
+    _isOnlineMode = !_isOnlineMode;
+    notifyListeners();
   }
 
-  // Set offline database availability
-  void setOfflineDatabaseAvailability(bool available) {
-    _hasOfflineDatabase = available;
+  // Set reference to OfflineDatabaseProvider
+  void setOfflineDatabaseProvider(OfflineDatabaseProvider provider) {
+    _offlineDatabaseProvider = provider;
     notifyListeners();
   }
 
   // Initialize offline database (check if data exists)
   Future<void> initializeOfflineDatabase() async {
-    try {
-      final hasData = await _httpService.hasOfflineData();
-      setOfflineDatabaseAvailability(hasData);
-      print('Supervisor offline database initialized: hasData=$hasData');
-    } catch (e) {
-      print('Error initializing supervisor offline database: $e');
-      setOfflineDatabaseAvailability(false);
-    }
+    // This is now handled by OfflineDatabaseProvider
+    // Just refresh the status
+    await _offlineDatabaseProvider?.refreshStatus();
   }
 
   // Load offline data (supervisors) - call this when user logs in or needs to sync
@@ -115,7 +118,8 @@ class SupervisorProvider with ChangeNotifier {
     try {
       _setLoading(true);
       await _httpService.saveSupervisorsOffline(supervisors);
-      setOfflineDatabaseAvailability(true);
+      // Refresh offline database status through OfflineDatabaseProvider
+      await _offlineDatabaseProvider?.refreshStatus();
       _setSuccess('${supervisors.length} nəzarətçi oflayn bazaya yükləndi');
     } catch (e) {
       print('Error loading offline supervisors: $e');

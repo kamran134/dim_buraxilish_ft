@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/participant_models.dart';
 import '../providers/participant_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/offline_database_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
@@ -31,6 +32,10 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     // Load exam details when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<ParticipantProvider>();
+      final offlineDbProvider = context.read<OfflineDatabaseProvider>();
+
+      // Set reference to OfflineDatabaseProvider
+      provider.setOfflineDatabaseProvider(offlineDbProvider);
 
       // Set authentication error callback
       provider.setAuthenticationErrorCallback(() {
@@ -83,11 +88,11 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Consumer<ParticipantProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<ParticipantProvider, OfflineDatabaseProvider>(
+        builder: (context, provider, offlineProvider, child) {
           switch (provider.screenState) {
             case ParticipantScreenState.initial:
-              return _buildInitialView(provider, isDarkMode);
+              return _buildInitialView(provider, offlineProvider, isDarkMode);
             case ParticipantScreenState.scanning:
               return _buildScanningView(provider);
             case ParticipantScreenState.scanned:
@@ -100,7 +105,8 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildInitialView(ParticipantProvider provider, bool isDarkMode) {
+  Widget _buildInitialView(ParticipantProvider provider,
+      OfflineDatabaseProvider offlineProvider, bool isDarkMode) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -241,6 +247,12 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                     ),
 
                     const SizedBox(height: 30),
+
+                    // Offline Database Status
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: _buildOfflineDbStatus(offlineProvider),
+                    ),
 
                     // Online/Offline Toggle
                     if (provider.hasOfflineDatabase)
@@ -976,6 +988,60 @@ class _ParticipantScreenState extends State<ParticipantScreen>
         Icons.person,
         size: 60,
         color: Colors.grey,
+      );
+    }
+  }
+
+  Widget _buildOfflineDbStatus(OfflineDatabaseProvider offlineProvider) {
+    if (offlineProvider.hasOfflineData) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green.withOpacity(0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.download_done, color: Colors.green, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Oflayn baza mövcuddur (${offlineProvider.participantCount} iştirakçı, ${offlineProvider.supervisorCount} nəzarətçi)',
+              style: const TextStyle(
+                color: Colors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.withOpacity(0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+            const SizedBox(width: 8),
+            const Text(
+              'Oflayn baza yüklənməyib. Menyu bölməsindən "Oflayn baza" əlavə edin.',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       );
     }
   }
