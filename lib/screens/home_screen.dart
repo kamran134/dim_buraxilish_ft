@@ -7,6 +7,7 @@ import 'offline_database_screen.dart';
 import 'unsent_data_screen.dart';
 import 'settings_screen.dart';
 import '../design/app_colors.dart';
+import '../design/app_text_styles.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/offline_database_provider.dart';
 import '../widgets/common/loading_overlay.dart';
 import '../design/app_colors.dart';
+import '../design/app_text_styles.dart';
 
 /// Screen for managing offline database
 /// Allows downloading and deleting offline data for participants and supervisors

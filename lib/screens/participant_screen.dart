@@ -10,6 +10,7 @@ import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import 'login_screen.dart';
 import '../design/app_colors.dart';
+import '../design/app_text_styles.dart';
 
 class ParticipantScreen extends StatefulWidget {
   const ParticipantScreen({super.key});

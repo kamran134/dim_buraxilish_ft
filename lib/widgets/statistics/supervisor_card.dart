@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/supervisor_models.dart';
 import '../../design/app_colors.dart';
+import '../../design/app_text_styles.dart';
 
 /// Карточка супервизора для отображения в списке статистики
 class SupervisorCard extends StatelessWidget {

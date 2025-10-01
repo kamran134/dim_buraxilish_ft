@@ -6,6 +6,7 @@ import '../providers/supervisor_provider.dart';
 import '../widgets/statistics_component.dart';
 import '../widgets/statistics/statistics_widgets.dart';
 import '../design/app_colors.dart';
+import '../design/app_text_styles.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
