@@ -647,22 +647,34 @@ class HttpService {
     required String examDate,
   }) async {
     try {
-      // Convert exam date to proper format
-      final formattedDate = _formatExamDateForApi(examDate);
-      
+      // DON'T FORMAT DATE - React Native sends original date string
+      print('getParticipantsByBuilding - Original date: $examDate');
+      print('getParticipantsByBuilding - Building code: $buildingCode');
+      print(
+          'getParticipantsByBuilding - Making request to: /buraxilishes/GetAllParticipantInBuildingAndExamDate');
+
       final response = await _dio.get(
         '/buraxilishes/GetAllParticipantInBuildingAndExamDate',
         queryParameters: {
           'bina': buildingCode,
-          'examDate': formattedDate,
+          'examDate': examDate, // Use original date format like React Native
         },
       );
 
+      print(
+          'getParticipantsByBuilding - Response status: ${response.statusCode}');
+      print('getParticipantsByBuilding - Response data: ${response.data}');
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];
+        print(
+            'getParticipantsByBuilding - Success! Found ${data.length} participants');
         return data.map((json) => Participant.fromJson(json)).toList();
       }
 
+      print('getParticipantsByBuilding - No success or no data found');
+      print(
+          'getParticipantsByBuilding - Response success: ${response.data['success']}');
       return [];
     } catch (e) {
       print('Error getting participants by building: $e');
@@ -676,14 +688,19 @@ class HttpService {
     required String examDate,
   }) async {
     try {
-      // Convert exam date to proper format
+      // For supervisors, React Native FORMATS the date using dateToAzToDate
       final formattedDate = _formatExamDateForApi(examDate);
-      
+      print('getSupervisorsByBuilding - Original date: $examDate');
+      print('getSupervisorsByBuilding - Formatted date: $formattedDate');
+      print('getSupervisorsByBuilding - Building code: $buildingCode');
+      print(
+          'getSupervisorsByBuilding - Making request to: /supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCode&examDate=$formattedDate');
+
       final response = await _dio.get(
         '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
         queryParameters: {
           'buildingCode': buildingCode,
-          'examDate': formattedDate,
+          'examDate': formattedDate, // Use formatted date like React Native
         },
       );
 
@@ -704,9 +721,18 @@ class HttpService {
     try {
       // Example: "29 sentyabr 2025-ci il" -> "09/29/2025"
       final monthsMap = {
-        'yanvar': '01', 'fevral': '02', 'mart': '03', 'aprel': '04',
-        'may': '05', 'iyun': '06', 'iyul': '07', 'avqust': '08',
-        'sentyabr': '09', 'oktyabr': '10', 'noyabr': '11', 'dekabr': '12'
+        'yanvar': '01',
+        'fevral': '02',
+        'mart': '03',
+        'aprel': '04',
+        'may': '05',
+        'iyun': '06',
+        'iyul': '07',
+        'avqust': '08',
+        'sentyabr': '09',
+        'oktyabr': '10',
+        'noyabr': '11',
+        'dekabr': '12'
       };
 
       final parts = examDate.toLowerCase().split(' ');
@@ -714,10 +740,10 @@ class HttpService {
         final day = parts[0].padLeft(2, '0');
         final month = monthsMap[parts[1]] ?? '01';
         final year = parts[2].replaceAll(RegExp(r'[^\d]'), '');
-        
+
         return '$month/$day/$year';
       }
-      
+
       return examDate;
     } catch (e) {
       print('Error formatting exam date: $e');

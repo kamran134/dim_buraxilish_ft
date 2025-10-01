@@ -59,14 +59,14 @@ class OfflineDatabaseScreen extends StatelessWidget {
                             color: Colors.white,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 40),
-                        
+
                         // Title
                         Text(
-                          provider.hasOfflineData 
-                            ? 'Oflayn baza mövcuddur' 
-                            : 'Oflayn baza yoxdur',
+                          provider.hasOfflineData
+                              ? 'Oflayn baza mövcuddur'
+                              : 'Oflayn baza yoxdur',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -74,23 +74,23 @@ class OfflineDatabaseScreen extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Description
                         Text(
-                          provider.hasOfflineData 
-                            ? 'İnternet əlaqəsi olmadığı halda iştirakçı və nəzarətçiləri skan edə bilərsiniz.'
-                            : 'İnternet əlaqəsi olmadığı halda skan etmək üçün əvvəlcə bazanı yükləyin.',
+                          provider.hasOfflineData
+                              ? 'İnternet əlaqəsi olmadığı halda iştirakçı və nəzarətçiləri skan edə bilərsiniz.'
+                              : 'İnternet əlaqəsi olmadığı halda skan etmək üçün əvvəlcə bazanı yükləyin.',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.white.withOpacity(0.9),
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
+
                         const SizedBox(height: 40),
-                        
+
                         // Statistics (if data exists)
                         if (provider.hasOfflineData) ...[
                           Container(
@@ -102,7 +102,8 @@ class OfflineDatabaseScreen extends StatelessWidget {
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
                                       'İştirakçılar:',
@@ -123,7 +124,8 @@ class OfflineDatabaseScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
                                       'Nəzarətçilər:',
@@ -147,21 +149,22 @@ class OfflineDatabaseScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 40),
                         ],
-                        
+
                         // Action Button
                         SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: provider.isLoading 
-                              ? null 
-                              : (provider.hasOfflineData 
-                                  ? () => _showDeleteConfirmation(context, provider)
-                                  : () => provider.downloadOfflineDatabase()),
+                            onPressed: provider.isLoading
+                                ? null
+                                : (provider.hasOfflineData
+                                    ? () => _showDeleteConfirmation(
+                                        context, provider)
+                                    : () => provider.downloadOfflineDatabase()),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: provider.hasOfflineData 
-                                ? Colors.red.shade600 
-                                : Colors.orange.shade600,
+                              backgroundColor: provider.hasOfflineData
+                                  ? Colors.red.shade600
+                                  : Colors.orange.shade600,
                               foregroundColor: Colors.white,
                               elevation: 3,
                               shape: RoundedRectangleBorder(
@@ -172,16 +175,16 @@ class OfflineDatabaseScreen extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  provider.hasOfflineData 
-                                    ? Icons.delete_forever 
-                                    : Icons.download,
+                                  provider.hasOfflineData
+                                      ? Icons.delete_forever
+                                      : Icons.download,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  provider.hasOfflineData 
-                                    ? 'Lokal bazanı sil' 
-                                    : 'Lokal bazanı yüklə',
+                                  provider.hasOfflineData
+                                      ? 'Lokal bazanı sil'
+                                      : 'Lokal bazanı yüklə',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
@@ -191,9 +194,9 @@ class OfflineDatabaseScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // Success message
                         if (provider.successMessage != null) ...[
                           Container(
@@ -227,7 +230,7 @@ class OfflineDatabaseScreen extends StatelessWidget {
                             ),
                           ),
                         ],
-                        
+
                         // Error message
                         if (provider.errorMessage != null) ...[
                           Container(
@@ -273,7 +276,8 @@ class OfflineDatabaseScreen extends StatelessWidget {
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, OfflineDatabaseProvider provider) {
+  void _showDeleteConfirmation(
+      BuildContext context, OfflineDatabaseProvider provider) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
