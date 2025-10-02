@@ -365,6 +365,8 @@ class _MenuCardState extends State<MenuCard>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) {
@@ -378,17 +380,26 @@ class _MenuCardState extends State<MenuCard>
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: widget.item.gradient,
-                ),
+                color: isDarkMode
+                    ? Colors.grey[850] // Темная карточка
+                    : Colors.white, // Светлая карточка
                 boxShadow: [
                   BoxShadow(
-                    color: widget.item.gradient.first.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+                    color: isDarkMode
+                        ? Colors.black.withOpacity(0.5)
+                        : Colors.grey.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                    spreadRadius: 2,
                   ),
+                  // Дополнительная подсветка для светлой темы
+                  if (!isDarkMode)
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 1,
+                    ),
                 ],
               ),
               child: Material(
@@ -398,13 +409,25 @@ class _MenuCardState extends State<MenuCard>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Icon container
+                      // Icon container с градиентом
                       Container(
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: widget.item.gradient,
+                          ),
                           borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  widget.item.gradient.first.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Icon(
                           widget.item.icon,
@@ -413,22 +436,15 @@ class _MenuCardState extends State<MenuCard>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Title
+                      // Title с адаптивным цветом
                       Flexible(
                         child: Text(
                           widget.item.title,
                           textAlign: TextAlign.center,
                           style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white,
+                            color: isDarkMode ? Colors.white : Colors.grey[800],
                             fontWeight: FontWeight.w600,
                             height: 1.2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                offset: Offset(0, 1),
-                                blurRadius: 2,
-                              ),
-                            ],
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
