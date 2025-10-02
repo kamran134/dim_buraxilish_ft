@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
+import '../utils/role_helper.dart';
 import '../services/http_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -12,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   AccessTokenModel? _accessToken;
   List<String> _examDates = [];
   Auth? _authData;
+  String? _currentUserRole;
 
   // Getters
   bool get isAuthenticated => _isAuthenticated;
@@ -20,6 +22,24 @@ class AuthProvider extends ChangeNotifier {
   AccessTokenModel? get accessToken => _accessToken;
   List<String> get examDates => _examDates;
   Auth? get authData => _authData;
+  String? get currentUserRole => _currentUserRole;
+
+  // Role-based getters
+  bool get isAdmin => RoleHelper.isAdministrativeRole(_currentUserRole);
+  bool get isMonitor => RoleHelper.isMonitorRole(_currentUserRole);
+  bool get isSuperAdmin => RoleHelper.isSuperAdminRole(_currentUserRole);
+
+  /// Проверяет, может ли текущий пользователь получить доступ к админ панели
+  bool get canAccessDashboard => RoleHelper.canAccessAdmin(_currentUserRole);
+
+  /// Проверяет, может ли текущий пользователь использовать сканер
+  bool get canAccessScanner => RoleHelper.canAccessScanner(_currentUserRole);
+
+  /// Проверяет, может ли текущий пользователь просматривать статистику
+  bool get canViewStatistics => RoleHelper.canViewStatistics(_currentUserRole);
+
+  /// Получает домашний маршрут на основе роли пользователя
+  String get homeRoute => RoleHelper.getHomeRoute(_currentUserRole);
 
   // Check authentication status on app start
   Future<void> checkAuthStatus() async {
@@ -75,6 +95,10 @@ class AuthProvider extends ChangeNotifier {
         // Store token
         await _httpService.storeToken(response.data);
         await _httpService.storeAuth(true);
+
+        // Extract role from JWT token
+        _currentUserRole =
+            RoleHelper.getRoleFromToken(response.data.token) ?? 'monitor';
 
         // Extract bina from userName (following the original logic)
         final bina = int.tryParse(userName.substring(4)) ?? 0;
@@ -150,6 +174,7 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = false;
       _accessToken = null;
       _authData = null;
+      _currentUserRole = null;
       _examDates.clear();
       _clearError();
 

@@ -61,4 +61,15 @@ class AppTextStyles {
     fontSize: 20,
     fontWeight: FontWeight.w600,
   );
+
+  // Aliases for backward compatibility
+  static const TextStyle heading1 = h1;
+  static const TextStyle heading2 = h2;
+  static const TextStyle heading3 = h3;
+  static const TextStyle heading4 = h4;
+  static const TextStyle heading5 = h5;
+
+  static const TextStyle body1 = bodyLarge;
+  static const TextStyle body2 = bodyMedium;
+  static const TextStyle body3 = bodySmall;
 }
