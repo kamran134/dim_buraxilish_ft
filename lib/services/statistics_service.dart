@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
+import '../models/participant_light_dto.dart';
+import '../models/supervisor_detail_dto.dart';
 import '../models/response_models.dart';
 import '../services/http_service.dart';
 
@@ -224,6 +226,98 @@ class StatisticsService {
     } catch (e) {
       return DataResult<DashboardStatistics>.error(
         message: 'Dashboard statistikası alınmadı: $e',
+      );
+    }
+  }
+
+  /// Получает список участников по зданию и дате экзамена
+  Future<DataResult<List<ParticipantLightDto>>> getAllParticipantsInBuilding(
+      String bina, String examDate) async {
+    try {
+      final token = await _httpService.getToken();
+
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          final List<ParticipantLightDto> participants = data
+              .map((item) =>
+                  ParticipantLightDto.fromJson(item as Map<String, dynamic>))
+              .toList();
+
+          return DataResult<List<ParticipantLightDto>>.success(
+            data: participants,
+            message: jsonResponse['message'] ?? 'İştirakçılar uğurla alındı',
+          );
+        } else {
+          return DataResult<List<ParticipantLightDto>>.error(
+            message: jsonResponse['message'] ?? 'İştirakçılar alınmadı',
+          );
+        }
+      } else {
+        return DataResult<List<ParticipantLightDto>>.error(
+          message: 'Server xətası: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return DataResult<List<ParticipantLightDto>>.error(
+        message: 'Şəbəkə xətası: $e',
+      );
+    }
+  }
+
+  /// Получает список наблюдателей по зданию и дате экзамена
+  Future<DataResult<List<SupervisorDetailDto>>> getAllSupervisorsInBuilding(
+      String buildingCode, String examDate) async {
+    try {
+      final token = await _httpService.getToken();
+
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCode&examDate=$examDate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          final List<SupervisorDetailDto> supervisors = data
+              .map((item) =>
+                  SupervisorDetailDto.fromJson(item as Map<String, dynamic>))
+              .toList();
+
+          return DataResult<List<SupervisorDetailDto>>.success(
+            data: supervisors,
+            message: jsonResponse['message'] ?? 'Nəzarətçilər uğurla alındı',
+          );
+        } else {
+          return DataResult<List<SupervisorDetailDto>>.error(
+            message: jsonResponse['message'] ?? 'Nəzarətçilər alınmadı',
+          );
+        }
+      } else {
+        return DataResult<List<SupervisorDetailDto>>.error(
+          message: 'Server xətası: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return DataResult<List<SupervisorDetailDto>>.error(
+        message: 'Şəbəkə xətası: $e',
       );
     }
   }

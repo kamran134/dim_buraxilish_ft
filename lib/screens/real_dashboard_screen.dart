@@ -9,6 +9,7 @@ import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
+import 'building_details_screen.dart';
 
 class RealDashboardScreen extends StatefulWidget {
   const RealDashboardScreen({Key? key}) : super(key: key);
@@ -650,84 +651,88 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       ),
     );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                building.kodBina ?? '?',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.bold,
+    return InkWell(
+      onTap: () => _navigateToBuildingDetails(building),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  building.kodBina ?? '?',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  building.adBina ?? 'Bilinməyən bina',
-                  style:
-                      AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${building.totalParticipants} iştirakçı',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.textGrey),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${building.registrationRate.toStringAsFixed(1)}%',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: _getCompletionRateColor(building.registrationRate),
-                ),
-              ),
-              // Показываем объединенную статистику в формате "780 | 20"
-              Row(
-                mainAxisSize: MainAxisSize.min,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${building.totalRegistered}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textGrey,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 12,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    color: AppColors.textGrey.withOpacity(0.5),
+                    building.adBina ?? 'Bilinməyən bina',
+                    style: AppTextStyles.body1
+                        .copyWith(fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    '${combinedStats.regSupervisorCount ?? 0}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    '${building.totalParticipants} iştirakçı',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textGrey),
                   ),
                 ],
               ),
-            ],
-          ),
-        ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${building.registrationRate.toStringAsFixed(1)}%',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: _getCompletionRateColor(building.registrationRate),
+                  ),
+                ),
+                // Показываем объединенную статистику в формате "780 | 20"
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${building.totalRegistered}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textGrey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 12,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      color: AppColors.textGrey.withOpacity(0.5),
+                    ),
+                    Text(
+                      '${combinedStats.regSupervisorCount ?? 0}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -880,6 +885,18 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   void _navigateToBuildings() {
     // Навигация к зданиям
+  }
+
+  void _navigateToBuildingDetails(ExamDetailsDto building) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BuildingDetailsScreen(
+          building: building,
+          examDate: _selectedExamDate!,
+        ),
+      ),
+    );
   }
 }
 
