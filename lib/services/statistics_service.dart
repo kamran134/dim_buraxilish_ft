@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/exam_details_dto.dart';
+import '../models/exam_statistics_dto.dart';
 import '../models/response_models.dart';
 import '../services/http_service.dart';
 
@@ -136,6 +137,53 @@ class StatisticsService {
       }
     } catch (e) {
       return DataResult<ExamDetailsDto>.error(
+        message: 'Şəbəkə xətası: $e',
+      );
+    }
+  }
+
+  /// Получает комбинированную статистику экзаменов (участники + наблюдатели)
+  Future<DataResult<List<ExamStatisticsDto>>> getExamStatisticsByDate(
+      String examDate) async {
+    try {
+      final token = await _httpService.getToken();
+
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/buraxilishes/getexamstatisticsbydate?examDate=$examDate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          final List<ExamStatisticsDto> examStatistics = data
+              .map((item) =>
+                  ExamStatisticsDto.fromJson(item as Map<String, dynamic>))
+              .toList();
+
+          return DataResult<List<ExamStatisticsDto>>.success(
+            data: examStatistics,
+            message:
+                jsonResponse['message'] ?? 'Kombinə statistika uğurla alındı',
+          );
+        } else {
+          return DataResult<List<ExamStatisticsDto>>.error(
+            message: jsonResponse['message'] ?? 'Kombinə statistika alınmadı',
+          );
+        }
+      } else {
+        return DataResult<List<ExamStatisticsDto>>.error(
+          message: 'Server xətası: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return DataResult<List<ExamStatisticsDto>>.error(
         message: 'Şəbəkə xətası: $e',
       );
     }

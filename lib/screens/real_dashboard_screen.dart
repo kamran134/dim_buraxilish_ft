@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/exam_details_dto.dart';
+import '../models/exam_statistics_dto.dart';
 import '../services/statistics_service.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
@@ -27,6 +28,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   // Реальные данные
   final StatisticsService _statisticsService = StatisticsService();
   DashboardStatistics? _dashboardStats;
+  List<ExamStatisticsDto> _examStatistics = [];
   List<String> _examDates = [];
   String? _selectedExamDate;
   bool _isLoading = false;
@@ -112,14 +114,24 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     });
 
     try {
-      final result = await _statisticsService.getDashboardStatistics(examDate);
-      if (result.success && result.data != null) {
+      // Загружаем обычную статистику Dashboard
+      final dashboardResult =
+          await _statisticsService.getDashboardStatistics(examDate);
+
+      // Загружаем объединенную статистику (участники + наблюдатели)
+      final combinedResult =
+          await _statisticsService.getExamStatisticsByDate(examDate);
+
+      if (dashboardResult.success && dashboardResult.data != null) {
         setState(() {
-          _dashboardStats = result.data!;
+          _dashboardStats = dashboardResult.data!;
+          if (combinedResult.success && combinedResult.data != null) {
+            _examStatistics = combinedResult.data!;
+          }
         });
       } else {
         setState(() {
-          _errorMessage = result.message;
+          _errorMessage = dashboardResult.message;
         });
       }
     } catch (e) {
@@ -476,6 +488,13 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             ],
           ),
           const SizedBox(height: 20),
+          _buildStatisticRow(
+              'Ümumi nəzarətçi', _getTotalSupervisors(), AppColors.primaryBlue),
+          _buildStatisticRow('Qeydiyyatdan keçən nəzarətçi',
+              _getRegisteredSupervisors(), AppColors.successGreen),
+          _buildStatisticRow('Qeydiyyatdan keçməyən nəzarətçi',
+              _getUnregisteredSupervisors(), AppColors.errorRed),
+          const Divider(height: 32),
           _buildStatisticRow('Ümumi iştirakçı', examSum.totalParticipants,
               AppColors.primaryBlue),
           _buildStatisticRow(
@@ -621,6 +640,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   Widget _buildBuildingStatItem(ExamDetailsDto building) {
+    // Найдем соответствующую объединенную статистику для этого здания
+    final combinedStats = _examStatistics.firstWhere(
+      (stat) => stat.building == building.kodBina,
+      orElse: () => ExamStatisticsDto(
+        building: building.kodBina,
+        supervisorCount: 0,
+        regSupervisorCount: 0,
+      ),
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -670,10 +699,31 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                   color: _getCompletionRateColor(building.registrationRate),
                 ),
               ),
-              Text(
-                '${building.totalRegistered}/${building.totalParticipants}',
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.textGrey),
+              // Показываем объединенную статистику в формате "780 | 20"
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${building.totalRegistered}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textGrey,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 12,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    color: AppColors.textGrey.withOpacity(0.5),
+                  ),
+                  Text(
+                    '${combinedStats.regSupervisorCount ?? 0}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -807,6 +857,21 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     if (rate >= 95) return AppColors.successGreen;
     if (rate >= 85) return AppColors.statisticsBlue;
     return AppColors.errorRed;
+  }
+
+  // Методы для получения статистики наблюдателей
+  int _getTotalSupervisors() {
+    return _examStatistics.fold(
+        0, (sum, stat) => sum + (stat.supervisorCount ?? 0));
+  }
+
+  int _getRegisteredSupervisors() {
+    return _examStatistics.fold(
+        0, (sum, stat) => sum + (stat.regSupervisorCount ?? 0));
+  }
+
+  int _getUnregisteredSupervisors() {
+    return _getTotalSupervisors() - _getRegisteredSupervisors();
   }
 
   void _navigateToParticipants() {
