@@ -642,9 +642,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   Widget _buildBuildingStatItem(ExamDetailsDto building) {
     // Найдем соответствующую объединенную статистику для этого здания
     final combinedStats = _examStatistics.firstWhere(
-      (stat) => stat.building == building.kodBina,
+      (stat) => stat.kodBina == building.kodBina,
       orElse: () => ExamStatisticsDto(
-        building: building.kodBina,
+        kodBina: building.kodBina,
         supervisorCount: 0,
         regSupervisorCount: 0,
       ),
