@@ -9,6 +9,7 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
+  final bool forceLight; // Принудительное использование светлой темы
 
   const CustomTextField({
     Key? key,
@@ -19,6 +20,7 @@ class CustomTextField extends StatelessWidget {
     this.obscureText = false,
     this.validator,
     this.keyboardType = TextInputType.text,
+    this.forceLight = false, // По умолчанию адаптируется к теме
   }) : super(key: key);
 
   @override
@@ -31,40 +33,44 @@ class CustomTextField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[400]
-              : Colors.grey[600],
+          color: forceLight || Theme.of(context).brightness == Brightness.light
+              ? Colors.grey[600]
+              : Colors.grey[400],
           fontSize: 16,
         ),
         prefixIcon: prefixIcon != null
             ? Icon(
                 prefixIcon,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[400]
-                    : Colors.grey[600],
+                color: forceLight ||
+                        Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[600]
+                    : Colors.grey[400],
                 size: 22,
               )
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[800]
-            : Colors.grey[50],
+        fillColor:
+            forceLight || Theme.of(context).brightness == Brightness.light
+                ? Colors.grey[50]
+                : Colors.grey[800],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[600]!
-                : Colors.grey[300]!,
+            color:
+                forceLight || Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[300]!
+                    : Colors.grey[600]!,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[600]!
-                : Colors.grey[300]!,
+            color:
+                forceLight || Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[300]!
+                    : Colors.grey[600]!,
             width: 1,
           ),
         ),
@@ -97,9 +103,10 @@ class CustomTextField extends StatelessWidget {
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white
-            : Colors.black87,
+        color: forceLight || Theme.of(context).brightness == Brightness.light
+            ? Colors
+                .black87 // Тёмный цвет текста для светлой темы/принудительно
+            : Colors.white, // Светлый цвет текста для темной темы
       ),
     );
   }

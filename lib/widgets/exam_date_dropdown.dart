@@ -6,11 +6,13 @@ import '../providers/auth_provider.dart';
 class ExamDateDropdown extends StatelessWidget {
   final String? selectedDate;
   final ValueChanged<String?> onChanged;
+  final bool forceLight; // Принудительное использование светлой темы
 
   const ExamDateDropdown({
     Key? key,
     required this.selectedDate,
     required this.onChanged,
+    this.forceLight = false, // По умолчанию адаптируется к теме
   }) : super(key: key);
 
   @override
@@ -23,22 +25,25 @@ class ExamDateDropdown extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[800]
-                  : Colors.grey[50],
+              color:
+                  forceLight || Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[50]
+                      : Colors.grey[800],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[600]!
-                      : Colors.grey[300]!),
+                  color: forceLight ||
+                          Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[300]!
+                      : Colors.grey[600]!),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[400]
-                      : Colors.grey[600],
+                  color: forceLight ||
+                          Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[600]
+                      : Colors.grey[400],
                   size: 22,
                 ),
                 const SizedBox(width: 12),
@@ -46,9 +51,10 @@ class ExamDateDropdown extends StatelessWidget {
                   child: Text(
                     'İmtahan tarixləri yüklənir...',
                     style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
+                      color: forceLight ||
+                              Theme.of(context).brightness == Brightness.light
+                          ? Colors.grey[600]
+                          : Colors.grey[400],
                       fontSize: 16,
                     ),
                   ),
@@ -72,37 +78,42 @@ class ExamDateDropdown extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'İmtahan tarixini seçin',
             hintStyle: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[400]
-                  : Colors.grey[600],
+              color:
+                  forceLight || Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[600]
+                      : Colors.grey[400],
               fontSize: 16,
             ),
             prefixIcon: Icon(
               Icons.calendar_today_outlined,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[400]
-                  : Colors.grey[600],
+              color:
+                  forceLight || Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[600]
+                      : Colors.grey[400],
               size: 22,
             ),
             filled: true,
-            fillColor: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]
-                : Colors.grey[50],
+            fillColor:
+                forceLight || Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[50]
+                    : Colors.grey[800],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[600]!
-                    : Colors.grey[300]!,
+                color: forceLight ||
+                        Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[300]!
+                    : Colors.grey[600]!,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[600]!
-                    : Colors.grey[300]!,
+                color: forceLight ||
+                        Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey[300]!
+                    : Colors.grey[600]!,
                 width: 1,
               ),
             ),
@@ -126,9 +137,10 @@ class ExamDateDropdown extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black87,
+                  color: forceLight ||
+                          Theme.of(context).brightness == Brightness.light
+                      ? Colors.black87
+                      : Colors.white,
                 ),
               ),
             );
@@ -142,6 +154,15 @@ class ExamDateDropdown extends StatelessWidget {
           icon: const Icon(
             Icons.keyboard_arrow_down,
             color: Colors.grey,
+          ),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: forceLight ||
+                    Theme.of(context).brightness == Brightness.light
+                ? Colors
+                    .black87 // Тёмный цвет текста для светлой темы/принудительно
+                : Colors.white, // Светлый цвет текста для темной темы
           ),
           isExpanded: true,
         );

@@ -136,7 +136,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       drawer: const AdminDrawer(),
       body: CustomScrollView(
         controller: _scrollController,

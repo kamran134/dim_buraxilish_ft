@@ -277,6 +277,7 @@ class _LoginScreenState extends State<LoginScreen>
               controller: _usernameController,
               hintText: 'İstifadəçi adı',
               prefixIcon: Icons.person_outline,
+              forceLight: true, // Принудительно светлая тема
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'İstifadəçi adı tələb olunur';
@@ -293,6 +294,7 @@ class _LoginScreenState extends State<LoginScreen>
               hintText: 'Şifrə',
               prefixIcon: Icons.lock_outline,
               obscureText: _obscurePassword,
+              forceLight: true, // Принудительно светлая тема
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -322,6 +324,7 @@ class _LoginScreenState extends State<LoginScreen>
                   _selectedExamDate = value;
                 });
               },
+              forceLight: true, // Принудительно светлая тема
             ),
           ],
         ),

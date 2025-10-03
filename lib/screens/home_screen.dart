@@ -380,7 +380,7 @@ class _MenuCardState extends State<MenuCard>
               decoration: BoxDecoration(
                 borderRadius: AppThemeUtils.largeRadius,
                 color: isDarkMode
-                    ? Colors.grey[850] // Темная карточка
+                    ? const Color(0xFF2D3748) // Спокойный тёмно-серый цвет
                     : Colors.white, // Светлая карточка
                 boxShadow: [
                   BoxShadow(
