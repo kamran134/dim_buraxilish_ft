@@ -54,7 +54,7 @@ class RoleHelper {
 
   /// Получает описание роли на азербайджанском языке
   static String getRoleDescription(String? role) {
-    if (role == null) return 'Monitor';
+    if (role == null) return 'İstifadəçi';
 
     final userRole = UserRole.fromString(role);
     switch (userRole) {
@@ -63,7 +63,7 @@ class RoleHelper {
       case UserRole.admin:
         return 'Administrator';
       case UserRole.monitor:
-        return 'Monitor';
+        return 'Ümumi rəhbər';
     }
   }
 

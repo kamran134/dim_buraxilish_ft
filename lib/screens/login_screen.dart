@@ -6,7 +6,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/exam_date_dropdown.dart';
 import 'main_screen.dart';
-import 'dashboard_screen.dart';
+import 'real_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       // Определяем куда перенаправить пользователя на основе роли
       final targetScreen = authProvider.canAccessDashboard
-          ? const DashboardScreen()
+          ? const RealDashboardScreen()
           : const MainScreen();
 
       Navigator.of(context).pushReplacement(

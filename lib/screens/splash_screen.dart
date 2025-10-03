@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
-import 'dashboard_screen.dart';
+import 'real_dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -98,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (authProvider.isAuthenticated) {
       // Определяем куда перенаправить пользователя на основе роли
       final targetScreen = authProvider.canAccessDashboard
-          ? const DashboardScreen()
+          ? const RealDashboardScreen()
           : const MainScreen();
 
       Navigator.of(context).pushReplacement(

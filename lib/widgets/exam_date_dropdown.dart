@@ -23,23 +23,32 @@ class ExamDateDropdown extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[800]
+                  : Colors.grey[50],
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[600]!
+                      : Colors.grey[300]!),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
                   size: 22,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'İmtahan tarixləri yüklənir...',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[400]
+                          : Colors.grey[600],
                       fontSize: 16,
                     ),
                   ),
@@ -63,27 +72,37 @@ class ExamDateDropdown extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'İmtahan tarixini seçin',
             hintStyle: TextStyle(
-              color: Colors.grey[500],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[400]
+                  : Colors.grey[600],
               fontSize: 16,
             ),
             prefixIcon: Icon(
               Icons.calendar_today_outlined,
-              color: Colors.grey[600],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[400]
+                  : Colors.grey[600],
               size: 22,
             ),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey[50],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Colors.grey[300]!,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[600]!
+                    : Colors.grey[300]!,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Colors.grey[300]!,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[600]!
+                    : Colors.grey[300]!,
                 width: 1,
               ),
             ),
@@ -104,9 +123,12 @@ class ExamDateDropdown extends StatelessWidget {
               value: date,
               child: Text(
                 date,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black87,
                 ),
               ),
             );

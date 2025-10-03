@@ -9,14 +9,14 @@ import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/app_drawer.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+class RealDashboardScreen extends StatefulWidget {
+  const RealDashboardScreen({Key? key}) : super(key: key);
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<RealDashboardScreen> createState() => _RealDashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen>
+class _RealDashboardScreenState extends State<RealDashboardScreen>
     with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _fadeController;
@@ -29,6 +29,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   DashboardStatistics? _dashboardStats;
   List<String> _examDates = [];
   String? _selectedExamDate;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -71,6 +73,66 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.dispose();
   }
 
+  Future<void> _loadExamDates() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _statisticsService.getAllExamDates();
+      if (result.success && result.data != null) {
+        setState(() {
+          _examDates = result.data!;
+          if (_examDates.isNotEmpty) {
+            _selectedExamDate = _examDates.first;
+            _loadDashboardStatistics(_selectedExamDate!);
+          }
+        });
+      } else {
+        setState(() {
+          _errorMessage = result.message;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Xəta baş verdi: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadDashboardStatistics(String examDate) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _statisticsService.getDashboardStatistics(examDate);
+      if (result.success && result.data != null) {
+        setState(() {
+          _dashboardStats = result.data!;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result.message;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Statistika yüklənmədi: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,13 +154,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildStatsCards(),
-                        const SizedBox(height: 24),
-                        _buildExamStatistics(),
-                        const SizedBox(height: 24),
-                        _buildBuildingStatistics(),
-                        const SizedBox(height: 24),
-                        _buildQuickActions(),
+                        if (_errorMessage != null) _buildErrorMessage(),
+                        if (_isLoading) _buildLoadingIndicator(),
+                        if (_dashboardStats != null) ...[
+                          _buildExamDateSelector(),
+                          const SizedBox(height: 24),
+                          _buildStatsCards(),
+                          const SizedBox(height: 24),
+                          _buildExamStatistics(),
+                          const SizedBox(height: 24),
+                          _buildBuildingStatistics(),
+                          const SizedBox(height: 24),
+                          _buildQuickActions(),
+                        ],
                       ],
                     ),
                   ),
@@ -135,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'İdarəetmə paneli',
+                    'Dashboard',
                     style: AppTextStyles.h2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -152,6 +220,104 @@ class _DashboardScreenState extends State<DashboardScreen>
             },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.errorRed.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.errorRed.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: AppColors.errorRed),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: AppTextStyles.body1.copyWith(color: AppColors.errorRed),
+            ),
+          ),
+          IconButton(
+            onPressed: () => _loadExamDates(),
+            icon: Icon(Icons.refresh, color: AppColors.errorRed),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Məlumatlar yüklənir...',
+              style: AppTextStyles.body1.copyWith(color: AppColors.textGrey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExamDateSelector() {
+    if (_examDates.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.date_range, color: AppColors.primaryBlue),
+          const SizedBox(width: 12),
+          Text(
+            'İmtahan tarixi:',
+            style:
+                AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: DropdownButton<String>(
+              value: _selectedExamDate,
+              isExpanded: true,
+              underline: Container(),
+              items: _examDates.map((date) {
+                return DropdownMenuItem<String>(
+                  value: date,
+                  child: Text(date),
+                );
+              }).toList(),
+              onChanged: (newDate) {
+                if (newDate != null && newDate != _selectedExamDate) {
+                  setState(() {
+                    _selectedExamDate = newDate;
+                  });
+                  _loadDashboardStatistics(newDate);
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -257,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       Text(
                         data.title,
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white70,
                         ),
                       ),
                     ],
@@ -272,6 +438,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildExamStatistics() {
+    if (_dashboardStats?.examSum == null) return const SizedBox.shrink();
+
+    final examSum = _dashboardStats!.examSum;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -297,8 +467,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'İmtahan Statistikaları',
-                style: AppTextStyles.heading3.copyWith(
+                'Ümumi Statistika',
+                style: AppTextStyles.h3.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
@@ -306,68 +476,51 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
           const SizedBox(height: 20),
-          // TODO: Добавить реальную статистику экзаменов
-          if (_dashboardStats != null)
-            Text(
-              'Exam Date: ${_dashboardStats!.examDate}',
-              style: AppTextStyles.body1,
-            ),
+          _buildStatisticRow('Ümumi iştirakçı', examSum.totalParticipants,
+              AppColors.primaryBlue),
+          _buildStatisticRow(
+              'Kişi', examSum.allManCount, AppColors.statisticsBlue),
+          _buildStatisticRow(
+              'Qadın', examSum.allWomanCount, AppColors.lightBlue),
+          const Divider(height: 32),
+          _buildStatisticRow('Qeydiyyatdan keçən', examSum.totalRegistered,
+              AppColors.successGreen),
+          _buildStatisticRow(
+              'Kişi (qeydiyyat)', examSum.regManCount, AppColors.successGreen),
+          _buildStatisticRow('Qadın (qeydiyyat)', examSum.regWomanCount,
+              AppColors.successGreen),
+          const Divider(height: 32),
+          _buildStatisticRow('Qeydiyyatdan keçməyən', examSum.totalUnregistered,
+              AppColors.errorRed),
+          const SizedBox(height: 16),
+          _buildProgressBar('Qeydiyyat faizi', examSum.registrationRate),
         ],
       ),
     );
   }
 
-  Widget _buildRealBuildingStatItem(ExamDetailsDto building) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.lightBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.lightGrey),
-      ),
+  Widget _buildStatisticRow(String title, int value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Text(
+            title,
+            style: AppTextStyles.body1,
+          ),
           Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Text(
-                building.kodBina ?? '?',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.bold,
-                ),
+            child: Text(
+              value.toString(),
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  building.adBina ?? 'Bilinməyən bina',
-                  style:
-                      AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${building.totalParticipants} iştirakçı',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.textGrey),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '${building.registrationRate.toStringAsFixed(1)}%',
-            style: AppTextStyles.bodyLarge.copyWith(
-              fontWeight: FontWeight.bold,
-              color: _getCompletionRateColor(building.registrationRate),
             ),
           ),
         ],
@@ -375,77 +528,43 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildExamStatItem_UNUSED(dynamic exam) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.lightBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.lightGrey),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  exam.examDate,
-                  style:
-                      AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${exam.participantCount} iştirakçı',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.textGrey),
-                ),
-              ],
+  Widget _buildProgressBar(String title, double percentage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
             ),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '${exam.completionRate.toStringAsFixed(1)}%',
-                  style: AppTextStyles.body1.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _getCompletionRateColor(exam.completionRate),
-                  ),
-                ),
-                Text(
-                  'tamamlandı',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.textGrey),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 60,
-            height: 8,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: AppColors.lightGrey,
-            ),
-            child: FractionallySizedBox(
-              widthFactor: exam.completionRate / 100,
-              alignment: Alignment.centerLeft,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: _getCompletionRateColor(exam.completionRate),
-                ),
+            Text(
+              '${percentage.toStringAsFixed(1)}%',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: _getCompletionRateColor(percentage),
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: percentage / 100,
+          backgroundColor: AppColors.lightGrey,
+          valueColor: AlwaysStoppedAnimation<Color>(
+              _getCompletionRateColor(percentage)),
+        ),
+      ],
     );
   }
 
   Widget _buildBuildingStatistics() {
+    if (_dashboardStats?.examDetails == null ||
+        _dashboardStats!.examDetails.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -472,7 +591,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(width: 12),
               Text(
                 'Bina Statistikaları',
-                style: AppTextStyles.heading3.copyWith(
+                style: AppTextStyles.h3.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
@@ -480,18 +599,28 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
           const SizedBox(height: 20),
-          // TODO: Добавить реальную статистику зданий
-          if (_dashboardStats != null &&
-              _dashboardStats!.examDetails.isNotEmpty)
-            ...(_dashboardStats!.examDetails
-                .take(3)
-                .map((building) => _buildRealBuildingStatItem(building))),
+          ..._dashboardStats!.examDetails
+              .take(5)
+              .map((building) => _buildBuildingStatItem(building)),
+          if (_dashboardStats!.examDetails.length > 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: TextButton(
+                  onPressed: () {
+                    // Показать все здания
+                  },
+                  child: Text(
+                      'Hamısını gör (${_dashboardStats!.examDetails.length})'),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBuildingStatItem_UNUSED(dynamic building) {
+  Widget _buildBuildingStatItem(ExamDetailsDto building) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -505,7 +634,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             child: Center(
               child: Text(
-                '${building.buildingId}',
+                building.kodBina ?? '?',
                 style: AppTextStyles.bodyLarge.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
@@ -519,12 +648,12 @@ class _DashboardScreenState extends State<DashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  building.buildingName,
+                  building.adBina ?? 'Bilinməyən bina',
                   style:
                       AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  '${building.participantCount} iştirakçı • ${building.supervisorCount} nəzarətçi',
+                  '${building.totalParticipants} iştirakçı',
                   style:
                       AppTextStyles.caption.copyWith(color: AppColors.textGrey),
                 ),
@@ -535,14 +664,14 @@ class _DashboardScreenState extends State<DashboardScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${building.completionRate.toStringAsFixed(1)}%',
+                '${building.registrationRate.toStringAsFixed(1)}%',
                 style: AppTextStyles.bodyLarge.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: _getCompletionRateColor(building.completionRate),
+                  color: _getCompletionRateColor(building.registrationRate),
                 ),
               ),
               Text(
-                '${building.completedCount}/${building.participantCount}',
+                '${building.totalRegistered}/${building.totalParticipants}',
                 style:
                     AppTextStyles.caption.copyWith(color: AppColors.textGrey),
               ),
@@ -601,19 +730,19 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildQuickActionButton(
-                  'Nəzarətçiləri\nGör',
-                  Icons.supervisor_account,
-                  AppColors.supervisorGradient,
-                  () => _navigateToSupervisors(),
+                  'Binalar\nGör',
+                  Icons.apartment,
+                  AppColors.blueGradient,
+                  () => _navigateToBuildings(),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildQuickActionButton(
-                  'Statistika\nGör',
-                  Icons.analytics,
+                  'Yenilə',
+                  Icons.refresh,
                   AppColors.greenGradient,
-                  () => _navigateToStatistics(),
+                  () => _loadDashboardStatistics(_selectedExamDate ?? ''),
                 ),
               ),
             ],
@@ -681,45 +810,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _navigateToParticipants() {
-    Navigator.pushNamed(context, '/participants');
+    // Навигация к участникам
   }
 
-  void _navigateToSupervisors() {
-    Navigator.pushNamed(context, '/supervisors');
-  }
-
-  void _navigateToStatistics() {
-    Navigator.pushNamed(context, '/statistics');
-  }
-
-  Future<void> _loadExamDates() async {
-    try {
-      final result = await _statisticsService.getAllExamDates();
-      if (result.success && result.data != null) {
-        setState(() {
-          _examDates = result.data!;
-          if (_examDates.isNotEmpty) {
-            _selectedExamDate = _examDates.first;
-            _loadDashboardStatistics(_selectedExamDate!);
-          }
-        });
-      }
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
-  Future<void> _loadDashboardStatistics(String examDate) async {
-    try {
-      final result = await _statisticsService.getDashboardStatistics(examDate);
-      if (result.success && result.data != null) {
-        setState(() {
-          _dashboardStats = result.data!;
-        });
-      }
-    } catch (e) {
-      // Handle error silently
-    }
+  void _navigateToBuildings() {
+    // Навигация к зданиям
   }
 }
 
