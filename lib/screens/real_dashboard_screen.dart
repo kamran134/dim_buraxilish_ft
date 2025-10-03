@@ -203,7 +203,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dashboard',
+                    'İdarəetmə paneli',
                     style: AppTextStyles.h2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

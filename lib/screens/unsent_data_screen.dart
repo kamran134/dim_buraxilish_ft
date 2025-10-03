@@ -4,6 +4,7 @@ import '../providers/unsent_data_provider.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../design/app_colors.dart';
+import '../widgets/common/common_widgets.dart';
 
 class UnsentDataScreen extends StatefulWidget {
   const UnsentDataScreen({super.key});
@@ -51,14 +52,8 @@ class _UnsentDataScreenState extends State<UnsentDataScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.orangeGradient,
-          ),
-        ),
+      body: GradientBackground(
+        customColors: AppColors.orangeGradient,
         child: SafeArea(
           child: Column(
             children: [

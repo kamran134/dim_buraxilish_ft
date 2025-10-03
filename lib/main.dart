@@ -7,6 +7,7 @@ import 'providers/offline_database_provider.dart';
 import 'providers/unsent_data_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/font_provider.dart';
+import 'design/app_theme.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -33,8 +34,8 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: 'DİM Buraxılış Sistemi',
             debugShowCheckedModeBanner: false,
-            theme: lightTheme,
-            darkTheme: darkTheme,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.flutterThemeMode,
             home: const SplashScreen(),
           );

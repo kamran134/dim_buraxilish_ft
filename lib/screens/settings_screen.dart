@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
-import '../providers/auth_provider.dart';
-import 'login_screen.dart';
 import '../constants/app_version.dart';
+import '../widgets/common/logout_button.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -60,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Hesab',
               icon: Icons.account_circle_outlined,
               children: [
-                _buildLogoutTile(context),
+                LogoutButton.settings(),
               ],
             ),
 
@@ -251,50 +250,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutTile(BuildContext context) {
-    return Consumer<FontProvider>(
-      builder: (context, fontProvider, child) {
-        return InkWell(
-          onTap: () => _showLogoutDialog(context),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.red.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.logout_outlined,
-                  size: fontProvider.getTextSize(20),
-                  color: Colors.red,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    'Çıxış et',
-                    style: fontProvider.bodyLarge.copyWith(
-                      color: Colors.red,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: fontProvider.getTextSize(16),
-                  color: Colors.red,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildAboutSection(BuildContext context) {
     return Consumer<FontProvider>(
       builder: (context, fontProvider, child) {
@@ -343,84 +298,5 @@ class SettingsScreen extends StatelessWidget {
         );
       },
     );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return Consumer<FontProvider>(
-          builder: (context, fontProvider, child) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              title: Row(
-                children: [
-                  Icon(
-                    Icons.logout_outlined,
-                    color: Colors.red,
-                    size: fontProvider.getTextSize(24),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Çıxış et',
-                    style: fontProvider.titleMedium,
-                  ),
-                ],
-              ),
-              content: Text(
-                'Həqiqətən çıxış etmək istəyirsiniz?',
-                style: fontProvider.bodyMedium,
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(
-                    'Ləğv et',
-                    style: fontProvider.labelLarge.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                    _performLogout(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(
-                    'Çıxış et',
-                    style:
-                        fontProvider.labelLarge.copyWith(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _performLogout(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // First close any open dialogs
-    Navigator.of(context).pop();
-
-    // Perform logout and immediate navigation
-    authProvider.signOut().whenComplete(() {
-      // Always navigate to login screen regardless of logout success/failure
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
-      );
-    });
   }
 }

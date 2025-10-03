@@ -1,13 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/supervisor_models.dart';
 import '../providers/supervisor_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/offline_database_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
+import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'participant_screen.dart';
 import 'statistics_screen.dart';
@@ -21,17 +19,10 @@ class SupervisorScreen extends StatefulWidget {
   State<SupervisorScreen> createState() => _SupervisorScreenState();
 }
 
-class _SupervisorScreenState extends State<SupervisorScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _scaleController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
+class _SupervisorScreenState extends State<SupervisorScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
 
     // Load supervisor details when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,43 +39,6 @@ class _SupervisorScreenState extends State<SupervisorScreen>
 
       provider.loadSupervisorDetails();
     });
-  }
-
-  void _initializeAnimations() {
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeIn,
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    ));
-
-    _fadeController.forward();
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _scaleController.dispose();
-    super.dispose();
   }
 
   @override
@@ -112,52 +66,15 @@ class _SupervisorScreenState extends State<SupervisorScreen>
 
   Widget _buildInitialView(SupervisorProvider provider,
       OfflineDatabaseProvider offlineProvider, bool isDarkMode) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.primaryBlue,
-                  const Color(0xFFf5576c),
-                  const Color(0xFF764ba2),
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.supervisor,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Column(
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(
-                      Icons.arrow_back,
-                      color: AppColors.white,
-                      size: 28,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Nəzarətçilər',
-                      style: AppTextStyles.h3.copyWith(
-                        color: AppColors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 48), // Balance the back button
-                ],
-              ),
+            ScreenHeader(
+              title: 'Nəzarətçilər',
             ),
 
             // Content
@@ -168,48 +85,44 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Welcome Section
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: Container(
-                          padding: const EdgeInsets.all(30),
-                          decoration: BoxDecoration(
-                            color: AppColors.whiteTransparent15,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.blackText.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.supervisor_account,
-                                size: 64,
+                    AnimatedWrapper(
+                      child: Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: AppColors.whiteTransparent15,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.blackText.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.supervisor_account,
+                              size: 64,
+                              color: AppColors.white,
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Nəzarətçilər',
+                              style: AppTextStyles.h2.copyWith(
                                 color: AppColors.white,
                               ),
-                              SizedBox(height: 20),
-                              Text(
-                                'Nəzarətçilər',
-                                style: AppTextStyles.h2.copyWith(
-                                  color: AppColors.white,
-                                ),
-                                textAlign: TextAlign.center,
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'QR kod skaneri ilə nəzarətçi məlumatlarını oxuyun',
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                color: AppColors.lightGrey200,
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                'QR kod skaneri ilə nəzarətçi məlumatlarını oxuyun',
-                                style: AppTextStyles.bodyLarge.copyWith(
-                                  color: AppColors.lightGrey200,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -217,19 +130,16 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                     const SizedBox(height: 40),
 
                     // Action Buttons
-                    FadeTransition(
-                      opacity: _fadeAnimation,
+                    AnimatedWrapper(
                       child: Column(
                         children: [
-                          _buildActionButton(
+                          ActionButton.scan(
                             onPressed: () => provider
                                 .setScreenState(SupervisorScreenState.scanning),
-                            icon: Icons.qr_code_scanner,
-                            title: 'Skan et',
                             backgroundColor: AppColors.buttonRed,
                           ),
                           const SizedBox(height: 16),
-                          _buildActionButton(
+                          ActionButton.manualInput(
                             onPressed: () =>
                                 ManualInputDialog.showSupervisorDialog(
                               context,
@@ -238,8 +148,6 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                                 provider.scanSupervisor(input);
                               },
                             ),
-                            icon: Icons.keyboard,
-                            title: 'Əllə daxil et',
                             backgroundColor: AppColors.buttonBlue,
                           ),
                         ],
@@ -249,16 +157,17 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                     const SizedBox(height: 30),
 
                     // Offline Database Status
-                    FadeTransition(
-                      opacity: _fadeAnimation,
+                    AnimatedWrapper(
                       child: _buildOfflineDbStatus(offlineProvider),
                     ),
 
                     // Online/Offline Toggle
                     if (provider.hasOfflineDatabase)
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: _buildOnlineToggle(provider),
+                      AnimatedWrapper(
+                        child: OnlineToggle(
+                          isOnlineMode: provider.isOnlineMode,
+                          onToggle: () => provider.toggleOnlineMode(),
+                        ),
                       ),
 
                     // Loading indicator
@@ -274,30 +183,9 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                     if (!provider.isLoading && provider.errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.redButton.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  provider.errorMessage!,
-                                  style: const TextStyle(
-                                    color: AppColors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: MessageDisplay(
+                          message: provider.errorMessage!,
+                          type: MessageType.error,
                         ),
                       ),
                   ],
@@ -326,52 +214,16 @@ class _SupervisorScreenState extends State<SupervisorScreen>
     final supervisor = provider.currentSupervisor!;
     final supervisorDetails = provider.supervisorDetails;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.lightBlue,
-                  AppColors.darkBlue,
-                  AppColors.primaryBlue,
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.supervisor,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Column(
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => provider.resetToInitial(),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Nəzarətçi məlumatları',
-                      style: AppTextStyles.h3.copyWith(
-                        color: AppColors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
+            ScreenHeader(
+              title: 'Nəzarətçi məlumatları',
+              onBackPressed: () => provider.resetToInitial(),
             ),
 
             // Content
@@ -382,234 +234,63 @@ class _SupervisorScreenState extends State<SupervisorScreen>
                   children: [
                     // Success message
                     if (provider.successMessage != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                provider.successMessage!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      MessageDisplay(
+                        message: provider.successMessage!,
+                        type: MessageType.success,
                       ),
 
                     // Supervisor Info Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: AppColors.whiteTransparent95,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                    InfoCard(
+                      fullName: supervisor.fullName,
+                      subtitle: 'Vəsiqə nömrəsi: ${supervisor.cardNumber}',
+                      photoWidget: PhotoWidget.supervisor(
+                        photoData: supervisor.image,
                       ),
-                      child: Column(
-                        children: [
-                          // Repeat entry message - shown above photo if it's a repeat entry
-                          if (provider.isRepeatEntry)
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              child: Text(
-                                'TƏKRAR GİRİŞ',
-                                style: TextStyle(
-                                  fontSize: 20, // h4 equivalent
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.darkRed,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-
-                          // Photo placeholder
-                          Container(
-                            width: double.infinity,
-                            height: 280,
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: provider.isRepeatEntry
-                                    ? AppColors.darkRed
-                                    : Colors.green,
-                                width: 3,
-                              ),
-                            ),
-                            child: supervisor.image.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(9),
-                                    child:
-                                        _buildSupervisorPhoto(supervisor.image),
-                                  )
-                                : const Icon(
-                                    Icons.supervisor_account,
-                                    size: 80,
-                                    color: Colors.grey,
-                                  ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Name
-                          Text(
-                            supervisor.fullName,
-                            style: AppTextStyles.h3.copyWith(
-                              color: AppColors.blackText,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          // Card number under name
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.blue.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              'Vəsiqə nömrəsi: ${supervisor.cardNumber}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Next Button - moved here for quick access
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Container(), // spacer
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    provider.resetToInitial();
-                                    provider.setScreenState(
-                                        SupervisorScreenState.scanning);
-                                  },
-                                  icon: const Icon(Icons.qr_code_scanner,
-                                      size: 18),
-                                  label: const Text(
-                                    'Növbəti',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: AppColors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    elevation: 2,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Container(), // spacer
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Details in two columns
-                          _buildDetailsGrid(supervisor),
-                        ],
+                      isRepeatEntry: provider.isRepeatEntry,
+                      borderColor: provider.isRepeatEntry
+                          ? AppColors.darkRed
+                          : Colors.green,
+                      actionButton: ActionButton.next(
+                        onPressed: () {
+                          provider.resetToInitial();
+                          provider
+                              .setScreenState(SupervisorScreenState.scanning);
+                        },
                       ),
+                      details: [
+                        InfoDetail(
+                            label: 'Bina kodu',
+                            value: supervisor.buildingCode.toString()),
+                        InfoDetail(
+                            label: 'Bina adı', value: supervisor.buildingName),
+                        if (supervisor.registerDate.isNotEmpty)
+                          InfoDetail(
+                              label: 'Qeydiyyat tarixi',
+                              value: supervisor.registerDate),
+                      ],
                     ),
 
                     const SizedBox(height: 20),
 
                     // Statistics Card
                     if (supervisorDetails != null)
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.whiteTransparent15,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Statistikalar',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18, // h5 equivalent
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildStatItem(
-                                    'Qeydiyyatlı',
-                                    supervisorDetails.regPersonCount.toString(),
-                                    Colors.green,
-                                    Icons.check_circle,
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 60,
-                                  color: AppColors.white30,
-                                ),
-                                Expanded(
-                                  child: _buildStatItem(
-                                    'Qeydiyyatsız',
-                                    supervisorDetails.unregisteredCount
-                                        .toString(),
-                                    AppColors.redButton,
-                                    Icons.cancel,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      StatisticsCard(
+                        title: 'Statistikalar',
+                        items: [
+                          StatItem(
+                            label: 'Qeydiyyatlı',
+                            value: supervisorDetails.regPersonCount.toString(),
+                            color: Colors.green,
+                            icon: Icons.check_circle,
+                          ),
+                          StatItem(
+                            label: 'Qeydiyyatsız',
+                            value:
+                                supervisorDetails.unregisteredCount.toString(),
+                            color: AppColors.redButton,
+                            icon: Icons.cancel,
+                          ),
+                        ],
                       ),
 
                     const SizedBox(height: 20),
@@ -624,24 +305,9 @@ class _SupervisorScreenState extends State<SupervisorScreen>
   }
 
   Widget _buildErrorView(SupervisorProvider provider, bool isDarkMode) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.darkBlue,
-                  AppColors.primaryBlue,
-                  AppColors.lightBlue,
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.supervisor,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Center(
           child: Padding(
@@ -733,178 +399,6 @@ class _SupervisorScreenState extends State<SupervisorScreen>
     );
   }
 
-  Widget _buildActionButton({
-    required VoidCallback onPressed,
-    required IconData icon,
-    required String title,
-    required Color backgroundColor,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 24),
-        label: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOnlineToggle(SupervisorProvider provider) {
-    return GestureDetector(
-      onTap: () => provider.toggleOnlineMode(),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              provider.isOnlineMode ? Icons.wifi : Icons.wifi_off,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    provider.isOnlineMode ? 'Online rejim' : 'Oflayn rejim',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    provider.isOnlineMode
-                        ? 'İnternet bağlantısı aktivdir'
-                        : 'Lokal bazadan istifadə edilir',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12, // bodySmall equivalent
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: provider.isOnlineMode,
-              onChanged: (_) => provider.toggleOnlineMode(),
-              activeColor: Colors.green,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsGrid(Supervisor supervisor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // First row: Building Code and Building Name
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem(
-                    'Bina kodu', supervisor.buildingCode.toString()),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDetailItem('Bina adı', supervisor.buildingName),
-              ),
-            ],
-          ),
-          if (supervisor.registerDate.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            // Second row: Register Date (if available)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDetailItem(
-                      'Qeydiyyat tarixi', supervisor.registerDate),
-                ),
-                Expanded(child: Container()), // Empty space
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black54,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(
-      String label, String value, Color color, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
   void _handleAuthenticationError() async {
     if (!mounted) return;
 
@@ -921,49 +415,6 @@ class _SupervisorScreenState extends State<SupervisorScreen>
       ),
       (route) => false,
     );
-  }
-
-  Widget _buildSupervisorPhoto(String photoData) {
-    try {
-      // Try to decode as base64 if it looks like base64 data
-      if (photoData.startsWith('data:image') || photoData.length > 100) {
-        // Remove data URL prefix if present
-        String base64String = photoData;
-        if (photoData.startsWith('data:image')) {
-          base64String = photoData.split(',').last;
-        }
-
-        // Decode base64 to bytes
-        final Uint8List bytes = base64Decode(base64String);
-
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print('Error loading supervisor photo: $error');
-            return const Icon(
-              Icons.supervisor_account,
-              size: 60,
-              color: Colors.grey,
-            );
-          },
-        );
-      } else {
-        // If not base64, show placeholder
-        return const Icon(
-          Icons.supervisor_account,
-          size: 60,
-          color: Colors.grey,
-        );
-      }
-    } catch (e) {
-      print('Error decoding supervisor photo: $e');
-      return const Icon(
-        Icons.supervisor_account,
-        size: 60,
-        color: Colors.grey,
-      );
-    }
   }
 
   Widget _buildOfflineDbStatus(OfflineDatabaseProvider offlineProvider) {
@@ -999,92 +450,39 @@ class _SupervisorScreenState extends State<SupervisorScreen>
   }
 
   Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.darkGradient2,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                  icon: Icons.school,
-                  label: 'İştirakçılar',
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const ParticipantScreen(),
-                      ),
-                    );
-                  }),
-              _buildNavItem(
-                  icon: Icons.supervisor_account,
-                  label: 'Nəzarətçilər',
-                  isSelected: true, // Текущий экран
-                  onTap: () {}),
-              _buildNavItem(
-                  icon: Icons.analytics,
-                  label: 'Statistika',
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const StatisticsScreen(),
-                      ),
-                    );
-                  }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.grey[300],
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[300],
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+    return CustomBottomNavigation(
+      items: [
+        BottomNavItem(
+          icon: Icons.school,
+          label: 'İştirakçılar',
+          isSelected: false,
+          onTap: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const ParticipantScreen(),
               ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
+        BottomNavItem(
+          icon: Icons.supervisor_account,
+          label: 'Nəzarətçilər',
+          isSelected: true, // Текущий экран
+          onTap: () {},
+        ),
+        BottomNavItem(
+          icon: Icons.analytics,
+          label: 'Statistika',
+          isSelected: false,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const StatisticsScreen(),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

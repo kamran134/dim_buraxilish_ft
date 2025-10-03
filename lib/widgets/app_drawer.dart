@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import '../screens/login_screen.dart';
 import '../screens/supervisor_screen.dart';
 import '../screens/participant_screen.dart';
 import '../screens/unsent_data_screen.dart';
 import '../screens/settings_screen.dart';
 import '../design/app_colors.dart';
 import '../constants/app_version.dart';
+import 'common/logout_button.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -205,39 +203,11 @@ class AppDrawer extends StatelessWidget {
               child: Column(
                 children: [
                   // Logout Button
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.exit_to_app,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      title: const Text(
-                        'Sistemdən çıxış',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      onTap: () => _showLogoutDialog(context),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16),
-                    ),
+                  LogoutButton.drawer(
+                    onLogoutSuccess: () {
+                      // Close drawer before navigation
+                      Navigator.of(context).pop();
+                    },
                   ),
 
                   // Footer Info
@@ -315,72 +285,6 @@ class AppDrawer extends StatelessWidget {
         hoverColor: Colors.white.withOpacity(0.1),
         splashColor: Colors.white.withOpacity(0.2),
       ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Sistemdən çıxış',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          content: const Text(
-            'Sistemdən çıxmaq istədiyinizə əminsiniz?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Ləğv et',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Close drawer
-
-                final navigator = Navigator.of(context);
-                final authProvider =
-                    Provider.of<AuthProvider>(context, listen: false);
-                await authProvider.signOut();
-
-                if (context.mounted) {
-                  navigator.pushReplacement(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          const LoginScreen(),
-                      transitionsBuilder:
-                          (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                      transitionDuration: const Duration(milliseconds: 500),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Çıxış'),
-            ),
-          ],
-        );
-      },
     );
   }
 

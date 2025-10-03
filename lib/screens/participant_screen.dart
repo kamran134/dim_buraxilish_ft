@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/participant_models.dart';
@@ -8,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/offline_database_provider.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
+import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
@@ -21,17 +20,10 @@ class ParticipantScreen extends StatefulWidget {
   State<ParticipantScreen> createState() => _ParticipantScreenState();
 }
 
-class _ParticipantScreenState extends State<ParticipantScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _scaleController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
+class _ParticipantScreenState extends State<ParticipantScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
 
     // Load exam details when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,43 +40,6 @@ class _ParticipantScreenState extends State<ParticipantScreen>
 
       provider.loadExamDetails();
     });
-  }
-
-  void _initializeAnimations() {
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeIn,
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    ));
-
-    _fadeController.forward();
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _scaleController.dispose();
-    super.dispose();
   }
 
   @override
@@ -112,52 +67,15 @@ class _ParticipantScreenState extends State<ParticipantScreen>
 
   Widget _buildInitialView(ParticipantProvider provider,
       OfflineDatabaseProvider offlineProvider, bool isDarkMode) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.lightBlue,
-                  AppColors.darkBlue,
-                  AppColors.primaryBlue,
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.participant,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Column(
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'İmtahan iştirakçıları',
-                      style: AppTextStyles.h3.copyWith(
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 48), // Balance the back button
-                ],
-              ),
+            ScreenHeader(
+              title: 'İmtahan iştirakçıları',
             ),
 
             // Content
@@ -168,49 +86,45 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Welcome Section
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: Container(
-                          padding: const EdgeInsets.all(30),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.school,
-                                size: 64,
+                    AnimatedWrapper(
+                      child: Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.school,
+                              size: 64,
+                              color: Colors.white,
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'İmtahan iştirakçıları',
+                              style: AppTextStyles.h2.copyWith(
                                 color: Colors.white,
                               ),
-                              SizedBox(height: 20),
-                              Text(
-                                'İmtahan iştirakçıları',
-                                style: AppTextStyles.h2.copyWith(
-                                  color: Colors.white,
-                                ),
-                                textAlign: TextAlign.center,
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'QR kod skaneri ilə iştirakçı məlumatlarını oxuyun',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                'QR kod skaneri ilə iştirakçı məlumatlarını oxuyun',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -218,19 +132,15 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                     const SizedBox(height: 40),
 
                     // Action Buttons
-                    FadeTransition(
-                      opacity: _fadeAnimation,
+                    AnimatedWrapper(
                       child: Column(
                         children: [
-                          _buildActionButton(
+                          ActionButton.scan(
                             onPressed: () => provider.setScreenState(
                                 ParticipantScreenState.scanning),
-                            icon: Icons.qr_code_scanner,
-                            title: 'Skan et',
-                            backgroundColor: AppColors.redButton,
                           ),
                           const SizedBox(height: 16),
-                          _buildActionButton(
+                          ActionButton.manualInput(
                             onPressed: () =>
                                 ManualInputDialog.showParticipantDialog(
                               context,
@@ -239,9 +149,6 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                                 provider.enterParticipantManually(input);
                               },
                             ),
-                            icon: Icons.keyboard,
-                            title: 'Əllə daxil et',
-                            backgroundColor: AppColors.blueButton,
                           ),
                         ],
                       ),
@@ -250,16 +157,17 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                     const SizedBox(height: 30),
 
                     // Offline Database Status
-                    FadeTransition(
-                      opacity: _fadeAnimation,
+                    AnimatedWrapper(
                       child: _buildOfflineDbStatus(offlineProvider),
                     ),
 
                     // Online/Offline Toggle
                     if (provider.hasOfflineDatabase)
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: _buildOnlineToggle(provider),
+                      AnimatedWrapper(
+                        child: OnlineToggle(
+                          isOnlineMode: provider.isOnlineMode,
+                          onToggle: () => provider.toggleOnlineMode(),
+                        ),
                       ),
 
                     // Loading indicator
@@ -275,30 +183,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                     if (!provider.isLoading && provider.errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  provider.errorMessage!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: MessageDisplay(
+                          message: provider.errorMessage!,
+                          type: MessageType.error,
                         ),
                       ),
                   ],
@@ -327,52 +214,16 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     final participant = provider.currentParticipant!;
     final examDetails = provider.examDetails;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.lightBlue,
-                  AppColors.darkBlue,
-                  AppColors.primaryBlue,
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.participant,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Column(
           children: [
             // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => provider.reset(),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'İştirakçı məlumatları',
-                      style: AppTextStyles.h3.copyWith(
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
+            ScreenHeader(
+              title: 'İştirakçı məlumatları',
+              onBackPressed: () => provider.reset(),
             ),
 
             // Content
@@ -383,235 +234,58 @@ class _ParticipantScreenState extends State<ParticipantScreen>
                   children: [
                     // Success message
                     if (provider.successMessage != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                provider.successMessage!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      MessageDisplay(
+                        message: provider.successMessage!,
+                        type: MessageType.success,
                       ),
 
                     // Participant Info Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                    InfoCard(
+                      fullName: participant.fullName,
+                      subtitle: 'İş nömrəsi: ${participant.isN}',
+                      photoWidget: PhotoWidget.participant(
+                        photoData: participant.photo,
                       ),
-                      child: Column(
-                        children: [
-                          // Repeat entry message - shown above photo if it's a repeat entry
-                          if (provider.isRepeatEntry)
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              child: Text(
-                                'TƏKRAR GİRİŞ',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.darkRed,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-
-                          // Photo placeholder
-                          Container(
-                            width: double.infinity,
-                            height: 280,
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            decoration: BoxDecoration(
-                              color: AppColors.lightGrey200,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: provider.isRepeatEntry
-                                    ? AppColors.darkRed
-                                    : Colors.green,
-                                width: 3,
-                              ),
-                            ),
-                            child: participant.photo != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(9),
-                                    child: _buildParticipantPhoto(
-                                        participant.photo!),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    size: 80,
-                                    color: AppColors.darkGrey,
-                                  ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Name
-                          Text(
-                            participant.fullName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.blackText,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          // İş nömrəsi under name
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.blue.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              'İş nömrəsi: ${participant.isN}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Next Button - moved here for quick access
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Container(), // spacer
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    provider.reset();
-                                    provider.setScreenState(
-                                        ParticipantScreenState.scanning);
-                                  },
-                                  icon: const Icon(Icons.qr_code_scanner,
-                                      size: 18),
-                                  label: const Text(
-                                    'Növbəti',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    elevation: 2,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Container(), // spacer
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Details in two columns
-                          _buildDetailsGrid(participant),
-                        ],
+                      isRepeatEntry: provider.isRepeatEntry,
+                      borderColor: provider.isRepeatEntry
+                          ? AppColors.darkRed
+                          : Colors.green,
+                      actionButton: ActionButton.next(
+                        onPressed: () {
+                          provider.reset();
+                          provider
+                              .setScreenState(ParticipantScreenState.scanning);
+                        },
                       ),
+                      details: [
+                        InfoDetail(
+                            label: 'Mərtəbə', value: participant.mertebe),
+                        InfoDetail(label: 'Zal', value: participant.zal),
+                        InfoDetail(label: 'Sıra', value: participant.sira),
+                        InfoDetail(label: 'Yer', value: participant.yer),
+                      ],
                     ),
 
                     const SizedBox(height: 20),
 
                     // Statistics Card
                     if (examDetails != null)
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Statistikalar',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildStatItem(
-                                    'Qeydiyyatlı',
-                                    examDetails.totalRegisteredCount.toString(),
-                                    Colors.green,
-                                    Icons.check_circle,
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 60,
-                                  color: Colors.white30,
-                                ),
-                                Expanded(
-                                  child: _buildStatItem(
-                                    'Qeydiyyatsız',
-                                    examDetails.notRegisteredCount.toString(),
-                                    AppColors.errorRed,
-                                    Icons.cancel,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      StatisticsCard(
+                        title: 'Statistikalar',
+                        items: [
+                          StatItem(
+                            label: 'Qeydiyyatlı',
+                            value: examDetails.totalRegisteredCount.toString(),
+                            color: Colors.green,
+                            icon: Icons.check_circle,
+                          ),
+                          StatItem(
+                            label: 'Qeydiyyatsız',
+                            value: examDetails.notRegisteredCount.toString(),
+                            color: AppColors.errorRed,
+                            icon: Icons.cancel,
+                          ),
+                        ],
                       ),
 
                     const SizedBox(height: 20),
@@ -626,24 +300,9 @@ class _ParticipantScreenState extends State<ParticipantScreen>
   }
 
   Widget _buildErrorView(ParticipantProvider provider, bool isDarkMode) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColors.darkGradient1,
-                  AppColors.darkGradient2,
-                  AppColors.darkGradient3,
-                ]
-              : [
-                  AppColors.lightBlue,
-                  AppColors.darkBlue,
-                  AppColors.primaryBlue,
-                ],
-        ),
-      ),
+    return GradientBackground(
+      gradientType: GradientType.participant,
+      isDarkMode: isDarkMode,
       child: SafeArea(
         child: Center(
           child: Padding(
@@ -735,201 +394,6 @@ class _ParticipantScreenState extends State<ParticipantScreen>
     );
   }
 
-  Widget _buildActionButton({
-    required VoidCallback onPressed,
-    required IconData icon,
-    required String title,
-    required Color backgroundColor,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 24),
-        label: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOnlineToggle(ParticipantProvider provider) {
-    return GestureDetector(
-      onTap: () => provider.toggleOnlineMode(),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              provider.isOnlineMode ? Icons.wifi : Icons.wifi_off,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    provider.isOnlineMode ? 'Online rejim' : 'Oflayn rejim',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    provider.isOnlineMode
-                        ? 'İnternet bağlantısı aktivdir'
-                        : 'Lokal bazadan istifadə edilir',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: provider.isOnlineMode,
-              onChanged: (_) => provider.toggleOnlineMode(),
-              activeColor: Colors.green,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsGrid(Participant participant) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // First row: Mərtəbə and Zal
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem('Mərtəbə', participant.mertebe),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDetailItem('Zal', participant.zal),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Second row: Sıra and Yer
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem('Sıra', participant.sira),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDetailItem('Yer', participant.yer),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black54,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-      String label, String value, Color color, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
   void _handleAuthenticationError() async {
     if (!mounted) return;
 
@@ -946,49 +410,6 @@ class _ParticipantScreenState extends State<ParticipantScreen>
       ),
       (route) => false,
     );
-  }
-
-  Widget _buildParticipantPhoto(String photoData) {
-    try {
-      // Try to decode as base64 if it looks like base64 data
-      if (photoData.startsWith('data:image') || photoData.length > 100) {
-        // Remove data URL prefix if present
-        String base64String = photoData;
-        if (photoData.startsWith('data:image')) {
-          base64String = photoData.split(',').last;
-        }
-
-        // Decode base64 to bytes
-        final Uint8List bytes = base64Decode(base64String);
-
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print('Error loading participant photo: $error');
-            return const Icon(
-              Icons.person,
-              size: 60,
-              color: Colors.grey,
-            );
-          },
-        );
-      } else {
-        // If not base64, show placeholder
-        return const Icon(
-          Icons.person,
-          size: 60,
-          color: Colors.grey,
-        );
-      }
-    } catch (e) {
-      print('Error decoding participant photo: $e');
-      return const Icon(
-        Icons.person,
-        size: 60,
-        color: Colors.grey,
-      );
-    }
   }
 
   Widget _buildOfflineDbStatus(OfflineDatabaseProvider offlineProvider) {
@@ -1024,92 +445,39 @@ class _ParticipantScreenState extends State<ParticipantScreen>
   }
 
   Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.darkGradient2,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                  icon: Icons.school,
-                  label: 'İştirakçılar',
-                  isSelected: true, // Текущий экран
-                  onTap: () {}),
-              _buildNavItem(
-                  icon: Icons.supervisor_account,
-                  label: 'Nəzarətçilər',
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const SupervisorScreen(),
-                      ),
-                    );
-                  }),
-              _buildNavItem(
-                  icon: Icons.analytics,
-                  label: 'Statistika',
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const StatisticsScreen(),
-                      ),
-                    );
-                  }),
-            ],
-          ),
+    return CustomBottomNavigation(
+      items: [
+        BottomNavItem(
+          icon: Icons.school,
+          label: 'İştirakçılar',
+          isSelected: true, // Текущий экран
+          onTap: () {},
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.grey[300],
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[300],
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        BottomNavItem(
+          icon: Icons.supervisor_account,
+          label: 'Nəzarətçilər',
+          isSelected: false,
+          onTap: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const SupervisorScreen(),
               ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
+        BottomNavItem(
+          icon: Icons.analytics,
+          label: 'Statistika',
+          isSelected: false,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const StatisticsScreen(),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

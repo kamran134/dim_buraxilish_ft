@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/exam_date_dropdown.dart';
+import '../widgets/common/common_widgets.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
 
@@ -143,18 +144,8 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.deepBlue, // Deep blue
-              AppColors.splashBlue, // Blue
-              AppColors.splashLightBlue, // Light blue
-            ],
-          ),
-        ),
+      body: GradientBackground(
+        gradientType: GradientType.default_,
         child: SafeArea(
           child: RefreshIndicator(
             onRefresh: _refreshData,
@@ -188,33 +179,10 @@ class _LoginScreenState extends State<LoginScreen>
                         Consumer<AuthProvider>(
                           builder: (context, authProvider, child) {
                             if (authProvider.error != null) {
-                              return Container(
+                              return MessageDisplay(
+                                message: authProvider.error!,
+                                type: MessageType.error,
                                 margin: const EdgeInsets.only(top: 20),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: Colors.red.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.error_outline,
-                                      color: Colors.red,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        authProvider.error!,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               );
                             }
                             return const SizedBox.shrink();

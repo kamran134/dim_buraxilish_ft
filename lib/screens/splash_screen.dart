@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
@@ -135,18 +136,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.deepBlue, // Deep blue
-              AppColors.splashBlue, // Blue
-              AppColors.splashLightBlue, // Light blue
-            ],
-          ),
-        ),
+      body: GradientBackground(
+        gradientType: GradientType.default_,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

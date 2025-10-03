@@ -8,8 +8,7 @@ import 'statistics_screen.dart';
 import 'offline_database_screen.dart';
 import 'unsent_data_screen.dart';
 import 'settings_screen.dart';
-import '../design/app_colors.dart';
-import '../design/app_text_styles.dart';
+import '../design/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -132,8 +131,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           colors: isDarkMode
               ? [
                   AppColors.backgroundDark,
-                  AppColors.backgroundMedium,
-                  AppColors.backgroundLight,
+                  AppColors.surfaceDark,
+                  AppColors.darkGradient3,
                 ]
               : [
                   AppColors.lightBackground,
@@ -171,9 +170,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.newBlueLight,
-                      AppColors.newBlueDark,
-                      AppColors.primaryBlue,
+                      AppColors.primaryLight,
+                      AppColors.primaryDark,
+                      AppColors.primary,
                     ],
                   ),
                 ),
@@ -188,14 +187,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(height: 40),
+                          AppSpacing.verticalGapXL,
                           Text(
                             'BİNA $buildingCode',
                             style: AppTextStyles.h1.copyWith(
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          AppSpacing.verticalGapSM,
                           Text(
                             buildingName,
                             style: AppTextStyles.bodyLarge.copyWith(
@@ -214,12 +213,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           // Menu Grid
           SliverPadding(
-            padding: const EdgeInsets.all(20.0),
+            padding: AppSpacing.paddingLG,
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
+                crossAxisSpacing: AppSpacing.lg,
+                mainAxisSpacing: AppSpacing.lg,
                 childAspectRatio: 1.0,
               ),
               delegate: SliverChildBuilderDelegate(
@@ -246,8 +245,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
 
           // Bottom padding
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 40),
+          SliverToBoxAdapter(
+            child: AppSpacing.verticalGapXL,
           ),
         ],
       ),
@@ -379,7 +378,7 @@ class _MenuCardState extends State<MenuCard>
             onTap: widget.onTap,
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: AppThemeUtils.largeRadius,
                 color: isDarkMode
                     ? Colors.grey[850] // Темная карточка
                     : Colors.white, // Светлая карточка
@@ -405,21 +404,22 @@ class _MenuCardState extends State<MenuCard>
               child: Material(
                 color: Colors.transparent,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: AppSpacing.paddingMD,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Icon container с градиентом
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: AppSpacing.iconXXL,
+                        height: AppSpacing.iconXXL,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: widget.item.gradient,
                           ),
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.iconXXL / 2),
                           boxShadow: [
                             BoxShadow(
                               color:
@@ -431,11 +431,11 @@ class _MenuCardState extends State<MenuCard>
                         ),
                         child: Icon(
                           widget.item.icon,
-                          size: 32,
+                          size: AppSpacing.iconLG,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      AppSpacing.verticalGapMD,
                       // Title с адаптивным цветом
                       Flexible(
                         child: Text(
