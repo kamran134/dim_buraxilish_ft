@@ -789,7 +789,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildQuickActionButton(
-                  'Yenilə',
+                  'Yenilə\n ',
                   Icons.refresh,
                   AppColors.greenGradient,
                   () => _loadDashboardStatistics(_selectedExamDate ?? ''),
