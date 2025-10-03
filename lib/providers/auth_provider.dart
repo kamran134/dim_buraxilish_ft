@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../utils/role_helper.dart';
@@ -46,16 +48,47 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       final token = await _httpService.getToken();
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
+        // Восстанавливаем роль пользователя из токена
+        _currentUserRole = RoleHelper.getRoleFromToken(token) ?? 'monitor';
         _isAuthenticated = true;
+
+        // Пытаемся восстановить полный AccessToken из хранилища
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final tokenData = prefs.getString('jwt_token');
+          if (tokenData != null) {
+            final tokenJson = jsonDecode(tokenData) as Map<String, dynamic>;
+            _accessToken = AccessTokenModel.fromJson(tokenJson);
+          }
+        } catch (e) {
+          print('Error restoring access token: $e');
+        }
+
+        // Также восстанавливаем данные экзамена если они есть
+        final examDetails = await _httpService.getExamDetailsFromStorage();
+        if (examDetails != null) {
+          final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+          _authData = Auth(bina: bina, examDate: examDetails.imtTarix ?? '');
+        }
+
         _clearError();
       } else {
         final auth = await _httpService.getAuth();
         _isAuthenticated = auth;
+        if (!auth) {
+          // Очищаем все данные если пользователь не авторизован
+          _currentUserRole = null;
+          _accessToken = null;
+          _authData = null;
+        }
       }
     } catch (e) {
       _setError('Avtorizasiya yoxlanılarkən xəta baş verdi');
       _isAuthenticated = false;
+      _currentUserRole = null;
+      _accessToken = null;
+      _authData = null;
     } finally {
       _setLoading(false);
     }

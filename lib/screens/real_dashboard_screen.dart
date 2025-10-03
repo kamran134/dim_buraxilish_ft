@@ -7,7 +7,7 @@ import '../services/statistics_service.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/admin_drawer.dart';
 
 class RealDashboardScreen extends StatefulWidget {
   const RealDashboardScreen({Key? key}) : super(key: key);
@@ -137,7 +137,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
-      drawer: const AppDrawer(),
+      drawer: const AdminDrawer(),
       body: CustomScrollView(
         controller: _scrollController,
         physics: const BouncingScrollPhysics(),
@@ -203,7 +203,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'İdarəetmə paneli',
+                    'Admin panel',
                     style: AppTextStyles.h2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

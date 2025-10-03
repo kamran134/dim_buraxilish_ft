@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/monitor_drawer.dart';
 import 'home_screen.dart';
 
 class MainScreen extends StatelessWidget {
@@ -8,7 +8,7 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const AppDrawer(),
+      drawer: const MonitorDrawer(),
       body: const HomeScreen(),
     );
   }
