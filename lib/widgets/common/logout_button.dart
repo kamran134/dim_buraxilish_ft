@@ -84,34 +84,45 @@ class LogoutButton extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: margin ?? const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(borderRadius ?? 15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        leading: Icon(
-          Icons.exit_to_app,
-          color: iconColor ?? Colors.white,
-          size: 20,
-        ),
-        title: Text(
-          title ?? 'Sistemdən çıxış',
-          style: TextStyle(
-            color: textColor ?? Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
-        ),
+      child: InkWell(
         onTap: () => _showLogoutDialog(context),
-        contentPadding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
+        borderRadius: BorderRadius.circular(borderRadius ?? 8),
+        child: Container(
+          padding: padding ??
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(borderRadius ?? 8),
+            border: Border.all(
+              color: Colors.red.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.logout_outlined,
+                size: 20,
+                color: iconColor ?? Colors.red,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title ?? 'Sistemdən çıxış',
+                  style: TextStyle(
+                    color: textColor ?? Colors.red,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: iconColor ?? Colors.red,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -211,10 +222,16 @@ class LogoutButton extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(60, 36),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
               child: Text(
                 'Ləğv et',
                 style: TextStyle(
                   color: Colors.grey[600],
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -226,11 +243,17 @@ class LogoutButton extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
+                minimumSize: const Size(60, 36),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Text(title?.split(' ').last ?? 'Çıxış'),
+              child: Text(
+                'Çıxış',
+                style: const TextStyle(fontSize: 14),
+              ),
             ),
           ],
         );
