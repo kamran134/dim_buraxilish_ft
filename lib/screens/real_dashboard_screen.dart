@@ -10,6 +10,7 @@ import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
 import 'building_details_screen.dart';
+import 'buildings_statistics_screen.dart';
 
 class RealDashboardScreen extends StatefulWidget {
   const RealDashboardScreen({Key? key}) : super(key: key);
@@ -610,7 +611,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'Bina Statistikaları',
+                'Binalar üzrə statistika',
                 style: AppTextStyles.h3.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
@@ -628,7 +629,14 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               child: Center(
                 child: TextButton(
                   onPressed: () {
-                    // Показать все здания
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BuildingsStatisticsScreen(
+                          initialExamDate: _selectedExamDate,
+                        ),
+                      ),
+                    );
                   },
                   child: Text(
                       'Hamısını gör (${_dashboardStats!.examDetails.length})'),
@@ -648,6 +656,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         kodBina: building.kodBina,
         supervisorCount: 0,
         regSupervisorCount: 0,
+        hallCount: 0,
       ),
     );
 
@@ -689,6 +698,34 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                     '${building.totalParticipants} iştirakçı',
                     style: AppTextStyles.caption
                         .copyWith(color: AppColors.textGrey),
+                  ),
+                  // Индикатор Yetərsay
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: combinedStats.yetarsayIsGood
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: combinedStats.yetarsayIsGood
+                            ? Colors.green
+                            : Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      combinedStats.yetarsayStatus,
+                      style: AppTextStyles.caption.copyWith(
+                        color: combinedStats.yetarsayIsGood
+                            ? Colors.green
+                            : Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ],
               ),

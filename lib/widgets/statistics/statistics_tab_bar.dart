@@ -6,12 +6,19 @@ import '../../design/app_colors.dart';
 class StatisticsTabBar extends StatelessWidget {
   final StatisticsPeopleType currentType;
   final Function(StatisticsPeopleType) onTypeChanged;
+  final bool isAdmin;
 
   const StatisticsTabBar({
     Key? key,
     required this.currentType,
     required this.onTypeChanged,
+    this.isAdmin = false,
   }) : super(key: key);
+
+  /// Получает доступные типы табов в зависимости от роли пользователя
+  List<StatisticsPeopleType> _getAvailableTypes() {
+    return StatisticsPeopleType.values;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +38,7 @@ class StatisticsTabBar extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Row(
-          children: StatisticsPeopleType.values
+          children: _getAvailableTypes()
               .map((type) => _buildTabButton(type))
               .toList(),
         ),

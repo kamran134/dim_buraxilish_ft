@@ -11,6 +11,7 @@ class ExamStatisticsDto {
   final int? regWomanCount;
   final int? supervisorCount;
   final int? regSupervisorCount;
+  final int? hallCount;
 
   ExamStatisticsDto({
     this.kodBina,
@@ -24,6 +25,7 @@ class ExamStatisticsDto {
     this.regWomanCount,
     this.supervisorCount,
     this.regSupervisorCount,
+    this.hallCount,
   });
 
   factory ExamStatisticsDto.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class ExamStatisticsDto {
       regWomanCount: json['regWomanCount'] as int?,
       supervisorCount: json['supervisorCount'] as int?,
       regSupervisorCount: json['regSupervisorCount'] as int?,
+      hallCount: json['hallCount'] as int?,
     );
   }
 
@@ -47,6 +50,37 @@ class ExamStatisticsDto {
   int get registeredParticipants => (regManCount ?? 0) + (regWomanCount ?? 0);
   int get unregisteredParticipants =>
       totalParticipants - registeredParticipants;
+
+  // Новые свойства для расчета Yetərsay
+  /// Проверяет, достаточно ли супервизоров для залов
+  bool get hasEnoughSupervisors {
+    if (hallCount == null || regSupervisorCount == null) return true;
+    return regSupervisorCount! >= hallCount!;
+  }
+
+  /// Возвращает разность между зарегистрированными супервизорами и количеством залов
+  int get supervisorDifference {
+    if (hallCount == null || regSupervisorCount == null) return 0;
+    return regSupervisorCount! - hallCount!;
+  }
+
+  /// Возвращает статус Yetərsay как строку
+  String get yetarsayStatus {
+    if (hallCount == null || regSupervisorCount == null) {
+      return 'Məlumat yoxdur';
+    }
+
+    final difference = supervisorDifference;
+
+    if (difference >= 0) {
+      return difference == 0 ? 'Yetərsay var' : 'Yetərsay var (+$difference)';
+    } else {
+      return 'Yetərsay yoxdur ($difference)';
+    }
+  }
+
+  /// Возвращает цвет для отображения статуса Yetərsay
+  bool get yetarsayIsGood => hasEnoughSupervisors;
 
   Map<String, dynamic> toJson() {
     return {
@@ -61,11 +95,12 @@ class ExamStatisticsDto {
       'regWomanCount': regWomanCount,
       'supervisorCount': supervisorCount,
       'regSupervisorCount': regSupervisorCount,
+      'hallCount': hallCount,
     };
   }
 
   @override
   String toString() {
-    return 'ExamStatisticsDto{kodBina: $kodBina, adBina: $adBina, totalParticipants: $totalParticipants, registeredParticipants: $registeredParticipants, allManCount: $allManCount, regManCount: $regManCount, allWomanCount: $allWomanCount, regWomanCount: $regWomanCount, supervisorCount: $supervisorCount, regSupervisorCount: $regSupervisorCount}';
+    return 'ExamStatisticsDto{kodBina: $kodBina, adBina: $adBina, totalParticipants: $totalParticipants, registeredParticipants: $registeredParticipants, allManCount: $allManCount, regManCount: $regManCount, allWomanCount: $allWomanCount, regWomanCount: $regWomanCount, supervisorCount: $supervisorCount, regSupervisorCount: $regSupervisorCount, hallCount: $hallCount, yetarsayStatus: $yetarsayStatus}';
   }
 }

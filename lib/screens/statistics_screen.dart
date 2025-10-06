@@ -139,12 +139,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       body: Column(
         children: [
           // Табы
-          StatisticsTabBar(
-            currentType: _currentType,
-            onTypeChanged: (type) {
-              setState(() {
-                _currentType = type;
-              });
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return StatisticsTabBar(
+                currentType: _currentType,
+                onTypeChanged: (type) {
+                  setState(() {
+                    _currentType = type;
+                  });
+                },
+                isAdmin: authProvider.isAdmin || authProvider.isSuperAdmin,
+              );
             },
           ),
 
