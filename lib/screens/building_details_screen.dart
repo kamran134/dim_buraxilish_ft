@@ -29,7 +29,8 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
   List<SupervisorDetailDto> _supervisors = [];
   bool _isLoadingParticipants = false;
   bool _isLoadingSupervisors = false;
-  String? _errorMessage;
+  String? _participantsError;
+  String? _supervisorsError;
 
   @override
   void initState() {
@@ -54,12 +55,22 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
   Future<void> _loadParticipants() async {
     setState(() {
       _isLoadingParticipants = true;
-      _errorMessage = null;
+      _participantsError = null;
     });
 
     try {
+      // Проверяем параметры перед запросом
+      final buildingCode = widget.building.kodBina ?? '';
+      print('DEBUG BuildingDetails: Loading participants');
+      print('DEBUG BuildingDetails: buildingCode = "$buildingCode"');
+      print('DEBUG BuildingDetails: examDate = "${widget.examDate}"');
+
+      if (buildingCode.isEmpty) {
+        throw Exception('Kod bina boşdur');
+      }
+
       final result = await _statisticsService.getAllParticipantsInBuilding(
-        widget.building.kodBina ?? '',
+        buildingCode,
         widget.examDate,
       );
 
@@ -69,12 +80,12 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
         });
       } else {
         setState(() {
-          _errorMessage = result.message;
+          _participantsError = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Xəta baş verdi: $e';
+        _participantsError = 'Xəta baş verdi: $e';
       });
     } finally {
       setState(() {
@@ -86,12 +97,22 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
   Future<void> _loadSupervisors() async {
     setState(() {
       _isLoadingSupervisors = true;
-      _errorMessage = null;
+      _supervisorsError = null;
     });
 
     try {
+      // Проверяем параметры перед запросом
+      final buildingCode = widget.building.kodBina ?? '';
+      print('DEBUG BuildingDetails: Loading supervisors');
+      print('DEBUG BuildingDetails: buildingCode = "$buildingCode"');
+      print('DEBUG BuildingDetails: examDate = "${widget.examDate}"');
+
+      if (buildingCode.isEmpty) {
+        throw Exception('Kod bina boşdur');
+      }
+
       final result = await _statisticsService.getAllSupervisorsInBuilding(
-        widget.building.kodBina ?? '',
+        buildingCode,
         widget.examDate,
       );
 
@@ -101,12 +122,12 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
         });
       } else {
         setState(() {
-          _errorMessage = result.message;
+          _supervisorsError = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Xəta baş verdi: $e';
+        _supervisorsError = 'Xəta baş verdi: $e';
       });
     } finally {
       setState(() {
@@ -177,8 +198,8 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
       );
     }
 
-    if (_errorMessage != null) {
-      return _buildErrorWidget(_errorMessage!, _loadParticipants);
+    if (_participantsError != null) {
+      return _buildErrorWidget(_participantsError!, _loadParticipants);
     }
 
     if (_participants.isEmpty) {
@@ -207,8 +228,8 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
       );
     }
 
-    if (_errorMessage != null) {
-      return _buildErrorWidget(_errorMessage!, _loadSupervisors);
+    if (_supervisorsError != null) {
+      return _buildErrorWidget(_supervisorsError!, _loadSupervisors);
     }
 
     if (_supervisors.isEmpty) {

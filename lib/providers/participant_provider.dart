@@ -16,6 +16,7 @@ class ParticipantProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isOnlineMode = true;
   bool _isRepeatEntry = false;
+  bool _isScanning = false; // Флаг для предотвращения дублирования запросов
 
   // Reference to OfflineDatabaseProvider
   OfflineDatabaseProvider? _offlineDatabaseProvider;
@@ -65,6 +66,14 @@ class ParticipantProvider with ChangeNotifier {
   // Change screen state
   void setScreenState(ParticipantScreenState state) {
     _screenState = state;
+
+    // Если переходим в режим сканирования, очищаем предыдущие данные
+    if (state == ParticipantScreenState.scanning) {
+      _currentParticipant = null;
+      _isRepeatEntry = false;
+      clearMessages();
+    }
+
     notifyListeners();
   }
 
@@ -233,6 +242,19 @@ class ParticipantProvider with ChangeNotifier {
 
   // Scan participant by QR code
   Future<void> scanParticipant(String qrCode) async {
+    // Предотвращаем дублирование запросов
+    if (_isScanning) {
+      print(
+          'DEBUG: Игнорируем повторный скан, так как предыдущий запрос еще выполняется');
+      return;
+    }
+
+    // Принудительно очищаем старые данные перед новым сканированием
+    _currentParticipant = null;
+    _isRepeatEntry = false;
+    notifyListeners();
+
+    _isScanning = true;
     _setLoading(true);
     clearMessages();
 
@@ -246,6 +268,7 @@ class ParticipantProvider with ChangeNotifier {
       _setError('Skan zamanı xəta baş verdi');
       _screenState = ParticipantScreenState.error;
     } finally {
+      _isScanning = false; // Освобождаем флаг
       _setLoading(false);
       notifyListeners();
     }
@@ -389,12 +412,19 @@ class ParticipantProvider with ChangeNotifier {
     _screenState = ParticipantScreenState.initial;
     _currentParticipant = null;
     _isRepeatEntry = false;
+    _isScanning = false; // Сбрасываем флаг сканирования
     clearMessages();
     notifyListeners();
   }
 
   // Go to next participant
   void nextParticipant() {
-    reset();
+    // Очищаем все данные и переходим к сканированию
+    _screenState = ParticipantScreenState.scanning;
+    _currentParticipant = null;
+    _isRepeatEntry = false;
+    _isScanning = false;
+    clearMessages();
+    notifyListeners();
   }
 }

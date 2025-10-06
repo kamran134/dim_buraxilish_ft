@@ -26,6 +26,7 @@ class SupervisorProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isOnlineMode = true;
   bool _isRepeatEntry = false;
+  bool _isScanning = false; // Флаг для предотвращения дублирования запросов
 
   // Reference to OfflineDatabaseProvider
   OfflineDatabaseProvider? _offlineDatabaseProvider;
@@ -85,6 +86,15 @@ class SupervisorProvider with ChangeNotifier {
   // Change screen state
   void setScreenState(SupervisorScreenState state) {
     _screenState = state;
+
+    // Если переходим в режим сканирования, очищаем предыдущие данные
+    if (state == SupervisorScreenState.scanning) {
+      _currentSupervisor = null;
+      _isRepeatEntry = false;
+      _supervisorMessage = null;
+      clearMessages();
+    }
+
     notifyListeners();
   }
 
@@ -210,6 +220,20 @@ class SupervisorProvider with ChangeNotifier {
 
   // Scan supervisor QR code and get supervisor info
   Future<void> scanSupervisor(String qrCode) async {
+    // Предотвращаем дублирование запросов
+    if (_isScanning) {
+      print(
+          'DEBUG: Игнорируем повторный скан наблюдателя, так как предыдущий запрос еще выполняется');
+      return;
+    }
+
+    // Принудительно очищаем старые данные перед новым сканированием
+    _currentSupervisor = null;
+    _isRepeatEntry = false;
+    _supervisorMessage = null;
+    notifyListeners();
+
+    _isScanning = true;
     _setLoading(true);
     clearMessages();
     setScreenState(SupervisorScreenState.scanning);
@@ -219,6 +243,7 @@ class SupervisorProvider with ChangeNotifier {
       final token = await _httpService.getToken();
       if (token == null) {
         print('No JWT token found, redirecting to login');
+        _isScanning = false; // Освобождаем флаг
         _setLoading(false);
         _onAuthenticationError?.call();
         return;
@@ -229,6 +254,7 @@ class SupervisorProvider with ChangeNotifier {
       if (examDetails == null) {
         _setError('İmtahan məlumatları tapılmadı');
         setScreenState(SupervisorScreenState.error);
+        _isScanning = false; // Освобождаем флаг
         _setLoading(false);
         return;
       }
@@ -286,9 +312,10 @@ class SupervisorProvider with ChangeNotifier {
       print('Error scanning supervisor: $e');
       _setError('QR kod oxunarkən xəta baş verdi');
       setScreenState(SupervisorScreenState.error);
+    } finally {
+      _isScanning = false; // Освобождаем флаг в любом случае
+      _setLoading(false);
     }
-
-    _setLoading(false);
   }
 
   // Reset to initial state (for next scan)
@@ -296,6 +323,7 @@ class SupervisorProvider with ChangeNotifier {
     _screenState = SupervisorScreenState.initial;
     _currentSupervisor = null;
     _isRepeatEntry = false;
+    _isScanning = false; // Сбрасываем флаг сканирования
     clearMessages();
     notifyListeners();
   }
@@ -351,15 +379,26 @@ class SupervisorProvider with ChangeNotifier {
 
   // Handle next button press (reset and prepare for next scan)
   void handleNextButton() {
-    resetToInitial();
-    setScreenState(SupervisorScreenState.scanning);
+    // Очищаем все данные и переходим к сканированию
+    _screenState = SupervisorScreenState.scanning;
+    _currentSupervisor = null;
+    _isRepeatEntry = false;
+    _isScanning = false;
+    _supervisorMessage = null;
+    clearMessages();
+    notifyListeners();
   }
 
   // Handle scan button press
   void handleScanButton() {
-    clearSupervisorInfo();
+    // Очищаем все данные и переходим к сканированию
+    _screenState = SupervisorScreenState.scanning;
+    _currentSupervisor = null;
+    _isRepeatEntry = false;
+    _isScanning = false;
+    _supervisorMessage = null;
     clearMessages();
-    setScreenState(SupervisorScreenState.scanning);
+    notifyListeners();
   }
 
   // Handle error and prepare for next scan

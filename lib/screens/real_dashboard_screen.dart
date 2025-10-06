@@ -888,6 +888,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   void _navigateToBuildingDetails(ExamDetailsDto building) {
+    print('DEBUG Navigation: examDate = "${_selectedExamDate!}"');
+    print('DEBUG Navigation: buildingCode = "${building.kodBina}"');
+
     Navigator.push(
       context,
       MaterialPageRoute(

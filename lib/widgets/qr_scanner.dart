@@ -26,6 +26,9 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
   late Animation<double> _fadeAnimation;
 
   bool _isFlashOn = false;
+  bool _isProcessing =
+      false; // Флаг для предотвращения дублирования сканирования
+  DateTime? _lastScanTime; // Время последнего скана для debouncing
 
   @override
   void initState() {
@@ -62,14 +65,35 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
   }
 
   void _onDetect(BarcodeCapture barcodeCapture) {
+    // Предотвращаем дублирование сканирования
+    if (_isProcessing) {
+      return;
+    }
+
+    final now = DateTime.now();
+    // Debouncing: игнорируем сканы чаще чем каждые 2 секунды
+    if (_lastScanTime != null && now.difference(_lastScanTime!).inSeconds < 2) {
+      return;
+    }
+
     final List<Barcode> barcodes = barcodeCapture.barcodes;
     if (barcodes.isNotEmpty) {
       final barcode = barcodes.first;
       final String? code = barcode.rawValue;
 
       if (code != null && code.isNotEmpty) {
+        _isProcessing = true;
+        _lastScanTime = now;
+
         HapticFeedback.mediumImpact();
         widget.onScan(code);
+
+        // Освобождаем флаг через 3 секунды
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            _isProcessing = false;
+          }
+        });
       }
     }
   }

@@ -252,9 +252,7 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                           : Colors.green,
                       actionButton: ActionButton.next(
                         onPressed: () {
-                          provider.reset();
-                          provider
-                              .setScreenState(ParticipantScreenState.scanning);
+                          provider.nextParticipant();
                         },
                       ),
                       details: [

@@ -236,14 +236,26 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
+      // Отладочные логи
+      print('DEBUG: getAllParticipantsInBuilding called');
+      print('DEBUG: bina = "$bina"');
+      print('DEBUG: examDate = "$examDate"');
+      print('DEBUG: token exists = ${token != null}');
+
+      final url =
+          '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate';
+      print('DEBUG: Request URL = $url');
+
       final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+
+      print('DEBUG: Response status = ${response.statusCode}');
+      print('DEBUG: Response body = ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -282,14 +294,35 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
+      // Отладочные логи
+      print('DEBUG: getAllSupervisorsInBuilding called');
+      print('DEBUG: buildingCode = "$buildingCode"');
+      print('DEBUG: examDate = "$examDate"');
+      print('DEBUG: token exists = ${token != null}');
+
+      // Преобразуем buildingCode в число (Angular ожидает number)
+      final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
+      print('DEBUG: buildingCodeNum = $buildingCodeNum');
+
+      // Преобразуем дату в формат MM/DD/yyyy как делает Angular
+      final formattedExamDate = _convertToMMDDYYYY(examDate);
+      print('DEBUG: examDate (original) = $examDate');
+      print('DEBUG: examDate (formatted) = $formattedExamDate');
+
+      final url =
+          '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCodeNum&examDate=$formattedExamDate';
+      print('DEBUG: Request URL = $url');
+
       final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCode&examDate=$examDate'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+
+      print('DEBUG: Response status = ${response.statusCode}');
+      print('DEBUG: Response body = ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -320,6 +353,71 @@ class StatisticsService {
         message: 'Şəbəkə xətası: $e',
       );
     }
+  }
+
+  /// Преобразует дату из азербайджанского формата в MM/DD/yyyy
+  /// Копирует логику из Angular HelperService.convertToDate()
+  String _convertToMMDDYYYY(String examDate) {
+    // Если дата уже в правильном формате, возвращаем как есть
+    if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(examDate)) {
+      return examDate;
+    }
+
+    // Разбираем азербайджанскую дату: "5 oktyabr 2025-ci il"
+    final parts = examDate.split(' ');
+    if (parts.length < 3) {
+      return examDate; // Если формат не подходит, возвращаем как есть
+    }
+
+    final day = parts[0].padLeft(2, '0'); // Добавляем ведущий ноль если нужно
+    final monthName = parts[1].toLowerCase();
+    final year = parts[2].replaceAll(RegExp(r'[^\d]'), ''); // Убираем "-ci il"
+
+    // Преобразуем названия месяцев в номера (копируем логику Angular)
+    String month;
+    switch (monthName) {
+      case 'yanvar':
+        month = '01';
+        break;
+      case 'fevral':
+        month = '02';
+        break;
+      case 'mart':
+        month = '03';
+        break;
+      case 'aprel':
+        month = '04';
+        break;
+      case 'may':
+        month = '05';
+        break;
+      case 'iyun':
+        month = '06';
+        break;
+      case 'iyul':
+        month = '07';
+        break;
+      case 'avqust':
+        month = '08';
+        break;
+      case 'sentyabr':
+        month = '09';
+        break;
+      case 'oktyabr':
+        month = '10';
+        break;
+      case 'noyabr':
+        month = '11';
+        break;
+      case 'dekabr':
+        month = '12';
+        break;
+      default:
+        return examDate; // Если месяц неизвестен, возвращаем как есть
+    }
+
+    // Возвращаем в формате MM/DD/yyyy
+    return '$month/$day/$year';
   }
 }
 
