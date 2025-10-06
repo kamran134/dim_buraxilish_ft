@@ -481,7 +481,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'Ümumi Statistika',
+                'Ümumi statistika',
                 style: AppTextStyles.h3.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
@@ -496,23 +496,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               _getRegisteredSupervisors(), AppColors.successGreen),
           _buildStatisticRow('Qeydiyyatdan keçməyən nəzarətçi',
               _getUnregisteredSupervisors(), AppColors.errorRed),
+          const SizedBox(height: 16),
+          _buildProgressBar(
+              'Qeydiyyat faizi', _getSupervisorRegistrationRate()),
           const Divider(height: 32),
           _buildStatisticRow('Ümumi iştirakçı', examSum.totalParticipants,
               AppColors.primaryBlue),
-          _buildStatisticRow(
-              'Kişi', examSum.allManCount, AppColors.statisticsBlue),
-          _buildStatisticRow(
-              'Qadın', examSum.allWomanCount, AppColors.lightBlue),
-          const Divider(height: 32),
-          _buildStatisticRow('Qeydiyyatdan keçən', examSum.totalRegistered,
-              AppColors.successGreen),
-          _buildStatisticRow(
-              'Kişi (qeydiyyat)', examSum.regManCount, AppColors.successGreen),
-          _buildStatisticRow('Qadın (qeydiyyat)', examSum.regWomanCount,
-              AppColors.successGreen),
-          const Divider(height: 32),
-          _buildStatisticRow('Qeydiyyatdan keçməyən', examSum.totalUnregistered,
-              AppColors.errorRed),
+          _buildStatisticRow('Qeydiyyatdan keçən iştirakçı',
+              examSum.totalRegistered, AppColors.successGreen),
+          _buildStatisticRow('Qeydiyyatdan keçməyən iştirakçı',
+              examSum.totalUnregistered, AppColors.errorRed),
           const SizedBox(height: 16),
           _buildProgressBar('Qeydiyyat faizi', examSum.registrationRate),
         ],
@@ -586,6 +579,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       return const SizedBox.shrink();
     }
 
+    final totalBuildings = _dashboardStats!.examDetails.length;
+    final problematicCount = _getProblematicBuildingsCount();
+    final excellentCount = _getExcellentBuildingsCount();
+    final problematicBuildings = _getProblematicBuildings();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -620,29 +618,117 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             ],
           ),
           const SizedBox(height: 20),
-          ..._dashboardStats!.examDetails
-              .take(5)
-              .map((building) => _buildBuildingStatItem(building)),
-          if (_dashboardStats!.examDetails.length > 5)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BuildingsStatisticsScreen(
-                          initialExamDate: _selectedExamDate,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Text(
-                      'Hamısını gör (${_dashboardStats!.examDetails.length})'),
+
+          // Краткая сводка
+          Row(
+            children: [
+              Expanded(
+                child: _buildBuildingSummaryCard(
+                  'Ümumi',
+                  totalBuildings.toString(),
+                  AppColors.primaryBlue,
+                  Icons.apartment,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBuildingSummaryCard(
+                  'Problemli',
+                  problematicCount.toString(),
+                  AppColors.errorRed,
+                  Icons.warning_amber,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBuildingSummaryCard(
+                  'Əla',
+                  excellentCount.toString(),
+                  AppColors.successGreen,
+                  Icons.check_circle,
+                ),
+              ),
+            ],
+          ),
+
+          // Проблемные здания (если есть)
+          if (problematicBuildings.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(Icons.warning, color: AppColors.errorRed, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Diqqət tələb edən binalar',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.errorRed,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...problematicBuildings
+                .take(3)
+                .map((building) => _buildBuildingStatItem(building)),
+          ],
+
+          // Кнопка "Подробная статистика"
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BuildingsStatisticsScreen(
+                      initialExamDate: _selectedExamDate,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.analytics),
+              label: Text('Ətraflı statistika ($totalBuildings bina)'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBuildingSummaryCard(
+      String title, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTextStyles.h2.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            title,
+            style: AppTextStyles.caption.copyWith(color: color),
+          ),
         ],
       ),
     );
@@ -813,7 +899,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             children: [
               Expanded(
                 child: _buildQuickActionButton(
-                  'İştirakçıları\nGör',
+                  'İştirakçılar\nüzrə',
                   Icons.school,
                   AppColors.participantGradient,
                   () => _navigateToParticipants(),
@@ -822,7 +908,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildQuickActionButton(
-                  'Binalar\nGör',
+                  'Binalar\nüzrə',
                   Icons.apartment,
                   AppColors.blueGradient,
                   () => _navigateToBuildings(),
@@ -916,12 +1002,104 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     return _getTotalSupervisors() - _getRegisteredSupervisors();
   }
 
+  double _getSupervisorRegistrationRate() {
+    final total = _getTotalSupervisors();
+    if (total == 0) return 0.0;
+    final registered = _getRegisteredSupervisors();
+    return (registered / total) * 100;
+  }
+
+  // Методы для анализа зданий
+  int _getProblematicBuildingsCount() {
+    if (_examStatistics.isEmpty || _dashboardStats?.examDetails == null)
+      return 0;
+
+    int count = 0;
+    for (final building in _dashboardStats!.examDetails) {
+      final combinedStats = _examStatistics.firstWhere(
+        (stat) => stat.kodBina == building.kodBina,
+        orElse: () => ExamStatisticsDto(
+            kodBina: building.kodBina,
+            supervisorCount: 0,
+            regSupervisorCount: 0,
+            hallCount: 0),
+      );
+
+      // Здание проблематичное если:
+      // 1. Низкий процент регистрации участников (<85%)
+      // 2. Проблемы с Yetərsay (недостаток супервайзеров)
+      if (building.registrationRate < 85.0 || !combinedStats.yetarsayIsGood) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  int _getExcellentBuildingsCount() {
+    if (_examStatistics.isEmpty || _dashboardStats?.examDetails == null)
+      return 0;
+
+    int count = 0;
+    for (final building in _dashboardStats!.examDetails) {
+      final combinedStats = _examStatistics.firstWhere(
+        (stat) => stat.kodBina == building.kodBina,
+        orElse: () => ExamStatisticsDto(
+            kodBina: building.kodBina,
+            supervisorCount: 0,
+            regSupervisorCount: 0,
+            hallCount: 0),
+      );
+
+      // Здание отличное если:
+      // 1. Высокий процент регистрации участников (>=95%)
+      // 2. Нет проблем с Yetərsay
+      if (building.registrationRate >= 95.0 && combinedStats.yetarsayIsGood) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  List<ExamDetailsDto> _getProblematicBuildings() {
+    if (_examStatistics.isEmpty || _dashboardStats?.examDetails == null)
+      return [];
+
+    final problematicBuildings = <ExamDetailsDto>[];
+    for (final building in _dashboardStats!.examDetails) {
+      final combinedStats = _examStatistics.firstWhere(
+        (stat) => stat.kodBina == building.kodBina,
+        orElse: () => ExamStatisticsDto(
+            kodBina: building.kodBina,
+            supervisorCount: 0,
+            regSupervisorCount: 0,
+            hallCount: 0),
+      );
+
+      if (building.registrationRate < 85.0 || !combinedStats.yetarsayIsGood) {
+        problematicBuildings.add(building);
+      }
+    }
+
+    // Сортируем по убыванию проблематичности (сначала самые плохие)
+    problematicBuildings
+        .sort((a, b) => a.registrationRate.compareTo(b.registrationRate));
+
+    return problematicBuildings;
+  }
+
   void _navigateToParticipants() {
     // Навигация к участникам
   }
 
   void _navigateToBuildings() {
-    // Навигация к зданиям
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BuildingsStatisticsScreen(
+          initialExamDate: _selectedExamDate,
+        ),
+      ),
+    );
   }
 
   void _navigateToBuildingDetails(ExamDetailsDto building) {
