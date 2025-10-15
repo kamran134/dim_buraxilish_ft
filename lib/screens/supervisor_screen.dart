@@ -9,6 +9,8 @@ import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'participant_screen.dart';
 import 'statistics_screen.dart';
+import 'protocol_notes_screen.dart';
+import 'protocol_reports_screen.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 
@@ -480,6 +482,31 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                 builder: (context) => const StatisticsScreen(),
               ),
             );
+          },
+        ),
+        BottomNavItem(
+          icon: Icons.assignment,
+          label: 'Protokollar',
+          isSelected: false,
+          onTap: () {
+            final authProvider =
+                Provider.of<AuthProvider>(context, listen: false);
+            final userRole = authProvider.currentUserRole;
+
+            // Мониторы идут к добавлению заметок, админы к просмотру отчетов
+            if (userRole == 'monitor') {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProtocolNotesScreen(),
+                ),
+              );
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProtocolReportsScreen(),
+                ),
+              );
+            }
           },
         ),
       ],

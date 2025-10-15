@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../screens/supervisor_screen.dart';
 import '../screens/participant_screen.dart';
 import '../screens/unsent_data_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/statistics_screen.dart';
 import '../screens/offline_database_screen.dart';
+import '../screens/protocol_notes_screen.dart';
+import '../screens/protocol_reports_screen.dart';
 import 'common/base_drawer.dart';
 
 /// Drawer для мониторов
@@ -14,6 +18,9 @@ class MonitorDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAdmin = authProvider.isAdmin || authProvider.isSuperAdmin;
+
     final List<DrawerMenuItem> monitorMenuItems = [
       DrawerMenuItem(
         icon: Icons.home,
@@ -54,6 +61,24 @@ class MonitorDrawer extends StatelessWidget {
           _navigateToStatisticsScreen(context);
         },
       ),
+      DrawerMenuItem(
+        icon: Icons.assignment,
+        title: 'Protokol qeydləri',
+        onTap: () {
+          Navigator.pop(context);
+          _navigateToProtocolNotesScreen(context);
+        },
+      ),
+      // Показываем "Protokol hesabatları" только для админов и супер-админов
+      if (isAdmin)
+        DrawerMenuItem(
+          icon: Icons.assessment,
+          title: 'Protokol hesabatları',
+          onTap: () {
+            Navigator.pop(context);
+            _navigateToProtocolReportsScreen(context);
+          },
+        ),
       DrawerMenuItem(
         icon: Icons.storage,
         title: 'Oflayn baza',
@@ -123,6 +148,22 @@ class MonitorDrawer extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const OfflineDatabaseScreen(),
+      ),
+    );
+  }
+
+  void _navigateToProtocolNotesScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProtocolNotesScreen(),
+      ),
+    );
+  }
+
+  void _navigateToProtocolReportsScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProtocolReportsScreen(),
       ),
     );
   }

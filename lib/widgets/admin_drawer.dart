@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/settings_screen.dart';
 import '../screens/statistics_screen.dart';
+import '../screens/protocol_reports_screen.dart';
 import 'common/base_drawer.dart';
 
 /// Drawer для администраторов
@@ -16,6 +17,14 @@ class AdminDrawer extends StatelessWidget {
         title: 'Əsas',
         onTap: () {
           Navigator.pop(context);
+        },
+      ),
+      DrawerMenuItem(
+        icon: Icons.assessment,
+        title: 'Protokol hesabatları',
+        onTap: () {
+          Navigator.pop(context);
+          _navigateToProtocolReportsScreen(context);
         },
       ),
       DrawerMenuItem(
@@ -55,6 +64,14 @@ class AdminDrawer extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const StatisticsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToProtocolReportsScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProtocolReportsScreen(),
       ),
     );
   }

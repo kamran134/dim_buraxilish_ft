@@ -123,4 +123,134 @@ class DateFormatter {
       return usDate;
     }
   }
+
+  /// Map of Azerbaijani month names to numbers
+  static const Map<String, int> _azerbaijaniMonths = {
+    'yanvar': 1,
+    'fevral': 2,
+    'mart': 3,
+    'aprel': 4,
+    'may': 5,
+    'iyun': 6,
+    'iyul': 7,
+    'avqust': 8,
+    'sentyabr': 9,
+    'oktyabr': 10,
+    'noyabr': 11,
+    'dekabr': 12,
+  };
+
+  /// Parse Azerbaijani date string to DateTime
+  /// Example: "10 oktyabr 2025-ci il" -> DateTime(2025, 10, 10)
+  static DateTime? parseAzerbaijaniDate(String azDate) {
+    try {
+      print('🔄 Parsing Azerbaijani date: "$azDate"');
+
+      // Remove common suffixes and clean the string
+      String cleanDate = azDate
+          .replaceAll('-ci il', '')
+          .replaceAll('-cü il', '')
+          .replaceAll('-cu il', '')
+          .replaceAll('-cı il', '')
+          .trim();
+
+      final parts = cleanDate.split(' ');
+      if (parts.length < 3) {
+        print(
+            '❌ Invalid date format: Expected at least 3 parts, got ${parts.length}');
+        return null;
+      }
+
+      // Parse day
+      final dayStr = parts[0];
+      final day = int.tryParse(dayStr);
+      if (day == null || day < 1 || day > 31) {
+        print('❌ Invalid day: "$dayStr"');
+        return null;
+      }
+
+      // Parse month
+      final monthName = parts[1].toLowerCase();
+      final month = _azerbaijaniMonths[monthName];
+      if (month == null) {
+        print('❌ Invalid month: "$monthName"');
+        print('   Available months: ${_azerbaijaniMonths.keys.join(', ')}');
+        return null;
+      }
+
+      // Parse year
+      final yearStr = parts[2];
+      final year = int.tryParse(yearStr);
+      if (year == null || year < 1900 || year > 2100) {
+        print('❌ Invalid year: "$yearStr"');
+        return null;
+      }
+
+      final result = DateTime(year, month, day);
+      print('✅ Successfully parsed: $azDate -> $result');
+      return result;
+    } catch (e) {
+      print('❌ Error parsing Azerbaijani date "$azDate": $e');
+      return null;
+    }
+  }
+
+  /// Convert Azerbaijani date to ISO string (for API calls)
+  /// Example: "10 oktyabr 2025-ci il" -> "2025-10-10T00:00:00.000Z"
+  static String? azerbaijaniDateToISO(String azDate) {
+    final date = parseAzerbaijaniDate(azDate);
+    if (date == null) return null;
+
+    // Return ISO string for date only (no time component)
+    final isoString = '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}T00:00:00.000Z';
+
+    print('🔄 Converted to ISO: "$azDate" -> "$isoString"');
+    return isoString;
+  }
+
+  /// Convert Azerbaijani date to ISO date only (YYYY-MM-DD)
+  /// Example: "10 oktyabr 2025-ci il" -> "2025-10-10"
+  static String? azerbaijaniDateToISODateOnly(String azDate) {
+    final date = parseAzerbaijaniDate(azDate);
+    if (date == null) return null;
+
+    final isoDate = '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+
+    print('🔄 Converted to ISO date: "$azDate" -> "$isoDate"');
+    return isoDate;
+  }
+
+  /// Format DateTime to Azerbaijani locale string
+  /// Example: DateTime(2025, 10, 10, 14, 30) -> "10.10.2025 14:30"
+  static String formatDateTimeToAz(DateTime dateTime) {
+    return '${dateTime.day.toString().padLeft(2, '0')}.'
+        '${dateTime.month.toString().padLeft(2, '0')}.'
+        '${dateTime.year} '
+        '${dateTime.hour.toString().padLeft(2, '0')}:'
+        '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Format DateTime to Azerbaijani date only
+  /// Example: DateTime(2025, 10, 10) -> "10.10.2025"
+  static String formatDateToAz(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
+  /// Parse ISO date string to formatted Azerbaijani date
+  /// Example: "2025-10-10T14:30:00.000Z" -> "10.10.2025 14:30"
+  static String formatISOToAz(String isoString) {
+    try {
+      final date = DateTime.parse(isoString);
+      return formatDateTimeToAz(date);
+    } catch (e) {
+      print('❌ Error parsing ISO date "$isoString": $e');
+      return isoString;
+    }
+  }
 }
