@@ -4,7 +4,7 @@
 /// Author: GitHub Copilot
 /// Date: 2025-10-13
 
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/protocol_models.dart';
 import '../utils/date_formatter.dart';
@@ -49,26 +49,34 @@ class ProtocolService {
   /// Get note types for dropdowns
   Future<NoteTypesResponse> getNoteTypes() async {
     try {
-      print('📝 ProtocolService.getNoteTypes() - Fetching note types');
+      if (kDebugMode) {
+        debugPrint('[Protocol] Fetching note types');
+      }
 
       final response = await _dio.get('/notetypes');
 
-      print('✅ Note types response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Data: ${response.data}');
+      if (kDebugMode) {
+        debugPrint('[Protocol] Note types received: ${response.data}');
+      }
 
       final noteTypesResponse = NoteTypesResponse.fromJson(response.data);
 
-      print('📊 Parsed note types: ${noteTypesResponse.data?.length ?? 0}');
+      if (kDebugMode) {
+        debugPrint(
+            '[Protocol] Parsed ${noteTypesResponse.data?.length ?? 0} note types');
+      }
 
       return noteTypesResponse;
     } catch (e) {
-      print('❌ Error fetching note types: $e');
+      if (kDebugMode) {
+        debugPrint('[Protocol] Error fetching note types: $e');
+        if (e is DioException) {
+          debugPrint('[Protocol] Status: ${e.response?.statusCode}');
+          debugPrint('[Protocol] Message: ${e.response?.data}');
+        }
+      }
 
       if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-
         return NoteTypesResponse(
           success: false,
           message: e.response?.data?['message'] ?? 'Qeyd növləri yüklənmədi',
@@ -85,8 +93,9 @@ class ProtocolService {
   /// Get protocol notes for monitors (filtered by exam date)
   Future<List<ProtocolNote>> getMyProtocolNotes({String? examDate}) async {
     try {
-      print('📝 ProtocolService.getMyProtocolNotes()');
-      print('   examDate: $examDate');
+      if (kDebugMode) {
+        debugPrint('[Protocol] Getting my protocol notes, examDate: $examDate');
+      }
 
       String url = '/protocols/my-notes';
 
@@ -96,7 +105,9 @@ class ProtocolService {
         final isoDate = DateFormatter.azerbaijaniDateToISO(examDate);
         if (isoDate != null) {
           url += '?examDate=${Uri.encodeComponent(isoDate)}';
-          print('   Filtered URL: $url');
+          if (kDebugMode) {
+            debugPrint('[Protocol] Filtered URL: $url');
+          }
         }
       }
 

@@ -43,6 +43,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Keystore files
+/android/key.properties
+/android/upload-keystore.jks
+
+
 # Java memory dump files
 *.hprof
 java_pid*.hprof

@@ -4,7 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'manual_input_dialog.dart';
 
 class QRScannerWidget extends StatefulWidget {
-  final Function(String) onScan;
+  final Future<void> Function(String) onScan;
   final VoidCallback onClose;
   final String? scannerType; // 'participant' or 'supervisor'
 
@@ -21,19 +21,18 @@ class QRScannerWidget extends StatefulWidget {
 
 class _QRScannerWidgetState extends State<QRScannerWidget>
     with TickerProviderStateMixin {
-  late MobileScannerController controller;
+  MobileScannerController? controller;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
   bool _isFlashOn = false;
-  bool _isProcessing =
-      false; // Флаг для предотвращения дублирования сканирования
-  DateTime? _lastScanTime; // Время последнего скана для debouncing
+  bool _isProcessing = false;
+  DateTime? _lastScanTime;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    controller = MobileScannerController();
 
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -48,25 +47,65 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
     ));
 
     _fadeController.forward();
+    _initializeScanner();
+  }
+
+  Future<void> _initializeScanner() async {
+    try {
+      controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Kamera başlatıla bilmədi. Zəhmət olmasa icazələri yoxlayın.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            widget.onClose();
+          }
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    controller?.dispose();
     _fadeController.dispose();
     super.dispose();
   }
 
-  void _toggleFlash() async {
-    await controller.toggleTorch();
-    setState(() {
-      _isFlashOn = !_isFlashOn;
-    });
+  Future<void> _toggleFlash() async {
+    if (controller == null || !_isInitialized) return;
+    try {
+      await controller!.toggleTorch();
+      if (mounted) {
+        setState(() {
+          _isFlashOn = !_isFlashOn;
+        });
+      }
+    } catch (e) {
+      // Torch might not be available on all devices
+    }
   }
 
-  void _onDetect(BarcodeCapture barcodeCapture) {
+  void _onDetect(BarcodeCapture barcodeCapture) async {
     // Предотвращаем дублирование сканирования
-    if (_isProcessing) {
+    if (_isProcessing || !mounted) {
       return;
     }
 
@@ -82,31 +121,53 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
       final String? code = barcode.rawValue;
 
       if (code != null && code.isNotEmpty) {
-        _isProcessing = true;
+        // Блокируем дальнейшее сканирование
+        setState(() {
+          _isProcessing = true;
+        });
         _lastScanTime = now;
 
         HapticFeedback.mediumImpact();
-        widget.onScan(code);
 
-        // Освобождаем флаг через 3 секунды
-        Future.delayed(const Duration(seconds: 3), () {
+        try {
+          // Ждём завершения обработки в provider (запрос к бэкенду)
+          await widget.onScan(code);
+        } catch (e) {
+          // Обработка ошибки
+        } finally {
+          // Разрешаем новое сканирование только после завершения обработки
           if (mounted) {
-            _isProcessing = false;
+            // Добавляем небольшую задержку для предотвращения случайного повторного скана
+            await Future.delayed(const Duration(milliseconds: 500));
+            setState(() {
+              _isProcessing = false;
+            });
           }
-        });
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized || controller == null) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
     return Container(
       color: Colors.black,
       child: Stack(
         children: [
           // Camera Scanner
           MobileScanner(
-            controller: controller,
+            controller: controller!,
             onDetect: _onDetect,
           ),
 

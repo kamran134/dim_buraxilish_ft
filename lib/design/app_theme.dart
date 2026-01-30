@@ -83,7 +83,7 @@ class AppTheme {
       ),
 
       // Тема карточек
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: AppSpacing.cardElevation,
         shape: RoundedRectangleBorder(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -98,7 +99,7 @@ final ThemeData lightTheme = ThemeData(
     elevation: 2,
     centerTitle: true,
   ),
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     elevation: 2,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
@@ -133,7 +134,7 @@ final ThemeData darkTheme = ThemeData(
     elevation: 2,
     centerTitle: true,
   ),
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     elevation: 2,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),

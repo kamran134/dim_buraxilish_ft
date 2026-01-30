@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
@@ -236,15 +237,13 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
-      // Отладочные логи
-      print('DEBUG: getAllParticipantsInBuilding called');
-      print('DEBUG: bina = "$bina"');
-      print('DEBUG: examDate = "$examDate"');
-      print('DEBUG: token exists = ${token != null}');
+      if (kDebugMode) {
+        debugPrint(
+            '[Statistics] getAllParticipantsInBuilding: bina=$bina, examDate=$examDate');
+      }
 
       final url =
           '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate';
-      print('DEBUG: Request URL = $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -254,8 +253,9 @@ class StatisticsService {
         },
       );
 
-      print('DEBUG: Response status = ${response.statusCode}');
-      print('DEBUG: Response body = ${response.body}');
+      if (kDebugMode) {
+        debugPrint('[Statistics] Response status: ${response.statusCode}');
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -294,24 +294,24 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
-      // Отладочные логи
-      print('DEBUG: getAllSupervisorsInBuilding called');
-      print('DEBUG: buildingCode = "$buildingCode"');
-      print('DEBUG: examDate = "$examDate"');
-      print('DEBUG: token exists = ${token != null}');
+      if (kDebugMode) {
+        debugPrint(
+            '[Statistics] getAllSupervisorsInBuilding: buildingCode=$buildingCode, examDate=$examDate');
+      }
 
       // Преобразуем buildingCode в число (Angular ожидает number)
       final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
-      print('DEBUG: buildingCodeNum = $buildingCodeNum');
 
       // Преобразуем дату в формат MM/DD/yyyy как делает Angular
       final formattedExamDate = _convertToMMDDYYYY(examDate);
-      print('DEBUG: examDate (original) = $examDate');
-      print('DEBUG: examDate (formatted) = $formattedExamDate');
+
+      if (kDebugMode) {
+        debugPrint(
+            '[Statistics] buildingCodeNum=$buildingCodeNum, formattedDate=$formattedExamDate');
+      }
 
       final url =
           '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCodeNum&examDate=$formattedExamDate';
-      print('DEBUG: Request URL = $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -321,8 +321,9 @@ class StatisticsService {
         },
       );
 
-      print('DEBUG: Response status = ${response.statusCode}');
-      print('DEBUG: Response body = ${response.body}');
+      if (kDebugMode) {
+        debugPrint('[Statistics] Response status: ${response.statusCode}');
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);

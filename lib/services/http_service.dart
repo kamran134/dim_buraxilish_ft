@@ -868,4 +868,140 @@ class HttpService {
       );
     }
   }
+
+  /// Cancel participant registration (set Qeydiyyat to null)
+  Future<ResponseModel> cancelParticipantRegistration({
+    required int isN,
+    required String bina,
+    required String examDate,
+  }) async {
+    try {
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+
+      print(
+          'Canceling participant registration: isN=$isN, bina=$bina, examDate=$formattedDate');
+
+      final response = await _dio.post(
+        '/buraxilishes/cancelregistration',
+        queryParameters: {
+          'isN': isN,
+          'bina': bina,
+          'examDate': formattedDate,
+        },
+      );
+
+      print('Cancel participant registration response: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return ResponseModel(
+          success: true,
+          message: response.data['message'] ?? 'Qeydiyyat ləğv edildi',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message:
+              response.data['message'] ?? 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+    } on DioException catch (e) {
+      print('Error canceling participant registration: $e');
+      if (e.response != null) {
+        print('Error response status: ${e.response!.statusCode}');
+        print('Error response data: ${e.response!.data}');
+        // Handle BadRequest (400) from backend
+        if (e.response!.data != null && e.response!.data is Map) {
+          return ResponseModel(
+            success: false,
+            message: e.response!.data['message'] ??
+                'Qeydiyyatı ləğv etmək mümkün olmadı',
+          );
+        }
+        return ResponseModel(
+          success: false,
+          message: 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+      return ResponseModel(
+        success: false,
+        message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
+      );
+    } catch (e) {
+      print('General error canceling participant registration: $e');
+      return ResponseModel(
+        success: false,
+        message: 'Xəta baş verdi',
+      );
+    }
+  }
+
+  /// Cancel supervisor registration (set RegisterDate to null)
+  Future<ResponseModel> cancelSupervisorRegistration({
+    required String cardNumber,
+    required int buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+
+      print(
+          'Canceling supervisor registration: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$formattedDate');
+
+      final response = await _dio.post(
+        '/supervisors/cancelregistration',
+        queryParameters: {
+          'cardNumber': cardNumber,
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      print('Cancel supervisor registration response: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return ResponseModel(
+          success: true,
+          message: response.data['message'] ?? 'Qeydiyyat ləğv edildi',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message:
+              response.data['message'] ?? 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+    } on DioException catch (e) {
+      print('Error canceling supervisor registration: $e');
+      if (e.response != null) {
+        print('Error response status: ${e.response!.statusCode}');
+        print('Error response data: ${e.response!.data}');
+        // Handle BadRequest (400) from backend
+        if (e.response!.data != null && e.response!.data is Map) {
+          return ResponseModel(
+            success: false,
+            message: e.response!.data['message'] ??
+                'Qeydiyyatı ləğv etmək mümkün olmadı',
+          );
+        }
+        return ResponseModel(
+          success: false,
+          message: 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+      return ResponseModel(
+        success: false,
+        message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
+      );
+    } catch (e) {
+      print('General error canceling supervisor registration: $e');
+      return ResponseModel(
+        success: false,
+        message: 'Xəta baş verdi',
+      );
+    }
+  }
 }

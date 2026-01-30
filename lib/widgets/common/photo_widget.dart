@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Переиспользуемый виджет для отображения фото из base64 строки
@@ -75,7 +76,9 @@ class PhotoWidget extends StatelessWidget {
           width: width,
           height: height,
           errorBuilder: (context, error, stackTrace) {
-            print('Error loading photo: $error');
+            if (kDebugMode) {
+              debugPrint('[Photo] Error loading photo: $error');
+            }
             return _buildPlaceholder();
           },
         );
@@ -84,7 +87,9 @@ class PhotoWidget extends StatelessWidget {
         return _buildPlaceholder();
       }
     } catch (e) {
-      print('Error decoding photo: $e');
+      if (kDebugMode) {
+        debugPrint('[Photo] Error decoding photo: $e');
+      }
       return _buildPlaceholder();
     }
   }

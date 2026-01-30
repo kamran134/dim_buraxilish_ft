@@ -55,10 +55,14 @@ class UnsentDataProvider extends ChangeNotifier {
       _registeredSupervisors =
           allSupervisors.where((s) => s.registerDate.isNotEmpty).toList();
 
-      print('Loaded ${_registeredParticipants.length} unsent participants');
-      print('Loaded ${_registeredSupervisors.length} unsent supervisors');
+      if (kDebugMode) {
+        debugPrint(
+            '[UnsentData] Loaded ${_registeredParticipants.length} participants, ${_registeredSupervisors.length} supervisors');
+      }
     } catch (e) {
-      print('Error loading unsent data: $e');
+      if (kDebugMode) {
+        debugPrint('[UnsentData] Error loading unsent data: $e');
+      }
       _setError('Göndərilməmiş məlumatlar yüklənərkən xəta baş verdi');
     } finally {
       _setLoading(false);
@@ -80,7 +84,10 @@ class UnsentDataProvider extends ChangeNotifier {
 
       // Sync participants if any
       if (_registeredParticipants.isNotEmpty) {
-        print('Syncing ${_registeredParticipants.length} participants...');
+        if (kDebugMode) {
+          debugPrint(
+              '[UnsentData] Syncing ${_registeredParticipants.length} participants...');
+        }
         final participantResult =
             await _httpService.syncParticipants(_registeredParticipants);
 
@@ -97,7 +104,10 @@ class UnsentDataProvider extends ChangeNotifier {
 
       // Sync supervisors if any
       if (_registeredSupervisors.isNotEmpty) {
-        print('Syncing ${_registeredSupervisors.length} supervisors...');
+        if (kDebugMode) {
+          debugPrint(
+              '[UnsentData] Syncing ${_registeredSupervisors.length} supervisors...');
+        }
         final supervisorResult =
             await _httpService.syncSupervisors(_registeredSupervisors);
 

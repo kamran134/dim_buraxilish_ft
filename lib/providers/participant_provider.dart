@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
@@ -17,6 +19,12 @@ class ParticipantProvider with ChangeNotifier {
   bool _isOnlineMode = true;
   bool _isRepeatEntry = false;
   bool _isScanning = false; // Флаг для предотвращения дублирования запросов
+
+  // Кэш последнего отсканированного кода для предотвращения быстрых дубликатов
+  String? _lastScannedCode;
+  DateTime? _lastScanTime;
+  static const _scanCooldownSeconds =
+      3; // Минимальное время между сканированиями одного кода
 
   // Reference to OfflineDatabaseProvider
   OfflineDatabaseProvider? _offlineDatabaseProvider;
@@ -111,7 +119,9 @@ class ParticipantProvider with ChangeNotifier {
       await _offlineDatabaseProvider?.refreshStatus();
       _setSuccess('${participants.length} iştirakçı oflayn bazaya yükləndi');
     } catch (e) {
-      print('Error loading offline participants: $e');
+      if (kDebugMode) {
+        debugPrint('[Participant] Error loading offline participants: $e');
+      }
       _setError('Oflayn məlumatlar yüklənərkən xəta baş verdi');
     } finally {
       _setLoading(false);
@@ -123,7 +133,9 @@ class ParticipantProvider with ChangeNotifier {
     try {
       return await _httpService.getRegisteredParticipants();
     } catch (e) {
-      print('Error getting registered participants: $e');
+      if (kDebugMode) {
+        debugPrint('[Participant] Error getting registered participants: $e');
+      }
       return [];
     }
   }
@@ -142,7 +154,9 @@ class ParticipantProvider with ChangeNotifier {
       // First check if user is authenticated
       final token = await _httpService.getToken();
       if (token == null) {
-        print('No JWT token found, redirecting to login');
+        if (kDebugMode) {
+          debugPrint('[Participant] No JWT token found, redirecting to login');
+        }
         _setLoading(false);
         _onAuthenticationError?.call();
         return;
@@ -244,10 +258,29 @@ class ParticipantProvider with ChangeNotifier {
   Future<void> scanParticipant(String qrCode) async {
     // Предотвращаем дублирование запросов
     if (_isScanning) {
-      print(
-          'DEBUG: Игнорируем повторный скан, так как предыдущий запрос еще выполняется');
+      if (kDebugMode) {
+        print(
+            'DEBUG: Игнорируем повторный скан - предыдущий запрос еще выполняется');
+      }
       return;
     }
+
+    // Проверяем, не сканируем ли мы тот же код слишком быстро
+    final now = DateTime.now();
+    if (_lastScannedCode == qrCode && _lastScanTime != null) {
+      final timeDifference = now.difference(_lastScanTime!);
+      if (timeDifference.inSeconds < _scanCooldownSeconds) {
+        if (kDebugMode) {
+          print(
+              'DEBUG: Игнорируем быстрое повторное сканирование того же кода (${timeDifference.inSeconds}s < $_scanCooldownSeconds s)');
+        }
+        return;
+      }
+    }
+
+    // Обновляем кэш последнего скана
+    _lastScannedCode = qrCode;
+    _lastScanTime = now;
 
     // Принудительно очищаем старые данные перед новым сканированием
     _currentParticipant = null;
@@ -426,5 +459,51 @@ class ParticipantProvider with ChangeNotifier {
     _isScanning = false;
     clearMessages();
     notifyListeners();
+  }
+
+  /// Cancel participant registration
+  Future<void> cancelParticipantRegistration() async {
+    if (_currentParticipant == null) {
+      _setError('İştirakçı məlumatları tapılmadı');
+      return;
+    }
+
+    _setLoading(true);
+    clearMessages();
+
+    try {
+      final storageService = StorageService();
+      final userProfile = await storageService.getUserProfile();
+      if (userProfile == null ||
+          userProfile.bina == null ||
+          userProfile.examDate == null) {
+        _setError('İmtahan məlumatları tapılmadı');
+        _setLoading(false);
+        return;
+      }
+
+      final response = await _httpService.cancelParticipantRegistration(
+        isN: _currentParticipant!.isN,
+        bina: userProfile.bina!.toString(),
+        examDate: userProfile.examDate!,
+      );
+
+      print(
+          'Cancel participant response: success=${response.success}, message=${response.message}');
+
+      if (response.success) {
+        _setSuccess(response.message);
+        // Move to next participant (which opens scanner)
+        print('Moving to next participant...');
+        nextParticipant();
+      } else {
+        _setError(response.message);
+      }
+    } catch (e) {
+      print('Error canceling participant registration: $e');
+      _setError('Qeydiyyatı ləğv etmək mümkün olmadı');
+    } finally {
+      _setLoading(false);
+    }
   }
 }

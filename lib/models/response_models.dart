@@ -53,3 +53,21 @@ class ListResult<T> extends Result {
   })  : data = null,
         super(success: false, message: message);
 }
+
+/// Simple response model (similar to backend ResponseModel)
+class ResponseModel {
+  final bool success;
+  final String message;
+
+  ResponseModel({
+    required this.success,
+    required this.message,
+  });
+
+  factory ResponseModel.fromJson(Map<String, dynamic> json) {
+    return ResponseModel(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}

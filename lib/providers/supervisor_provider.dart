@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import 'offline_database_provider.dart';
 
 /// Состояния экрана Supervisor
@@ -27,6 +29,12 @@ class SupervisorProvider with ChangeNotifier {
   bool _isOnlineMode = true;
   bool _isRepeatEntry = false;
   bool _isScanning = false; // Флаг для предотвращения дублирования запросов
+
+  // Кэш последнего отсканированного кода для предотвращения быстрых дубликатов
+  String? _lastScannedCode;
+  DateTime? _lastScanTime;
+  static const _scanCooldownSeconds =
+      3; // Минимальное время между сканированиями одного кода
 
   // Reference to OfflineDatabaseProvider
   OfflineDatabaseProvider? _offlineDatabaseProvider;
@@ -132,7 +140,9 @@ class SupervisorProvider with ChangeNotifier {
       await _offlineDatabaseProvider?.refreshStatus();
       _setSuccess('${supervisors.length} nəzarətçi oflayn bazaya yükləndi');
     } catch (e) {
-      print('Error loading offline supervisors: $e');
+      if (kDebugMode) {
+        debugPrint('[Supervisor] Error loading offline supervisors: $e');
+      }
       _setError('Oflayn məlumatlar yüklənərkən xəta baş verdi');
     } finally {
       _setLoading(false);
@@ -144,7 +154,9 @@ class SupervisorProvider with ChangeNotifier {
     try {
       return await _httpService.getRegisteredSupervisors();
     } catch (e) {
-      print('Error getting registered supervisors: $e');
+      if (kDebugMode) {
+        debugPrint('[Supervisor] Error getting registered supervisors: $e');
+      }
       return [];
     }
   }
@@ -163,7 +175,9 @@ class SupervisorProvider with ChangeNotifier {
       // First check if user is authenticated
       final token = await _httpService.getToken();
       if (token == null) {
-        print('No JWT token found, redirecting to login');
+        if (kDebugMode) {
+          debugPrint('[Supervisor] No JWT token found, redirecting to login');
+        }
         _setLoading(false);
         _onAuthenticationError?.call();
         return;
@@ -176,8 +190,10 @@ class SupervisorProvider with ChangeNotifier {
         final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
         final examDate = examDetails.imtTarix ?? '';
 
-        print(
-            'Loading supervisor details: buildingCode=$buildingCode, examDate=$examDate');
+        if (kDebugMode) {
+          debugPrint(
+              '[Supervisor] Loading details: buildingCode=$buildingCode, examDate=$examDate');
+        }
 
         final supervisorDetails = await _httpService.getSupervisorDetails(
           buildingCode: buildingCode,
@@ -186,22 +202,25 @@ class SupervisorProvider with ChangeNotifier {
 
         if (supervisorDetails != null) {
           _supervisorDetails = supervisorDetails;
-          print('Supervisor details loaded from API');
-          print('Total supervisors: ${supervisorDetails.allPersonCount}');
-          print('Registered supervisors: ${supervisorDetails.regPersonCount}');
-          print(
-              'Unregistered supervisors: ${supervisorDetails.unregisteredCount}');
+          if (kDebugMode) {
+            debugPrint(
+                '[Supervisor] Loaded from API: total=${supervisorDetails.allPersonCount}, registered=${supervisorDetails.regPersonCount}');
+          }
         } else {
           // Fallback to storage if API fails
           _supervisorDetails =
               await _httpService.getSupervisorDetailsFromStorage();
-          print('Supervisor details loaded from storage');
+          if (kDebugMode) {
+            debugPrint('[Supervisor] Loaded from storage');
+          }
         }
       } else {
         // Fallback to storage if no exam details
         _supervisorDetails =
             await _httpService.getSupervisorDetailsFromStorage();
-        print('Supervisor details loaded from storage (no exam details)');
+        if (kDebugMode) {
+          debugPrint('[Supervisor] Loaded from storage (no exam details)');
+        }
       }
 
       // If still null, use default values
@@ -212,7 +231,9 @@ class SupervisorProvider with ChangeNotifier {
 
       _setLoading(false);
     } catch (e) {
-      print('Error loading supervisor details: $e');
+      if (kDebugMode) {
+        debugPrint('[Supervisor] Error loading details: $e');
+      }
       _setError('Nəzarətçi məlumatları yüklənə bilmədi');
       _setLoading(false);
     }
@@ -222,10 +243,29 @@ class SupervisorProvider with ChangeNotifier {
   Future<void> scanSupervisor(String qrCode) async {
     // Предотвращаем дублирование запросов
     if (_isScanning) {
-      print(
-          'DEBUG: Игнорируем повторный скан наблюдателя, так как предыдущий запрос еще выполняется');
+      if (kDebugMode) {
+        print(
+            'DEBUG: Игнорируем повторный скан наблюдателя - предыдущий запрос еще выполняется');
+      }
       return;
     }
+
+    // Проверяем, не сканируем ли мы тот же код слишком быстро
+    final now = DateTime.now();
+    if (_lastScannedCode == qrCode && _lastScanTime != null) {
+      final timeDifference = now.difference(_lastScanTime!);
+      if (timeDifference.inSeconds < _scanCooldownSeconds) {
+        if (kDebugMode) {
+          print(
+              'DEBUG: Игнорируем быстрое повторное сканирование того же кода наблюдателя (${timeDifference.inSeconds}s < $_scanCooldownSeconds s)');
+        }
+        return;
+      }
+    }
+
+    // Обновляем кэш последнего скана
+    _lastScannedCode = qrCode;
+    _lastScanTime = now;
 
     // Принудительно очищаем старые данные перед новым сканированием
     _currentSupervisor = null;
@@ -405,6 +445,53 @@ class SupervisorProvider with ChangeNotifier {
   void handleErrorNext() {
     clearMessages();
     setScreenState(SupervisorScreenState.scanning);
+  }
+
+  /// Cancel supervisor registration
+  Future<void> cancelSupervisorRegistration() async {
+    if (_currentSupervisor == null) {
+      _setError('Nəzarətçi məlumatları tapılmadı');
+      return;
+    }
+
+    _setLoading(true);
+    clearMessages();
+
+    try {
+      final storageService = StorageService();
+      final userProfile = await storageService.getUserProfile();
+      if (userProfile == null ||
+          userProfile.bina == null ||
+          userProfile.examDate == null) {
+        _setError('İmtahan məlumatları tapılmadı');
+        _setLoading(false);
+        return;
+      }
+
+      final response = await _httpService.cancelSupervisorRegistration(
+        cardNumber: _currentSupervisor!.cardNumber,
+        buildingCode: userProfile.bina!,
+        examDate: userProfile.examDate!,
+      );
+
+      print(
+          'Cancel supervisor response: success=${response.success}, message=${response.message}');
+
+      if (response.success) {
+        _setSuccess(response.message);
+        // Return to scanning state after successful cancellation
+        print('Returning to scanning state...');
+        resetToInitial();
+        setScreenState(SupervisorScreenState.scanning);
+      } else {
+        _setError(response.message);
+      }
+    } catch (e) {
+      print('Error canceling supervisor registration: $e');
+      _setError('Qeydiyyatı ləğv etmək mümkün olmadı');
+    } finally {
+      _setLoading(false);
+    }
   }
 
   @override
