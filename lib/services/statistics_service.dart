@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../models/participant_light_dto.dart';
 import '../models/supervisor_detail_dto.dart';
+import '../models/monitor_room_statistics.dart';
 import '../models/response_models.dart';
 import '../services/http_service.dart';
 
@@ -445,6 +445,56 @@ class StatisticsService {
       }
     } catch (e) {
       return DataResult<List<SupervisorDetailDto>>.error(
+        message: 'Şəbəkə xətası: $e',
+      );
+    }
+  }
+
+  /// Получает статистику по всем комнатам для конкретной даты экзамена
+  Future<DataResult<List<MonitorRoomStatistics>>> getAllRoomStatistics(
+      String examDate) async {
+    try {
+      final token = await _httpService.getToken();
+
+      // Преобразуем дату в формат MM/DD/yyyy как делает Angular
+      final formattedExamDate = _convertToMMDDYYYY(examDate);
+
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/monitors/GetAllExamDetailsInExamDate?examDate=$formattedExamDate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          final List<MonitorRoomStatistics> roomStats = data
+              .map((item) =>
+                  MonitorRoomStatistics.fromJson(item as Map<String, dynamic>))
+              .toList();
+
+          return DataResult<List<MonitorRoomStatistics>>.success(
+            data: roomStats,
+            message:
+                jsonResponse['message'] ?? 'Otaq statistikaları uğurla alındı',
+          );
+        } else {
+          return DataResult<List<MonitorRoomStatistics>>.error(
+            message: jsonResponse['message'] ?? 'Otaq statistikaları alınmadı',
+          );
+        }
+      } else {
+        return DataResult<List<MonitorRoomStatistics>>.error(
+          message: 'Server xətası: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return DataResult<List<MonitorRoomStatistics>>.error(
         message: 'Şəbəkə xətası: $e',
       );
     }

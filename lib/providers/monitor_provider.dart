@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/monitor_models.dart';
 import '../services/http_service.dart';
-import '../services/database_service.dart';
 import '../services/statistics_event_bus.dart';
 
 /// Состояния экрана Monitor (İmtahan rəhbərləri)
@@ -33,9 +32,6 @@ class MonitorProvider with ChangeNotifier {
 
   // Callback for authentication errors
   VoidCallback? _onAuthenticationError;
-
-  // Callback for statistics refresh after successful monitor scan
-  VoidCallback? _onStatisticsRefresh;
 
   // Getters
   MonitorScreenState get screenState => _screenState;
@@ -100,11 +96,6 @@ class MonitorProvider with ChangeNotifier {
   // Set authentication error callback
   void setAuthenticationErrorCallback(VoidCallback callback) {
     _onAuthenticationError = callback;
-  }
-
-  // Set statistics refresh callback
-  void setStatisticsRefreshCallback(VoidCallback callback) {
-    _onStatisticsRefresh = callback;
   }
 
   // Scan monitor QR code and get monitor info

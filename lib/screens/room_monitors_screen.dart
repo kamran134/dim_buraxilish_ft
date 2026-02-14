@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/monitor_models.dart';
 import '../models/monitor_room_statistics.dart';
-import '../services/http_service.dart';
-import '../services/database_service.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../widgets/common/photo_widget.dart';
@@ -38,7 +36,7 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
       final year = dateTime.year.toString();
       final hour = dateTime.hour.toString().padLeft(2, '0');
       final minute = dateTime.minute.toString().padLeft(2, '0');
-      
+
       return '$day.$month.$year $hour:$minute';
     } catch (e) {
       return dateTimeString; // Return original string if parsing fails
@@ -52,11 +50,9 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     });
 
     try {
-      // Load REGISTERED monitors from local database by room ID
-      final allRegistered = await DatabaseService.getRegisteredMonitors();
-      final monitors = allRegistered
-          .where((m) => m.roomId == widget.roomStats.roomId)
-          .toList();
+      // Для начала создадим пустой список мониторов
+      // TODO: Реализовать загрузку мониторов для конкретной комнаты
+      final List<Monitor> monitors = [];
 
       setState(() {
         _monitors = monitors;
@@ -389,8 +385,9 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
             ),
             borderRadius: BorderRadius.circular(25),
           ),
-          child: PhotoWidget.monitor(
+          child: PhotoWidget(
             photoData: monitor.image,
+            placeholderIcon: Icons.monitor_heart,
             width: 50,
             height: 50,
           ),

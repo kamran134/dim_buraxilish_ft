@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
+import '../models/monitor_room_statistics.dart';
 import '../services/statistics_service.dart';
 import '../services/statistics_event_bus.dart';
 import '../design/app_colors.dart';
@@ -13,6 +13,8 @@ import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
 import 'building_details_screen.dart';
 import 'buildings_statistics_screen.dart';
+import 'rooms_statistics_screen.dart';
+import 'room_monitors_screen.dart';
 import 'dart:async';
 
 class RealDashboardScreen extends StatefulWidget {
@@ -37,6 +39,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   final StatisticsService _statisticsService = StatisticsService();
   DashboardStatistics? _dashboardStats;
   List<ExamStatisticsDto> _examStatistics = [];
+  List<MonitorRoomStatistics> _roomStatistics = [];
   List<String> _examDates = [];
   String? _selectedExamDate;
   bool _isLoading = false;
@@ -102,10 +105,6 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       if (result.success && result.data != null) {
         setState(() {
           _examDates = result.data!;
-          print('📅 СПИСОК ДАТ ЭКЗАМЕНОВ:');
-          for (var i = 0; i < _examDates.length; i++) {
-            print('📅 [$i] ${_examDates[i]}');
-          }
           if (_examDates.isNotEmpty) {
             _selectedExamDate = _examDates.first;
             _loadDashboardStatistics(_selectedExamDate!);
@@ -149,11 +148,20 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       final combinedResult =
           await _statisticsService.getExamStatisticsByDate(examDate);
 
+      // Загружаем статистику комнат
+      final roomStatsResult =
+          await _statisticsService.getAllRoomStatistics(examDate);
+
       if (dashboardResult.success && dashboardResult.data != null) {
         setState(() {
           _dashboardStats = dashboardResult.data!;
           if (combinedResult.success && combinedResult.data != null) {
             _examStatistics = combinedResult.data!;
+          }
+          if (roomStatsResult.success && roomStatsResult.data != null) {
+            _roomStatistics = roomStatsResult.data!;
+          } else {
+            _roomStatistics = []; // Очищаем если загрузка неудачна
           }
         });
       } else {
@@ -201,6 +209,8 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                           _buildStatsCards(),
                           const SizedBox(height: 24),
                           _buildExamStatistics(),
+                          const SizedBox(height: 24),
+                          _buildRoomStatistics(),
                           const SizedBox(height: 24),
                           _buildBuildingStatistics(),
                           const SizedBox(height: 24),
@@ -609,6 +619,138 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     );
   }
 
+  Widget _buildRoomStatistics() {
+    if (_roomStatistics.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final totalRooms = _roomStatistics.length;
+    final problematicRooms = _roomStatistics
+        .where((room) => room.registrationPercentage < 85.0)
+        .toList();
+    final excellentRooms = _roomStatistics
+        .where((room) => room.registrationPercentage >= 95.0)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.meeting_room,
+                color: AppColors.primaryBlue,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Otaqlar üzrə statistika',
+                style: AppTextStyles.h3.copyWith(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Краткая сводка
+          Row(
+            children: [
+              Expanded(
+                child: _buildRoomSummaryCard(
+                  'Ümumi',
+                  totalRooms.toString(),
+                  AppColors.primaryBlue,
+                  Icons.meeting_room,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRoomSummaryCard(
+                  'Problemli',
+                  problematicRooms.length.toString(),
+                  AppColors.errorRed,
+                  Icons.warning_amber,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRoomSummaryCard(
+                  'Əla',
+                  excellentRooms.length.toString(),
+                  AppColors.successGreen,
+                  Icons.check_circle,
+                ),
+              ),
+            ],
+          ),
+
+          // Проблемные комнаты (если есть)
+          if (problematicRooms.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(Icons.warning, color: AppColors.errorRed, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Diqqət tələb edən otaqlar',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.errorRed,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...problematicRooms.take(3).map((room) => _buildRoomStatItem(room)),
+          ],
+
+          // Кнопка "Подробная статистика"
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RoomsStatisticsScreen(
+                      initialExamDate: _selectedExamDate,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.analytics),
+              label: Text('Ətraflı statistika ($totalRooms otaq)'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBuildingStatistics() {
     if (_dashboardStats?.examDetails == null ||
         _dashboardStats!.examDetails.isEmpty) {
@@ -737,6 +879,123 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoomSummaryCard(
+      String title, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTextStyles.h2.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            title,
+            style: AppTextStyles.caption.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomStatItem(MonitorRoomStatistics room) {
+    final registrationRate = room.registrationPercentage;
+    final isProblematic = registrationRate < 85.0;
+
+    return InkWell(
+      onTap: () => _navigateToRoomDetails(room),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  room.roomId.toString(),
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    room.roomName,
+                    style: AppTextStyles.body1
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${room.allPersonCount} monitor',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textGrey),
+                  ),
+                  // Индикатор процента регистрации
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isProblematic
+                          ? AppColors.errorRed.withOpacity(0.1)
+                          : AppColors.successGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${registrationRate.toStringAsFixed(1)}% qeydiyyat',
+                      style: AppTextStyles.caption.copyWith(
+                        color: isProblematic
+                            ? AppColors.errorRed
+                            : AppColors.successGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${room.regPersonCount}/${room.allPersonCount}',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1157,6 +1416,17 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       MaterialPageRoute(
         builder: (context) => BuildingsStatisticsScreen(
           initialExamDate: _selectedExamDate,
+        ),
+      ),
+    );
+  }
+
+  void _navigateToRoomDetails(MonitorRoomStatistics room) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RoomMonitorsScreen(
+          roomStats: room,
         ),
       ),
     );
