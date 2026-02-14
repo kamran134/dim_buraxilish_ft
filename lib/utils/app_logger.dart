@@ -50,13 +50,7 @@ class AppLogger {
       return;
     }
 
-    final emoji = _getEmoji(level);
-    final levelStr = level.name.toUpperCase().padRight(7);
-    final tagStr = tag != null ? '[$tag] ' : '';
-    final timestamp =
-        DateTime.now().toString().substring(11, 23); // HH:mm:ss.mmm
-
-    debugPrint('$emoji $timestamp $levelStr $tagStr$message');
+    // Logging removed for production
   }
 
   /// Get emoji for log level

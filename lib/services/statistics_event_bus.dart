@@ -16,9 +16,6 @@ class StatisticsEventBus {
 
   /// Уведомить всех слушателей об обновлении статистики
   void notifyStatisticsUpdate(String source) {
-    if (kDebugMode) {
-      print('📊 [EVENT_BUS] Уведомление об обновлении статистики от: $source');
-    }
     if (!_controller.isClosed) {
       _controller.add(source);
     }

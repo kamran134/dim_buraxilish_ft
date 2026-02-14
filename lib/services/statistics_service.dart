@@ -153,11 +153,6 @@ class StatisticsService {
       final token = await _httpService.getToken();
       final formattedExamDate = _convertToMMDDYYYY(examDate);
 
-      if (kDebugMode) {
-        debugPrint('📊 [СТАТИСТИКА] Получаем данные из двух источников');
-        debugPrint('📊 Дата: $examDate -> $formattedExamDate');
-      }
-
       // 1. Получаем данные участников (используем ФОРМАТИРОВАННУЮ дату!)
       final participantsResponse = await http.get(
         Uri.parse(
@@ -188,27 +183,6 @@ class StatisticsService {
         },
       );
 
-      if (kDebugMode) {
-        debugPrint('📊 Форматированная дата для API: "$formattedExamDate"');
-        debugPrint(
-            '📊 Участники URL: $_baseUrl/buraxilishes/getallexamdetailsinexamdate?examDate=$formattedExamDate');
-        debugPrint('📊 Участники status: ${participantsResponse.statusCode}');
-        debugPrint('📊 Супервайзеры status: ${supervisorsResponse.statusCode}');
-        debugPrint('📊 Мониторы status: ${monitorsResponse.statusCode}');
-        if (supervisorsResponse.statusCode == 200) {
-          debugPrint(
-              '📊 Супервайзеры ОТВЕТ (первые 500 символов): ${supervisorsResponse.body.substring(0, supervisorsResponse.body.length > 500 ? 500 : supervisorsResponse.body.length)}');
-        } else {
-          debugPrint('📊 ❌ Супервайзеры ОШИБКА: ${supervisorsResponse.body}');
-        }
-        if (monitorsResponse.statusCode == 200) {
-          debugPrint(
-              '📊 Мониторы ОТВЕТ (первые 500 символов): ${monitorsResponse.body.substring(0, monitorsResponse.body.length > 500 ? 500 : monitorsResponse.body.length)}');
-        } else {
-          debugPrint('📊 ❌ Мониторы ОШИБКА: ${monitorsResponse.body}');
-        }
-      }
-
       if (participantsResponse.statusCode == 200) {
         final participantsJson =
             json.decode(participantsResponse.body) as Map<String, dynamic>;
@@ -223,10 +197,6 @@ class StatisticsService {
           final buildingCode = participant['kod_Bina']?.toString() ?? '';
           if (buildingCode.isNotEmpty) {
             participantsByBuilding[buildingCode] = participant;
-            if (kDebugMode && participantsData.indexOf(participant) < 3) {
-              debugPrint(
-                  '📊 Участник здание код: "$buildingCode" (тип: ${participant['kod_Bina'].runtimeType})');
-            }
           }
         }
 
@@ -235,35 +205,12 @@ class StatisticsService {
               json.decode(supervisorsResponse.body) as Map<String, dynamic>;
           final List<dynamic> supervisorsData = supervisorsJson['data'] ?? [];
 
-          if (kDebugMode) {
-            debugPrint('📊 Участников зданий: ${participantsData.length}');
-            debugPrint('📊 Супервайзеров зданий: ${supervisorsData.length}');
-            if (supervisorsData.isNotEmpty) {
-              debugPrint(
-                  '📊 Первый супервайзер (пример): ${supervisorsData[0]}');
-            }
-          }
-
           // Индексируем супервайзеров по buildingCode
           for (var supervisor in supervisorsData) {
             final buildingCode = supervisor['buildingCode']?.toString() ?? '';
             if (buildingCode.isNotEmpty) {
               supervisorsByBuilding[buildingCode] = supervisor;
-              if (kDebugMode && supervisorsData.indexOf(supervisor) < 3) {
-                debugPrint(
-                    '📊 Супервайзер здание код: "$buildingCode" (тип: ${supervisor['buildingCode'].runtimeType}), allPersonCount=${supervisor['allPersonCount']}, regPersonCount=${supervisor['regPersonCount']}');
-              }
             }
-          }
-
-          if (kDebugMode) {
-            debugPrint(
-                '📊 Всего супервайзеров в карте: ${supervisorsByBuilding.length}');
-          }
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-                '📊 ⚠️ Супервайзеры не загружены, статус: ${supervisorsResponse.statusCode}');
           }
         }
 
@@ -278,13 +225,6 @@ class StatisticsService {
               json.decode(monitorsResponse.body) as Map<String, dynamic>;
           final List<dynamic> monitorsData = monitorsJson['data'] ?? [];
 
-          if (kDebugMode) {
-            debugPrint('📊 Мониторов комнат: ${monitorsData.length}');
-            if (monitorsData.isNotEmpty) {
-              debugPrint('📊 Первый монитор (пример): ${monitorsData[0]}');
-            }
-          }
-
           // Суммируем всех мониторов со всех комнат
           for (var monitor in monitorsData) {
             final allPersonCount = monitor['allPersonCount'] as int? ?? 0;
@@ -292,22 +232,6 @@ class StatisticsService {
 
             totalMonitorCount += allPersonCount;
             totalRegMonitorCount += regPersonCount;
-
-            if (kDebugMode && monitorsData.indexOf(monitor) < 3) {
-              debugPrint(
-                  '📊 Монитор комната: "${monitor['roomName']}", allPersonCount=$allPersonCount, regPersonCount=$regPersonCount');
-            }
-          }
-
-          if (kDebugMode) {
-            debugPrint(
-                '📊 ИТОГО мониторов: $totalMonitorCount, зарегистрировано: $totalRegMonitorCount');
-            debugPrint('📊 🔄 Обновляем данные мониторов в первом здании...');
-          }
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-                '📊 ⚠️ Мониторы не загружены, статус: ${monitorsResponse.statusCode}');
           }
         }
 
@@ -347,30 +271,6 @@ class StatisticsService {
           ));
         }
 
-        if (kDebugMode) {
-          debugPrint('📊 Объединено зданий: ${examStatistics.length}');
-          if (examStatistics.isNotEmpty) {
-            final first = examStatistics[0];
-            debugPrint('📊 Первое здание: ${first.adBina}');
-            debugPrint(
-                '📊 Участников: ${(first.allManCount ?? 0) + (first.allWomanCount ?? 0)}');
-            debugPrint(
-                '📊 Супервайзеров: ${first.supervisorCount}/${first.regSupervisorCount}');
-          }
-
-          // Подсчитываем общую сумму супервайзеров
-          int totalSupervisors = 0;
-          int totalRegSupervisors = 0;
-          for (var stat in examStatistics) {
-            totalSupervisors += stat.supervisorCount ?? 0;
-            totalRegSupervisors += stat.regSupervisorCount ?? 0;
-          }
-          debugPrint(
-              '📊 ✅ ИТОГО супервайзеров: $totalSupervisors, зарегистрировано: $totalRegSupervisors');
-          debugPrint(
-              '📊 ✅ ИТОГО мониторов: $totalMonitorCount, зарегистрировано: $totalRegMonitorCount');
-        }
-
         // Добавляем данные мониторов в результат для использования в дашборде
         if (examStatistics.isNotEmpty && totalMonitorCount > 0) {
           // Добавляем данные мониторов только к первому зданию для экономии памяти
@@ -403,9 +303,6 @@ class StatisticsService {
         );
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('📊 ❌ Exception: $e');
-      }
       return DataResult<List<ExamStatisticsDto>>.error(
         message: 'Şəbəkə xətası: $e',
       );
@@ -457,11 +354,6 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
-      if (kDebugMode) {
-        debugPrint(
-            '[Statistics] getAllParticipantsInBuilding: bina=$bina, examDate=$examDate');
-      }
-
       final url =
           '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate';
 
@@ -472,10 +364,6 @@ class StatisticsService {
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
-
-      if (kDebugMode) {
-        debugPrint('[Statistics] Response status: ${response.statusCode}');
-      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -514,21 +402,11 @@ class StatisticsService {
     try {
       final token = await _httpService.getToken();
 
-      if (kDebugMode) {
-        debugPrint(
-            '[Statistics] getAllSupervisorsInBuilding: buildingCode=$buildingCode, examDate=$examDate');
-      }
-
       // Преобразуем buildingCode в число (Angular ожидает number)
       final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
 
       // Преобразуем дату в формат MM/DD/yyyy как делает Angular
       final formattedExamDate = _convertToMMDDYYYY(examDate);
-
-      if (kDebugMode) {
-        debugPrint(
-            '[Statistics] buildingCodeNum=$buildingCodeNum, formattedDate=$formattedExamDate');
-      }
 
       final url =
           '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCodeNum&examDate=$formattedExamDate';
@@ -540,10 +418,6 @@ class StatisticsService {
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
-
-      if (kDebugMode) {
-        debugPrint('[Statistics] Response status: ${response.statusCode}');
-      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);

@@ -76,9 +76,6 @@ class PhotoWidget extends StatelessWidget {
           width: width,
           height: height,
           errorBuilder: (context, error, stackTrace) {
-            if (kDebugMode) {
-              debugPrint('[Photo] Error loading photo: $error');
-            }
             return _buildPlaceholder();
           },
         );
@@ -87,9 +84,6 @@ class PhotoWidget extends StatelessWidget {
         return _buildPlaceholder();
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Photo] Error decoding photo: $e');
-      }
       return _buildPlaceholder();
     }
   }

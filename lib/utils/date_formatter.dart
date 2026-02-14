@@ -146,10 +146,6 @@ class DateFormatter {
   /// Example: "10 oktyabr 2025-ci il" -> DateTime(2025, 10, 10)
   static DateTime? parseAzerbaijaniDate(String azDate) {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Parsing Azerbaijani date: "$azDate"');
-      }
-
       // Remove common suffixes and clean the string
       String cleanDate = azDate
           .replaceAll('-ci il', '')
@@ -160,10 +156,6 @@ class DateFormatter {
 
       final parts = cleanDate.split(' ');
       if (parts.length < 3) {
-        if (kDebugMode) {
-          debugPrint(
-              '❌ Invalid date format: Expected at least 3 parts, got ${parts.length}');
-        }
         return null;
       }
 
@@ -171,9 +163,6 @@ class DateFormatter {
       final dayStr = parts[0];
       final day = int.tryParse(dayStr);
       if (day == null || day < 1 || day > 31) {
-        if (kDebugMode) {
-          debugPrint('❌ Invalid day: "$dayStr"');
-        }
         return null;
       }
 
@@ -181,11 +170,6 @@ class DateFormatter {
       final monthName = parts[1].toLowerCase();
       final month = _azerbaijaniMonths[monthName];
       if (month == null) {
-        if (kDebugMode) {
-          debugPrint('❌ Invalid month: "$monthName"');
-          debugPrint(
-              '   Available months: ${_azerbaijaniMonths.keys.join(', ')}');
-        }
         return null;
       }
 
@@ -193,21 +177,12 @@ class DateFormatter {
       final yearStr = parts[2];
       final year = int.tryParse(yearStr);
       if (year == null || year < 1900 || year > 2100) {
-        if (kDebugMode) {
-          debugPrint('❌ Invalid year: "$yearStr"');
-        }
         return null;
       }
 
       final result = DateTime(year, month, day);
-      if (kDebugMode) {
-        debugPrint('✅ Successfully parsed: $azDate -> $result');
-      }
       return result;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error parsing Azerbaijani date "$azDate": $e');
-      }
       return null;
     }
   }
@@ -223,9 +198,6 @@ class DateFormatter {
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}T00:00:00.000Z';
 
-    if (kDebugMode) {
-      debugPrint('🔄 Converted to ISO: "$azDate" -> "$isoString"');
-    }
     return isoString;
   }
 
@@ -239,9 +211,6 @@ class DateFormatter {
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
 
-    if (kDebugMode) {
-      debugPrint('🔄 Converted to ISO date: "$azDate" -> "$isoDate"');
-    }
     return isoDate;
   }
 
@@ -270,9 +239,6 @@ class DateFormatter {
       final date = DateTime.parse(isoString);
       return formatDateTimeToAz(date);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error parsing ISO date "$isoString": $e');
-      }
       return isoString;
     }
   }

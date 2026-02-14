@@ -111,10 +111,6 @@ class MonitorProvider with ChangeNotifier {
   Future<void> scanMonitor(String qrCode) async {
     // Предотвращаем дублирование запросов
     if (_isScanning) {
-      if (kDebugMode) {
-        print(
-            'DEBUG: Игнорируем повторный скан монитора - предыдущий запрос еще выполняется');
-      }
       return;
     }
 
@@ -123,10 +119,6 @@ class MonitorProvider with ChangeNotifier {
     if (_lastScannedCode == qrCode && _lastScanTime != null) {
       final timeDifference = now.difference(_lastScanTime!);
       if (timeDifference.inSeconds < _scanCooldownSeconds) {
-        if (kDebugMode) {
-          print(
-              'DEBUG: Игнорируем быстрое повторное сканирование того же кода монитора (${timeDifference.inSeconds}s < $_scanCooldownSeconds s)');
-        }
         return;
       }
     }
@@ -150,7 +142,6 @@ class MonitorProvider with ChangeNotifier {
       // First check if user is authenticated
       final token = await _httpService.getToken();
       if (token == null) {
-        print('No JWT token found, redirecting to login');
         _isScanning = false;
         _setLoading(false);
         _onAuthenticationError?.call();
@@ -194,10 +185,6 @@ class MonitorProvider with ChangeNotifier {
         _setSuccess('İmtahan rəhbəri məlumatları uğurla oxundu');
 
         // Обновляем статистику через EventBus
-        if (kDebugMode) {
-          print(
-              '📊 [MONITOR] Уведомляем о сканировании монитора через EventBus...');
-        }
         StatisticsEventBus()
             .notifyStatisticsUpdate('MonitorProvider.scanMonitor');
       } else {
@@ -207,9 +194,6 @@ class MonitorProvider with ChangeNotifier {
         setScreenState(MonitorScreenState.error);
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Monitor] Error scanning: $e');
-      }
       _setError('QR kod oxunarkən xəta baş verdi');
       setScreenState(MonitorScreenState.error);
     } finally {
@@ -256,22 +240,16 @@ class MonitorProvider with ChangeNotifier {
         _setSuccess(response.message);
 
         // Обновляем статистику после отмены регистрации
-        if (kDebugMode) {
-          print(
-              '📊 [MONITOR] Уведомляем об отмене регистрации монитора через EventBus...');
-        }
         StatisticsEventBus()
             .notifyStatisticsUpdate('MonitorProvider.cancelRegistration');
 
         // Return to scanning state after successful cancellation
-        print('Returning to scanning state...');
         resetToInitial();
         setScreenState(MonitorScreenState.scanning);
       } else {
         _setError(response.message);
       }
     } catch (e) {
-      print('Error canceling monitor registration: $e');
       _setError('Qeydiyyatı ləğv etmək mümkün olmadı');
     } finally {
       _setLoading(false);
@@ -284,9 +262,8 @@ class MonitorProvider with ChangeNotifier {
       // TODO: Implement DatabaseService.registerMonitor method
       // final now = DateTime.now().toIso8601String();
       // await DatabaseService.registerMonitor(monitor, now);
-      print('Monitor ${monitor.workNumber} would be saved to local database');
     } catch (e) {
-      print('Error saving monitor to local database: $e');
+      // Ignore local database errors
     }
   }
 

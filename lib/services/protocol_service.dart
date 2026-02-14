@@ -49,33 +49,12 @@ class ProtocolService {
   /// Get note types for dropdowns
   Future<NoteTypesResponse> getNoteTypes() async {
     try {
-      if (kDebugMode) {
-        debugPrint('[Protocol] Fetching note types');
-      }
-
       final response = await _dio.get('/notetypes');
-
-      if (kDebugMode) {
-        debugPrint('[Protocol] Note types received: ${response.data}');
-      }
 
       final noteTypesResponse = NoteTypesResponse.fromJson(response.data);
 
-      if (kDebugMode) {
-        debugPrint(
-            '[Protocol] Parsed ${noteTypesResponse.data?.length ?? 0} note types');
-      }
-
       return noteTypesResponse;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Protocol] Error fetching note types: $e');
-        if (e is DioException) {
-          debugPrint('[Protocol] Status: ${e.response?.statusCode}');
-          debugPrint('[Protocol] Message: ${e.response?.data}');
-        }
-      }
-
       if (e is DioException) {
         return NoteTypesResponse(
           success: false,
@@ -93,10 +72,6 @@ class ProtocolService {
   /// Get protocol notes for monitors (filtered by exam date)
   Future<List<ProtocolNote>> getMyProtocolNotes({String? examDate}) async {
     try {
-      if (kDebugMode) {
-        debugPrint('[Protocol] Getting my protocol notes, examDate: $examDate');
-      }
-
       String url = '/protocols/my-notes';
 
       // Add examDate filter if provided
@@ -105,36 +80,21 @@ class ProtocolService {
         final isoDate = DateFormatter.azerbaijaniDateToISO(examDate);
         if (isoDate != null) {
           url += '?examDate=${Uri.encodeComponent(isoDate)}';
-          if (kDebugMode) {
-            debugPrint('[Protocol] Filtered URL: $url');
-          }
         }
       }
 
       final response = await _dio.get(url);
-
-      print('✅ My protocol notes response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Success: ${response.data['success']}');
 
       if (response.data['success'] == true && response.data['data'] != null) {
         final notes = (response.data['data'] as List)
             .map((json) => ProtocolNote.fromJson(json))
             .toList();
 
-        print('📊 Parsed protocol notes: ${notes.length}');
         return notes;
       }
 
       return [];
     } catch (e) {
-      print('❌ Error fetching my protocol notes: $e');
-
-      if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-      }
-
       return [];
     }
   }
@@ -143,24 +103,12 @@ class ProtocolService {
   Future<ProtocolResponse> createProtocolNote(
       CreateProtocolNoteRequest request) async {
     try {
-      print('📝 ProtocolService.createProtocolNote()');
-      print('   Request: ${request.toJson()}');
-
       final response =
           await _dio.post('/protocols/my-note', data: request.toJson());
 
-      print('✅ Create protocol note response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Data: ${response.data}');
-
       return ProtocolResponse.fromJson(response.data);
     } catch (e) {
-      print('❌ Error creating protocol note: $e');
-
       if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-
         return ProtocolResponse(
           success: false,
           message: e.response?.data?['message'] ?? 'Qeyd əlavə edilmədi',
@@ -178,24 +126,12 @@ class ProtocolService {
   Future<ProtocolResponse> updateProtocolNote(
       UpdateProtocolNoteRequest request) async {
     try {
-      print('📝 ProtocolService.updateProtocolNote()');
-      print('   Request: ${request.toJson()}');
-
       final response =
           await _dio.put('/protocols/my-note', data: request.toJson());
 
-      print('✅ Update protocol note response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Data: ${response.data}');
-
       return ProtocolResponse.fromJson(response.data);
     } catch (e) {
-      print('❌ Error updating protocol note: $e');
-
       if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-
         return ProtocolResponse(
           success: false,
           message: e.response?.data?['message'] ?? 'Qeyd yenilənmədi',
@@ -219,11 +155,6 @@ class ProtocolService {
     String? examDate,
   }) async {
     try {
-      print('📝 ProtocolService.getProtocols()');
-      print('   page: $page, pageSize: $pageSize');
-      print('   bina: $bina, examDate: $examDate');
-      print('   startDate: $startDate, endDate: $endDate');
-
       String url = '/protocols';
       List<String> queryParams = [];
 
@@ -267,22 +198,11 @@ class ProtocolService {
         url += '?${queryParams.join('&')}';
       }
 
-      print('   Final URL: $url');
-
       final response = await _dio.get(url);
-
-      print('✅ Get protocols response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Success: ${response.data['success']}');
 
       return ProtocolsResponse.fromJson(response.data);
     } catch (e) {
-      print('❌ Error fetching protocols: $e');
-
       if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-
         return ProtocolsResponse(
           success: false,
           message: e.response?.data?['message'] ?? 'Protokollar yüklənmədi',
@@ -299,22 +219,11 @@ class ProtocolService {
   /// Get protocol by ID
   Future<ProtocolResponse> getProtocolById(int id) async {
     try {
-      print('📝 ProtocolService.getProtocolById($id)');
-
       final response = await _dio.get('/protocols/$id');
-
-      print('✅ Get protocol by ID response received:');
-      print('   Status: ${response.statusCode}');
-      print('   Data: ${response.data}');
 
       return ProtocolResponse.fromJson(response.data);
     } catch (e) {
-      print('❌ Error fetching protocol by ID: $e');
-
       if (e is DioException) {
-        print('   Status: ${e.response?.statusCode}');
-        print('   Message: ${e.response?.data}');
-
         return ProtocolResponse(
           success: false,
           message: e.response?.data?['message'] ?? 'Protokol tapılmadı',
