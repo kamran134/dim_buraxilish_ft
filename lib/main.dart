@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/participant_provider.dart';
 import 'providers/supervisor_provider.dart';
+import 'providers/monitor_provider.dart';
 import 'providers/offline_database_provider.dart';
 import 'providers/unsent_data_provider.dart';
 import 'providers/theme_provider.dart';
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ParticipantProvider()),
         ChangeNotifierProvider(create: (_) => SupervisorProvider()),
+        ChangeNotifierProvider(create: (_) => MonitorProvider()),
         ChangeNotifierProvider(create: (_) => OfflineDatabaseProvider()),
         ChangeNotifierProvider(create: (_) => UnsentDataProvider()),
       ],

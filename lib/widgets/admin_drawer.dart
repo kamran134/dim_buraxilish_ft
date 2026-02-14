@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/settings_screen.dart';
 import '../screens/statistics_screen.dart';
 import '../screens/protocol_reports_screen.dart';
+import '../screens/monitor_screen.dart';
 import 'common/base_drawer.dart';
 
 /// Drawer для администраторов
@@ -25,6 +26,14 @@ class AdminDrawer extends StatelessWidget {
         onTap: () {
           Navigator.pop(context);
           _navigateToProtocolReportsScreen(context);
+        },
+      ),
+      DrawerMenuItem(
+        icon: Icons.people_alt,
+        title: 'İmtahan rəhbərləri',
+        onTap: () {
+          Navigator.pop(context);
+          _navigateToMonitorScreen(context);
         },
       ),
       DrawerMenuItem(
@@ -72,6 +81,14 @@ class AdminDrawer extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const ProtocolReportsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToMonitorScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MonitorScreen(),
       ),
     );
   }

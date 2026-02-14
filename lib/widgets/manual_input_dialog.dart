@@ -53,6 +53,23 @@ class ManualInputDialog extends StatefulWidget {
       ),
     );
   }
+
+  /// Show monitor manual input dialog
+  static Future<void> showMonitorDialog(
+    BuildContext context,
+    Function(String) onSubmit,
+  ) {
+    return showDialog(
+      context: context,
+      builder: (context) => ManualInputDialog(
+        title: 'İş nömrəsini əllə daxil edin',
+        hintText: 'İş nömrəsi (İmtahan rəhbəri)',
+        inputType: 'number',
+        onSubmit: onSubmit,
+        onCancel: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
 }
 
 class _ManualInputDialogState extends State<ManualInputDialog>

@@ -255,9 +255,10 @@ class MonitorProvider with ChangeNotifier {
   // Save monitor to local database for offline access and statistics
   Future<void> _saveMonitorToLocalDB(Monitor monitor) async {
     try {
-      final now = DateTime.now().toIso8601String();
-      await DatabaseService.registerMonitor(monitor, now);
-      print('Saved monitor ${monitor.workNumber} to local database');
+      // TODO: Implement DatabaseService.registerMonitor method
+      // final now = DateTime.now().toIso8601String();
+      // await DatabaseService.registerMonitor(monitor, now);
+      print('Monitor ${monitor.workNumber} would be saved to local database');
     } catch (e) {
       print('Error saving monitor to local database: $e');
     }

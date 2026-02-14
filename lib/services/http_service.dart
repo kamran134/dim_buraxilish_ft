@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
+import '../models/monitor_models.dart';
 import '../utils/date_formatter.dart';
 import 'database_service.dart';
 
@@ -998,6 +999,135 @@ class HttpService {
       );
     } catch (e) {
       print('General error canceling supervisor registration: $e');
+      return ResponseModel(
+        success: false,
+        message: 'Xəta baş verdi',
+      );
+    }
+  }
+
+  // =========== MONITOR METHODS ===========
+
+  /// Scan monitor (İmtahan rəhbəri) by work number
+  Future<MonitorResponse> scanMonitor({
+    required String workNumber,
+    required String examDate,
+  }) async {
+    try {
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+
+      print(
+          'Scanning monitor: workNumber=$workNumber, examDate=$examDate -> $formattedDate');
+
+      final response = await _dio.get(
+        '/monitors/checkmonitor',
+        queryParameters: {
+          'workNumber': workNumber,
+          'examDate': formattedDate,
+        },
+      );
+
+      print('Monitor scan response status: ${response.statusCode}');
+      print('Monitor scan response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        return MonitorResponse.fromJson(response.data);
+      } else {
+        return MonitorResponse(
+          success: false,
+          message: 'Server error: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      print('Dio error scanning monitor: $e');
+      if (e.response != null) {
+        print('Error response data: ${e.response!.data}');
+        try {
+          return MonitorResponse.fromJson(e.response!.data);
+        } catch (parseError) {
+          print('Error parsing error response: $parseError');
+          return MonitorResponse(
+            success: false,
+            message: 'İmtahan rəhbəri məlumatları oxunarkən xəta baş verdi',
+          );
+        }
+      } else {
+        return MonitorResponse(
+          success: false,
+          message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
+        );
+      }
+    } catch (error) {
+      print('General error scanning monitor: $error');
+      return MonitorResponse(
+        success: false,
+        message: 'Gözlənilməz xəta baş verdi',
+      );
+    }
+  }
+
+  /// Cancel monitor registration (set RegisterDate to null)
+  Future<ResponseModel> cancelMonitorRegistration({
+    required int workNumber,
+    required int buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+
+      print(
+          'Canceling monitor registration: workNumber=$workNumber, buildingCode=$buildingCode, examDate=$formattedDate');
+
+      final response = await _dio.post(
+        '/monitors/cancelregistration',
+        queryParameters: {
+          'workNumber': workNumber,
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      print('Cancel monitor registration response: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return ResponseModel(
+          success: true,
+          message: response.data['message'] ?? 'Qeydiyyat ləğv edildi',
+        );
+      } else {
+        return ResponseModel(
+          success: false,
+          message:
+              response.data['message'] ?? 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+    } on DioException catch (e) {
+      print('Error canceling monitor registration: $e');
+      if (e.response != null) {
+        print('Error response status: ${e.response!.statusCode}');
+        print('Error response data: ${e.response!.data}');
+        // Handle BadRequest (400) from backend
+        if (e.response!.data != null && e.response!.data is Map) {
+          return ResponseModel(
+            success: false,
+            message: e.response!.data['message'] ??
+                'Qeydiyyatı ləğv etmək mümkün olmadı',
+          );
+        }
+        return ResponseModel(
+          success: false,
+          message: 'Qeydiyyatı ləğv etmək mümkün olmadı',
+        );
+      }
+      return ResponseModel(
+        success: false,
+        message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
+      );
+    } catch (e) {
+      print('General error canceling monitor registration: $e');
       return ResponseModel(
         success: false,
         message: 'Xəta baş verdi',
