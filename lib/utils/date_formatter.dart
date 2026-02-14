@@ -11,7 +11,7 @@ class DateFormatter {
         return azDate; // Return original if format is unexpected
       }
 
-      final day = parts[0];
+      final day = parts[0].padLeft(2, '0'); // Add leading zero if needed
       final monthName = parts[1];
       final yearPart = parts[2].substring(0, 4); // Extract year from "2025-ci"
 

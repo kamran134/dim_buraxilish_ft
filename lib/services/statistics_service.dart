@@ -146,46 +146,175 @@ class StatisticsService {
   }
 
   /// Получает комбинированную статистику экзаменов (участники + наблюдатели)
+  /// ОБХОДНОЙ ПУТЬ: вызываем два отдельных эндпоинта и объединяем данные
   Future<DataResult<List<ExamStatisticsDto>>> getExamStatisticsByDate(
       String examDate) async {
     try {
       final token = await _httpService.getToken();
+      final formattedExamDate = _convertToMMDDYYYY(examDate);
 
-      final response = await http.get(
+      if (kDebugMode) {
+        debugPrint('📊 [СТАТИСТИКА] Получаем данные из двух источников');
+        debugPrint('📊 Дата: $examDate -> $formattedExamDate');
+      }
+
+      // 1. Получаем данные участников (используем ФОРМАТИРОВАННУЮ дату!)
+      final participantsResponse = await http.get(
         Uri.parse(
-            '$_baseUrl/buraxilishes/getexamstatisticsbydate?examDate=$examDate'),
+            '$_baseUrl/buraxilishes/getallexamdetailsinexamdate?examDate=$formattedExamDate'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      // 2. Получаем данные супервайзеров
+      final supervisorsResponse = await http.get(
+        Uri.parse(
+            '$_baseUrl/supervisors/GetAllExamDetailsInExamDate?examDate=$formattedExamDate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
 
-        if (jsonResponse['success'] == true) {
-          final List<dynamic> data = jsonResponse['data'] ?? [];
-          final List<ExamStatisticsDto> examStatistics = data
-              .map((item) =>
-                  ExamStatisticsDto.fromJson(item as Map<String, dynamic>))
-              .toList();
-
-          return DataResult<List<ExamStatisticsDto>>.success(
-            data: examStatistics,
-            message:
-                jsonResponse['message'] ?? 'Kombinə statistika uğurla alındı',
-          );
+      if (kDebugMode) {
+        debugPrint('📊 Участники status: ${participantsResponse.statusCode}');
+        debugPrint('📊 Супервайзеры status: ${supervisorsResponse.statusCode}');
+        if (supervisorsResponse.statusCode == 200) {
+          debugPrint(
+              '📊 Супервайзеры ОТВЕТ (первые 500 символов): ${supervisorsResponse.body.substring(0, supervisorsResponse.body.length > 500 ? 500 : supervisorsResponse.body.length)}');
         } else {
-          return DataResult<List<ExamStatisticsDto>>.error(
-            message: jsonResponse['message'] ?? 'Kombinə statistika alınmadı',
-          );
+          debugPrint('📊 ❌ Супервайзеры ОШИБКА: ${supervisorsResponse.body}');
         }
+      }
+
+      if (participantsResponse.statusCode == 200) {
+        final participantsJson =
+            json.decode(participantsResponse.body) as Map<String, dynamic>;
+        final List<dynamic> participantsData = participantsJson['data'] ?? [];
+
+        // Создаем Map для быстрого поиска
+        Map<String, dynamic> participantsByBuilding = {};
+        Map<String, dynamic> supervisorsByBuilding = {};
+
+        // Индексируем участников по kod_Bina
+        for (var participant in participantsData) {
+          final buildingCode = participant['kod_Bina']?.toString() ?? '';
+          if (buildingCode.isNotEmpty) {
+            participantsByBuilding[buildingCode] = participant;
+            if (kDebugMode && participantsData.indexOf(participant) < 3) {
+              debugPrint(
+                  '📊 Участник здание код: "$buildingCode" (тип: ${participant['kod_Bina'].runtimeType})');
+            }
+          }
+        }
+
+        if (supervisorsResponse.statusCode == 200) {
+          final supervisorsJson =
+              json.decode(supervisorsResponse.body) as Map<String, dynamic>;
+          final List<dynamic> supervisorsData = supervisorsJson['data'] ?? [];
+
+          if (kDebugMode) {
+            debugPrint('📊 Участников зданий: ${participantsData.length}');
+            debugPrint('📊 Супервайзеров зданий: ${supervisorsData.length}');
+            if (supervisorsData.isNotEmpty) {
+              debugPrint(
+                  '📊 Первый супервайзер (пример): ${supervisorsData[0]}');
+            }
+          }
+
+          // Индексируем супервайзеров по buildingCode
+          for (var supervisor in supervisorsData) {
+            final buildingCode = supervisor['buildingCode']?.toString() ?? '';
+            if (buildingCode.isNotEmpty) {
+              supervisorsByBuilding[buildingCode] = supervisor;
+              if (kDebugMode && supervisorsData.indexOf(supervisor) < 3) {
+                debugPrint(
+                    '📊 Супервайзер здание код: "$buildingCode" (тип: ${supervisor['buildingCode'].runtimeType}), allPersonCount=${supervisor['allPersonCount']}, regPersonCount=${supervisor['regPersonCount']}');
+              }
+            }
+          }
+
+          if (kDebugMode) {
+            debugPrint(
+                '📊 Всего супервайзеров в карте: ${supervisorsByBuilding.length}');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+                '📊 ⚠️ Супервайзеры не загружены, статус: ${supervisorsResponse.statusCode}');
+          }
+        }
+
+        // Получаем все уникальные buildingCode из обоих источников
+        final allBuildingCodes = <String>{
+          ...participantsByBuilding.keys,
+          ...supervisorsByBuilding.keys,
+        };
+
+        // Объединяем данные для всех зданий
+        final List<ExamStatisticsDto> examStatistics = [];
+
+        for (var buildingCode in allBuildingCodes) {
+          final participant = participantsByBuilding[buildingCode];
+          final supervisor = supervisorsByBuilding[buildingCode];
+
+          examStatistics.add(ExamStatisticsDto(
+            // Данные участников (если есть)
+            kodBina: participant?['kod_Bina']?.toString() ?? buildingCode,
+            adBina: participant?['ad_Bina'] ??
+                supervisor?['buildingName'] ??
+                'Bina $buildingCode',
+            erize: participant?['erize'],
+            imtBegin: participant?['imt_Begin'],
+            imtTarix: participant?['imt_Tarix'],
+            allManCount: participant?['allManCount'] ?? 0,
+            regManCount: participant?['regManCount'] ?? 0,
+            allWomanCount: participant?['allWomanCount'] ?? 0,
+            regWomanCount: participant?['regWomanCount'] ?? 0,
+            // Данные супервайзеров (если есть)
+            supervisorCount: supervisor?['allPersonCount'] ?? 0,
+            regSupervisorCount: supervisor?['regPersonCount'] ?? 0,
+            hallCount: supervisor?['hallCount'] ?? 0,
+          ));
+        }
+
+        if (kDebugMode) {
+          debugPrint('📊 Объединено зданий: ${examStatistics.length}');
+          if (examStatistics.isNotEmpty) {
+            final first = examStatistics[0];
+            debugPrint('📊 Первое здание: ${first.adBina}');
+            debugPrint(
+                '📊 Участников: ${(first.allManCount ?? 0) + (first.allWomanCount ?? 0)}');
+            debugPrint(
+                '📊 Супервайзеров: ${first.supervisorCount}/${first.regSupervisorCount}');
+          }
+
+          // Подсчитываем общую сумму супервайзеров
+          int totalSupervisors = 0;
+          int totalRegSupervisors = 0;
+          for (var stat in examStatistics) {
+            totalSupervisors += stat.supervisorCount ?? 0;
+            totalRegSupervisors += stat.regSupervisorCount ?? 0;
+          }
+          debugPrint(
+              '📊 ✅ ИТОГО супервайзеров: $totalSupervisors, зарегистрировано: $totalRegSupervisors');
+        }
+
+        return DataResult<List<ExamStatisticsDto>>.success(
+          data: examStatistics,
+          message: 'Kombinə statistika uğurla alındı',
+        );
       } else {
         return DataResult<List<ExamStatisticsDto>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: 'Server xətası: ${participantsResponse.statusCode}',
         );
       }
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('📊 ❌ Exception: $e');
+      }
       return DataResult<List<ExamStatisticsDto>>.error(
         message: 'Şəbəkə xətası: $e',
       );

@@ -30,7 +30,7 @@ class ExamStatisticsDto {
 
   factory ExamStatisticsDto.fromJson(Map<String, dynamic> json) {
     return ExamStatisticsDto(
-      kodBina: json['kod_Bina'] as String?,
+      kodBina: json['kod_Bina']?.toString(),
       adBina: json['ad_Bina'] as String?,
       erize: json['erize'] as String?,
       imtTarix: json['imt_Tarix'] as String?,

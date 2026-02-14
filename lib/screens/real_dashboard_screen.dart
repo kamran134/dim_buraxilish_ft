@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -88,8 +89,13 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       if (result.success && result.data != null) {
         setState(() {
           _examDates = result.data!;
+          print('📅 СПИСОК ДАТ ЭКЗАМЕНОВ:');
+          for (var i = 0; i < _examDates.length; i++) {
+            print('📅 [$i] ${_examDates[i]}');
+          }
           if (_examDates.isNotEmpty) {
             _selectedExamDate = _examDates.first;
+            print('📅 ВЫБРАНА ДАТА: $_selectedExamDate');
             _loadDashboardStatistics(_selectedExamDate!);
           }
         });
@@ -129,6 +135,27 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           _dashboardStats = dashboardResult.data!;
           if (combinedResult.success && combinedResult.data != null) {
             _examStatistics = combinedResult.data!;
+
+            // ЛОГИРОВАНИЕ: Посмотрим что в _examStatistics
+            if (kDebugMode) {
+              print(
+                  '📊 [DASHBOARD] _examStatistics загружен: ${_examStatistics.length} зданий');
+              if (_examStatistics.isNotEmpty) {
+                final first = _examStatistics[0];
+                print('📊 Первое здание: ${first.adBina}');
+                print('📊   supervisorCount: ${first.supervisorCount}');
+                print('📊   regSupervisorCount: ${first.regSupervisorCount}');
+                print('📊   hallCount: ${first.hallCount}');
+
+                // Посчитаем общую статистику супервайзеров
+                int totalSupervisors = _examStatistics.fold(
+                    0, (sum, stat) => sum + (stat.supervisorCount ?? 0));
+                int regSupervisors = _examStatistics.fold(
+                    0, (sum, stat) => sum + (stat.regSupervisorCount ?? 0));
+                print('📊 ИТОГО супервайзеров: $totalSupervisors');
+                print('📊 ИТОГО зарегистрировано: $regSupervisors');
+              }
+            }
           }
         });
       } else {

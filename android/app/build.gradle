@@ -29,7 +29,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.dim.dim_buraxilish"
+    namespace "com.example.dim_buraxilish_ft"
     compileSdkVersion 36
 
     compileOptions {
@@ -60,7 +60,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.dim.dim_buraxilish"
+        applicationId "com.example.dim_buraxilish_ft"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
