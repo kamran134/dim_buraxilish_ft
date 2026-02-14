@@ -951,7 +951,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                         .copyWith(fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    '${room.allPersonCount} monitor',
+                    '${room.allPersonCount} imtahan rəhbəri',
                     style: AppTextStyles.caption
                         .copyWith(color: AppColors.textGrey),
                   ),

@@ -287,7 +287,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
               ),
               Expanded(
                 child: _buildSummaryItem(
-                  'Nəzarətçilər',
+                  'İmtahan rəhbəri',
                   totalMonitors.toString(),
                   Icons.people,
                 ),
@@ -412,7 +412,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${room.regPersonCount}/${room.allPersonCount} nəzarətçi',
+                      '${room.regPersonCount}/${room.allPersonCount} imtahan rəhbəri',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: Colors.grey[600],
                       ),
