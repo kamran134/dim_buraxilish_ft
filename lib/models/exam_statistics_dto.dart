@@ -12,6 +12,8 @@ class ExamStatisticsDto {
   final int? supervisorCount;
   final int? regSupervisorCount;
   final int? hallCount;
+  final int? monitorCount;
+  final int? regMonitorCount;
 
   ExamStatisticsDto({
     this.kodBina,
@@ -26,6 +28,8 @@ class ExamStatisticsDto {
     this.supervisorCount,
     this.regSupervisorCount,
     this.hallCount,
+    this.monitorCount,
+    this.regMonitorCount,
   });
 
   factory ExamStatisticsDto.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,8 @@ class ExamStatisticsDto {
       supervisorCount: json['supervisorCount'] as int?,
       regSupervisorCount: json['regSupervisorCount'] as int?,
       hallCount: json['hallCount'] as int?,
+      monitorCount: json['monitorCount'] as int?,
+      regMonitorCount: json['regMonitorCount'] as int?,
     );
   }
 
@@ -96,6 +102,8 @@ class ExamStatisticsDto {
       'supervisorCount': supervisorCount,
       'regSupervisorCount': regSupervisorCount,
       'hallCount': hallCount,
+      'monitorCount': monitorCount,
+      'regMonitorCount': regMonitorCount,
     };
   }
 

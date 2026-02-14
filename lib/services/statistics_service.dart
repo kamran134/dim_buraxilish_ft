@@ -170,8 +170,18 @@ class StatisticsService {
 
       // 2. Получаем данные супервайзеров
       final supervisorsResponse = await http.get(
-        Uri.parse(
-            '$_baseUrl/supervisors/GetAllExamDetailsInExamDate?examDate=$formattedExamDate'),
+        Uri.parse('$_baseUrl/supervisors/GetAllExamDetailsInExamDate')
+            .replace(queryParameters: {'examDate': formattedExamDate}),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      // 3. Получаем данные мониторов
+      final monitorsResponse = await http.get(
+        Uri.parse('$_baseUrl/monitors/GetAllExamDetailsInExamDate')
+            .replace(queryParameters: {'examDate': formattedExamDate}),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -179,13 +189,23 @@ class StatisticsService {
       );
 
       if (kDebugMode) {
+        debugPrint('📊 Форматированная дата для API: "$formattedExamDate"');
+        debugPrint(
+            '📊 Участники URL: $_baseUrl/buraxilishes/getallexamdetailsinexamdate?examDate=$formattedExamDate');
         debugPrint('📊 Участники status: ${participantsResponse.statusCode}');
         debugPrint('📊 Супервайзеры status: ${supervisorsResponse.statusCode}');
+        debugPrint('📊 Мониторы status: ${monitorsResponse.statusCode}');
         if (supervisorsResponse.statusCode == 200) {
           debugPrint(
               '📊 Супервайзеры ОТВЕТ (первые 500 символов): ${supervisorsResponse.body.substring(0, supervisorsResponse.body.length > 500 ? 500 : supervisorsResponse.body.length)}');
         } else {
           debugPrint('📊 ❌ Супервайзеры ОШИБКА: ${supervisorsResponse.body}');
+        }
+        if (monitorsResponse.statusCode == 200) {
+          debugPrint(
+              '📊 Мониторы ОТВЕТ (первые 500 символов): ${monitorsResponse.body.substring(0, monitorsResponse.body.length > 500 ? 500 : monitorsResponse.body.length)}');
+        } else {
+          debugPrint('📊 ❌ Мониторы ОШИБКА: ${monitorsResponse.body}');
         }
       }
 
@@ -247,7 +267,50 @@ class StatisticsService {
           }
         }
 
-        // Получаем все уникальные buildingCode из обоих источников
+        // Обрабатываем данные мониторов
+        // ВАЖНО: Мониторы группируются по комнатам (roomId), а не по зданиям (buildingCode)
+        // Поэтому суммируем общее количество мониторов со всех комнат
+        int totalMonitorCount = 0;
+        int totalRegMonitorCount = 0;
+
+        if (monitorsResponse.statusCode == 200) {
+          final monitorsJson =
+              json.decode(monitorsResponse.body) as Map<String, dynamic>;
+          final List<dynamic> monitorsData = monitorsJson['data'] ?? [];
+
+          if (kDebugMode) {
+            debugPrint('📊 Мониторов комнат: ${monitorsData.length}');
+            if (monitorsData.isNotEmpty) {
+              debugPrint('📊 Первый монитор (пример): ${monitorsData[0]}');
+            }
+          }
+
+          // Суммируем всех мониторов со всех комнат
+          for (var monitor in monitorsData) {
+            final allPersonCount = monitor['allPersonCount'] as int? ?? 0;
+            final regPersonCount = monitor['regPersonCount'] as int? ?? 0;
+
+            totalMonitorCount += allPersonCount;
+            totalRegMonitorCount += regPersonCount;
+
+            if (kDebugMode && monitorsData.indexOf(monitor) < 3) {
+              debugPrint(
+                  '📊 Монитор комната: "${monitor['roomName']}", allPersonCount=$allPersonCount, regPersonCount=$regPersonCount');
+            }
+          }
+
+          if (kDebugMode) {
+            debugPrint(
+                '📊 ИТОГО мониторов: $totalMonitorCount, зарегистрировано: $totalRegMonitorCount');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+                '📊 ⚠️ Мониторы не загружены, статус: ${monitorsResponse.statusCode}');
+          }
+        }
+
+        // Получаем все уникальные buildingCode из участников и супервайзеров
         final allBuildingCodes = <String>{
           ...participantsByBuilding.keys,
           ...supervisorsByBuilding.keys,
@@ -277,6 +340,9 @@ class StatisticsService {
             supervisorCount: supervisor?['allPersonCount'] ?? 0,
             regSupervisorCount: supervisor?['regPersonCount'] ?? 0,
             hallCount: supervisor?['hallCount'] ?? 0,
+            // Данные мониторов - НЕ добавляем в каждое здание, это глобальная статистика
+            monitorCount: 0,
+            regMonitorCount: 0,
           ));
         }
 
@@ -300,6 +366,30 @@ class StatisticsService {
           }
           debugPrint(
               '📊 ✅ ИТОГО супервайзеров: $totalSupervisors, зарегистрировано: $totalRegSupervisors');
+          debugPrint(
+              '📊 ✅ ИТОГО мониторов: $totalMonitorCount, зарегистрировано: $totalRegMonitorCount');
+        }
+
+        // Добавляем данные мониторов в результат для использования в дашборде
+        if (examStatistics.isNotEmpty && totalMonitorCount > 0) {
+          // Добавляем данные мониторов только к первому зданию для экономии памяти
+          examStatistics[0] = ExamStatisticsDto(
+            kodBina: examStatistics[0].kodBina,
+            adBina: examStatistics[0].adBina,
+            erize: examStatistics[0].erize,
+            imtBegin: examStatistics[0].imtBegin,
+            imtTarix: examStatistics[0].imtTarix,
+            allManCount: examStatistics[0].allManCount,
+            regManCount: examStatistics[0].regManCount,
+            allWomanCount: examStatistics[0].allWomanCount,
+            regWomanCount: examStatistics[0].regWomanCount,
+            supervisorCount: examStatistics[0].supervisorCount,
+            regSupervisorCount: examStatistics[0].regSupervisorCount,
+            hallCount: examStatistics[0].hallCount,
+            // Добавляем глобальные данные мониторов только к первому элементу
+            monitorCount: totalMonitorCount,
+            regMonitorCount: totalRegMonitorCount,
+          );
         }
 
         return DataResult<List<ExamStatisticsDto>>.success(

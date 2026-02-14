@@ -518,20 +518,31 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           ),
           const SizedBox(height: 20),
           _buildStatisticRow(
-              'Ümumi nəzarətçi', _getTotalSupervisors(), AppColors.primaryBlue),
-          _buildStatisticRow('Qeydiyyatdan keçən nəzarətçi',
+              'İmtahan rəhbəri sayı (ümumi)',
+              _getTotalMonitors(),
+              const Color(0xFF059669)), // green-600 for monitors
+          _buildStatisticRow('Qeydiyyatdan keçənlər', _getRegisteredMonitors(),
+              AppColors.successGreen),
+          _buildStatisticRow('Qeydiyyatdan keçməyənlər',
+              _getUnregisteredMonitors(), AppColors.errorRed),
+          const SizedBox(height: 16),
+          _buildProgressBar('Qeydiyyat faizi', _getMonitorRegistrationRate()),
+          const Divider(height: 32),
+          _buildStatisticRow('Nəzarətçi sayı (ümumi)', _getTotalSupervisors(),
+              AppColors.primaryBlue),
+          _buildStatisticRow('Qeydiyyatdan keçənlər',
               _getRegisteredSupervisors(), AppColors.successGreen),
-          _buildStatisticRow('Qeydiyyatdan keçməyən nəzarətçi',
+          _buildStatisticRow('Qeydiyyatdan keçməyənlər',
               _getUnregisteredSupervisors(), AppColors.errorRed),
           const SizedBox(height: 16),
           _buildProgressBar(
               'Qeydiyyat faizi', _getSupervisorRegistrationRate()),
           const Divider(height: 32),
-          _buildStatisticRow('Ümumi iştirakçı', examSum.totalParticipants,
-              AppColors.primaryBlue),
-          _buildStatisticRow('Qeydiyyatdan keçən iştirakçı',
-              examSum.totalRegistered, AppColors.successGreen),
-          _buildStatisticRow('Qeydiyyatdan keçməyən iştirakçı',
+          _buildStatisticRow('İştirakçı sayı (ümumi)',
+              examSum.totalParticipants, AppColors.primaryBlue),
+          _buildStatisticRow('Qeydiyyatdan keçənlər', examSum.totalRegistered,
+              AppColors.successGreen),
+          _buildStatisticRow('Qeydiyyatdan keçməyənlər',
               examSum.totalUnregistered, AppColors.errorRed),
           const SizedBox(height: 16),
           _buildProgressBar('Qeydiyyat faizi', examSum.registrationRate),
@@ -1033,6 +1044,28 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     final total = _getTotalSupervisors();
     if (total == 0) return 0.0;
     final registered = _getRegisteredSupervisors();
+    return (registered / total) * 100;
+  }
+
+  // Методы для получения статистики мониторов - только с первого элемента (глобальные данные)
+  int _getTotalMonitors() {
+    if (_examStatistics.isEmpty) return 0;
+    return _examStatistics[0].monitorCount ?? 0;
+  }
+
+  int _getRegisteredMonitors() {
+    if (_examStatistics.isEmpty) return 0;
+    return _examStatistics[0].regMonitorCount ?? 0;
+  }
+
+  int _getUnregisteredMonitors() {
+    return _getTotalMonitors() - _getRegisteredMonitors();
+  }
+
+  double _getMonitorRegistrationRate() {
+    final total = _getTotalMonitors();
+    if (total == 0) return 0.0;
+    final registered = _getRegisteredMonitors();
     return (registered / total) * 100;
   }
 
