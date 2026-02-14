@@ -302,6 +302,7 @@ class StatisticsService {
           if (kDebugMode) {
             debugPrint(
                 '📊 ИТОГО мониторов: $totalMonitorCount, зарегистрировано: $totalRegMonitorCount');
+            debugPrint('📊 🔄 Обновляем данные мониторов в первом здании...');
           }
         } else {
           if (kDebugMode) {

@@ -6,12 +6,14 @@ import '../providers/auth_provider.dart';
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../services/statistics_service.dart';
+import '../services/statistics_event_bus.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
 import 'building_details_screen.dart';
 import 'buildings_statistics_screen.dart';
+import 'dart:async';
 
 class RealDashboardScreen extends StatefulWidget {
   const RealDashboardScreen({Key? key}) : super(key: key);
@@ -22,6 +24,9 @@ class RealDashboardScreen extends StatefulWidget {
 
 class _RealDashboardScreenState extends State<RealDashboardScreen>
     with TickerProviderStateMixin {
+  // Подписка на события обновления статистики
+  StreamSubscription<String>? _statisticsUpdateSubscription;
+
   late ScrollController _scrollController;
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -40,6 +45,18 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   @override
   void initState() {
     super.initState();
+    // Подписываемся на события обновления статистики
+    _statisticsUpdateSubscription =
+        StatisticsEventBus().onStatisticsUpdate.listen((source) {
+      if (kDebugMode) {
+        print('📊 [DASHBOARD] Получено событие обновления от: $source');
+      }
+      refreshStatistics();
+    });
+    if (kDebugMode) {
+      print('📊 [DASHBOARD] initState() - подписка на события установлена');
+    }
+
     _scrollController = ScrollController();
 
     _fadeController = AnimationController(
@@ -72,6 +89,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   @override
   void dispose() {
+    // Отписываемся от событий
+    _statisticsUpdateSubscription?.cancel();
+    if (kDebugMode) {
+      print('📊 [DASHBOARD] dispose() - отписка от событий');
+    }
     _scrollController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
@@ -112,6 +134,17 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  /// Публичный метод для обновления статистики (вызывается извне)
+  Future<void> refreshStatistics() async {
+    if (kDebugMode) {
+      print(
+          '📊 [DASHBOARD] Вызван refreshStatistics() после сканирования монитора');
+    }
+    if (_dashboardStats?.examDate != null) {
+      await _loadDashboardStatistics(_dashboardStats!.examDate);
     }
   }
 
@@ -1050,12 +1083,20 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   // Методы для получения статистики мониторов - только с первого элемента (глобальные данные)
   int _getTotalMonitors() {
     if (_examStatistics.isEmpty) return 0;
-    return _examStatistics[0].monitorCount ?? 0;
+    final count = _examStatistics[0].monitorCount ?? 0;
+    if (kDebugMode) {
+      print('📊 [DASHBOARD] _getTotalMonitors() = $count');
+    }
+    return count;
   }
 
   int _getRegisteredMonitors() {
     if (_examStatistics.isEmpty) return 0;
-    return _examStatistics[0].regMonitorCount ?? 0;
+    final count = _examStatistics[0].regMonitorCount ?? 0;
+    if (kDebugMode) {
+      print('📊 [DASHBOARD] _getRegisteredMonitors() = $count');
+    }
+    return count;
   }
 
   int _getUnregisteredMonitors() {
