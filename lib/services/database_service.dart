@@ -758,6 +758,16 @@ class DatabaseService {
     await db.delete(_registeredSupervisorsTable);
   }
 
+  /// Clear entire database (all tables)
+  static Future<void> clearAllDatabase() async {
+    final db = await database;
+    await db.delete(_participantsTable);
+    await db.delete(_registeredParticipantsTable);
+    await db.delete(_registeredMonitorsTable);
+    await db.delete(_supervisorsTable);
+    await db.delete(_registeredSupervisorsTable);
+  }
+
   /// Get all participants (for offline database management)
   static Future<List<Participant>> getAllParticipants() async {
     final db = await database;

@@ -5,6 +5,7 @@ import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../utils/role_helper.dart';
 import '../services/http_service.dart';
+import '../services/database_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -121,6 +122,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       // First sign out to clear any existing auth
       await signOut(clearData: false);
+
+      // Clear all SQLite database on login
+      await DatabaseService.clearAllDatabase();
 
       final response = await _httpService.login(userName, password, examDate);
 
