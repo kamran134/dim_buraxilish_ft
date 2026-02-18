@@ -1,16 +1,18 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/participant_models.dart';
+import '../models/monitor_models.dart';
 import '../models/supervisor_models.dart';
 
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   // Table names
   static const String _participantsTable = 'participants';
   static const String _registeredParticipantsTable = 'registered_participants';
+  static const String _registeredMonitorsTable = 'registered_monitors';
   static const String _supervisorsTable = 'supervisors';
   static const String _registeredSupervisorsTable = 'registered_supervisors';
 
@@ -80,6 +82,25 @@ class DatabaseService {
       )
     ''');
 
+    // Create registered monitors table
+    await db.execute('''
+      CREATE TABLE $_registeredMonitorsTable (
+        workNumber INTEGER PRIMARY KEY,
+        firstName TEXT,
+        lastName TEXT,
+        middleName TEXT,
+        idCardPin TEXT,
+        buildingCode INTEGER,
+        buildingName TEXT,
+        roomId INTEGER,
+        roomName TEXT,
+        examDate TEXT,
+        registerDate TEXT,
+        image TEXT,
+        online INTEGER DEFAULT 0
+      )
+    ''');
+
     // Create supervisors table (offline download)
     await db.execute('''
       CREATE TABLE $_supervisorsTable (
@@ -121,7 +142,25 @@ class DatabaseService {
   // Handle database upgrades
   static Future<void> _onUpgrade(
       Database db, int oldVersion, int newVersion) async {
-    // Handle schema migrations if needed
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_registeredMonitorsTable (
+          workNumber INTEGER PRIMARY KEY,
+          firstName TEXT,
+          lastName TEXT,
+          middleName TEXT,
+          idCardPin TEXT,
+          buildingCode INTEGER,
+          buildingName TEXT,
+          roomId INTEGER,
+          roomName TEXT,
+          examDate TEXT,
+          registerDate TEXT,
+          image TEXT,
+          online INTEGER DEFAULT 0
+        )
+      ''');
+    }
   }
 
   // PARTICIPANTS METHODS
@@ -233,6 +272,85 @@ class DatabaseService {
     final db = await database;
     await db.delete(_participantsTable);
     await db.delete(_registeredParticipantsTable);
+  }
+
+  // MONITORS METHODS
+
+  /// Register monitor in local database for instant local statistics
+  static Future<void> registerMonitor(
+      Monitor monitor, String registrationDate) async {
+    final db = await database;
+
+    await db.insert(
+      _registeredMonitorsTable,
+      {
+        'workNumber': monitor.workNumber,
+        'firstName': monitor.firstName,
+        'lastName': monitor.lastName,
+        'middleName': monitor.middleName,
+        'idCardPin': monitor.idCardPin,
+        'buildingCode': monitor.buildingCode,
+        'buildingName': monitor.buildingName,
+        'roomId': monitor.roomId,
+        'roomName': monitor.roomName,
+        'examDate': monitor.examDate,
+        'registerDate': registrationDate,
+        'image': monitor.image,
+        'online': monitor.online == true ? 1 : 0,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Remove monitor from local registered table (after cancellation)
+  static Future<void> unregisterMonitor(int workNumber) async {
+    final db = await database;
+    await db.delete(
+      _registeredMonitorsTable,
+      where: 'workNumber = ?',
+      whereArgs: [workNumber],
+    );
+  }
+
+  /// Get registered monitors from local database
+  static Future<List<Monitor>> getRegisteredMonitors({String? examDate}) async {
+    final db = await database;
+
+    final results = await db.query(
+      _registeredMonitorsTable,
+      orderBy: 'registerDate DESC',
+    );
+
+    final monitors =
+        results.map((map) => _registeredMonitorFromMap(map)).toList();
+
+    if (examDate == null || examDate.trim().isEmpty) {
+      return monitors;
+    }
+
+    final dateKey = _normalizeDateKey(examDate);
+    if (dateKey.isEmpty) {
+      return monitors;
+    }
+
+    return monitors
+        .where((monitor) => _normalizeDateKey(monitor.examDate) == dateKey)
+        .toList();
+  }
+
+  /// Get locally registered monitors for a specific room
+  static Future<List<Monitor>> getRegisteredMonitorsByRoom(
+    int roomId, {
+    String? examDate,
+  }) async {
+    final monitors = await getRegisteredMonitors(examDate: examDate);
+    return monitors.where((monitor) => monitor.roomId == roomId).toList();
+  }
+
+  /// Clear all registered monitors
+  static Future<void> clearAllRegisteredMonitors() async {
+    final db = await database;
+    await db.delete(_registeredMonitorsTable);
   }
 
   // SUPERVISORS METHODS
@@ -399,6 +517,11 @@ class DatabaseService {
         ) ??
         0;
 
+    final registeredMonitorsCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM $_registeredMonitorsTable'),
+        ) ??
+        0;
+
     final supervisorsCount = Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM $_supervisorsTable'),
         ) ??
@@ -413,6 +536,7 @@ class DatabaseService {
     return {
       'participants': participantsCount,
       'registeredParticipants': registeredParticipantsCount,
+      'registeredMonitors': registeredMonitorsCount,
       'supervisors': supervisorsCount,
       'registeredSupervisors': registeredSupervisorsCount,
     };
@@ -477,6 +601,77 @@ class DatabaseService {
       bina: map['bina'] as String,
       imtTarix: map['imt_Tarix'] as String,
     );
+  }
+
+  static Monitor _registeredMonitorFromMap(Map<String, dynamic> map) {
+    return Monitor(
+      workNumber: map['workNumber'] as int,
+      firstName: map['firstName'] as String? ?? '',
+      lastName: map['lastName'] as String? ?? '',
+      middleName: map['middleName'] as String? ?? '',
+      idCardPin: map['idCardPin'] as String? ?? '',
+      buildingCode: map['buildingCode'] as int? ?? 0,
+      buildingName: map['buildingName'] as String? ?? '',
+      roomId: map['roomId'] as int? ?? 0,
+      roomName: map['roomName'] as String? ?? '',
+      examDate: map['examDate'] as String? ?? '',
+      registerDate: map['registerDate'] as String? ?? '',
+      image: map['image'] as String? ?? '',
+      online: map['online'] == 1,
+    );
+  }
+
+  static String _normalizeDateKey(String rawDate) {
+    final value = rawDate.trim();
+    if (value.isEmpty) return '';
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      return '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
+    }
+
+    final mmddyyyy = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(value);
+    if (mmddyyyy != null) {
+      final month = mmddyyyy.group(1)!.padLeft(2, '0');
+      final day = mmddyyyy.group(2)!.padLeft(2, '0');
+      final year = mmddyyyy.group(3)!;
+      return '$year-$month-$day';
+    }
+
+    final ddmmyyyy =
+        RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$').firstMatch(value);
+    if (ddmmyyyy != null) {
+      final day = ddmmyyyy.group(1)!.padLeft(2, '0');
+      final month = ddmmyyyy.group(2)!.padLeft(2, '0');
+      final year = ddmmyyyy.group(3)!;
+      return '$year-$month-$day';
+    }
+
+    final parts = value.split(' ');
+    if (parts.length >= 3) {
+      final day = int.tryParse(parts[0]);
+      final monthMap = {
+        'yanvar': 1,
+        'fevral': 2,
+        'mart': 3,
+        'aprel': 4,
+        'may': 5,
+        'iyun': 6,
+        'iyul': 7,
+        'avqust': 8,
+        'sentyabr': 9,
+        'oktyabr': 10,
+        'noyabr': 11,
+        'dekabr': 12,
+      };
+      final month = monthMap[parts[1].toLowerCase()];
+      final year = int.tryParse(parts[2].replaceAll(RegExp(r'[^\d]'), ''));
+      if (day != null && month != null && year != null) {
+        return '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+      }
+    }
+
+    return '';
   }
 
   static Map<String, dynamic> _supervisorToMap(Supervisor supervisor) {

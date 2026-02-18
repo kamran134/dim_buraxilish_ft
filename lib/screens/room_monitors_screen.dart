@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/monitor_models.dart';
 import '../models/monitor_room_statistics.dart';
+import '../services/database_service.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../widgets/common/photo_widget.dart';
@@ -50,9 +51,10 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     });
 
     try {
-      // Для начала создадим пустой список мониторов
-      // TODO: Реализовать загрузку мониторов для конкретной комнаты
-      final List<Monitor> monitors = [];
+      final monitors = await DatabaseService.getRegisteredMonitorsByRoom(
+        widget.roomStats.roomId,
+        examDate: widget.roomStats.examDate,
+      );
 
       setState(() {
         _monitors = monitors;

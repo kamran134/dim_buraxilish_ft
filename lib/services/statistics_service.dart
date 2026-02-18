@@ -3,9 +3,11 @@ import 'package:http/http.dart' as http;
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../models/participant_light_dto.dart';
+import '../models/monitor_models.dart';
 import '../models/supervisor_detail_dto.dart';
 import '../models/monitor_room_statistics.dart';
 import '../models/response_models.dart';
+import '../services/database_service.dart';
 import '../services/http_service.dart';
 
 /// Сервис для работы с статистикой экзаменов
@@ -453,6 +455,9 @@ class StatisticsService {
   /// Получает статистику по всем комнатам для конкретной даты экзамена
   Future<DataResult<List<MonitorRoomStatistics>>> getAllRoomStatistics(
       String examDate) async {
+    final localRegisteredMonitors =
+        await DatabaseService.getRegisteredMonitors(examDate: examDate);
+
     try {
       final token = await _httpService.getToken();
 
@@ -473,31 +478,138 @@ class StatisticsService {
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
-          final List<MonitorRoomStatistics> roomStats = data
+          final List<MonitorRoomStatistics> apiRoomStats = data
               .map((item) =>
                   MonitorRoomStatistics.fromJson(item as Map<String, dynamic>))
               .toList();
 
+          final mergedRoomStats = _mergeRoomStatisticsWithLocal(
+            apiRoomStats,
+            localRegisteredMonitors,
+          );
+
           return DataResult<List<MonitorRoomStatistics>>.success(
-            data: roomStats,
+            data: mergedRoomStats,
             message:
                 jsonResponse['message'] ?? 'Otaq statistikaları uğurla alındı',
           );
         } else {
+          if (localRegisteredMonitors.isNotEmpty) {
+            return DataResult<List<MonitorRoomStatistics>>.success(
+              data: _buildRoomStatisticsFromLocal(localRegisteredMonitors),
+              message: 'Lokal statistikalar göstərilir',
+            );
+          }
+
           return DataResult<List<MonitorRoomStatistics>>.error(
             message: jsonResponse['message'] ?? 'Otaq statistikaları alınmadı',
           );
         }
       } else {
+        if (localRegisteredMonitors.isNotEmpty) {
+          return DataResult<List<MonitorRoomStatistics>>.success(
+            data: _buildRoomStatisticsFromLocal(localRegisteredMonitors),
+            message: 'Lokal statistikalar göstərilir',
+          );
+        }
+
         return DataResult<List<MonitorRoomStatistics>>.error(
           message: 'Server xətası: ${response.statusCode}',
         );
       }
     } catch (e) {
+      if (localRegisteredMonitors.isNotEmpty) {
+        return DataResult<List<MonitorRoomStatistics>>.success(
+          data: _buildRoomStatisticsFromLocal(localRegisteredMonitors),
+          message: 'Lokal statistikalar göstərilir',
+        );
+      }
+
       return DataResult<List<MonitorRoomStatistics>>.error(
         message: 'Şəbəkə xətası: $e',
       );
     }
+  }
+
+  List<MonitorRoomStatistics> _mergeRoomStatisticsWithLocal(
+    List<MonitorRoomStatistics> apiStats,
+    List<Monitor> localRegisteredMonitors,
+  ) {
+    if (localRegisteredMonitors.isEmpty) {
+      return apiStats;
+    }
+
+    final Map<int, int> localRegisteredCountByRoom = {};
+    final Map<int, String> localRoomNames = {};
+    final Map<int, String> localExamDates = {};
+
+    for (final monitor in localRegisteredMonitors) {
+      localRegisteredCountByRoom[monitor.roomId] =
+          (localRegisteredCountByRoom[monitor.roomId] ?? 0) + 1;
+      localRoomNames[monitor.roomId] = monitor.roomName;
+      localExamDates[monitor.roomId] = monitor.examDate;
+    }
+
+    final Map<int, MonitorRoomStatistics> mergedByRoom = {
+      for (final room in apiStats) room.roomId: room,
+    };
+
+    for (final entry in localRegisteredCountByRoom.entries) {
+      final roomId = entry.key;
+      final localRegisteredCount = entry.value;
+
+      final existing = mergedByRoom[roomId];
+      if (existing != null) {
+        mergedByRoom[roomId] = MonitorRoomStatistics(
+          roomId: existing.roomId,
+          roomName: existing.roomName,
+          examDate: existing.examDate,
+          allPersonCount: existing.allPersonCount,
+          regPersonCount: localRegisteredCount > existing.regPersonCount
+              ? localRegisteredCount
+              : existing.regPersonCount,
+        );
+      } else {
+        mergedByRoom[roomId] = MonitorRoomStatistics(
+          roomId: roomId,
+          roomName: localRoomNames[roomId] ?? 'Otaq $roomId',
+          examDate: localExamDates[roomId] ?? '',
+          allPersonCount: localRegisteredCount,
+          regPersonCount: localRegisteredCount,
+        );
+      }
+    }
+
+    final mergedList = mergedByRoom.values.toList();
+    mergedList.sort((a, b) => a.roomName.compareTo(b.roomName));
+    return mergedList;
+  }
+
+  List<MonitorRoomStatistics> _buildRoomStatisticsFromLocal(
+      List<Monitor> localRegisteredMonitors) {
+    final Map<int, List<Monitor>> byRoom = {};
+
+    for (final monitor in localRegisteredMonitors) {
+      byRoom.putIfAbsent(monitor.roomId, () => []);
+      byRoom[monitor.roomId]!.add(monitor);
+    }
+
+    final localStats = byRoom.entries.map((entry) {
+      final monitors = entry.value;
+      final first = monitors.first;
+      final count = monitors.length;
+
+      return MonitorRoomStatistics(
+        roomId: entry.key,
+        roomName: first.roomName,
+        examDate: first.examDate,
+        allPersonCount: count,
+        regPersonCount: count,
+      );
+    }).toList();
+
+    localStats.sort((a, b) => a.roomName.compareTo(b.roomName));
+    return localStats;
   }
 
   /// Преобразует дату из азербайджанского формата в MM/DD/yyyy

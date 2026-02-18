@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/monitor_models.dart';
+import '../services/database_service.dart';
 import '../services/http_service.dart';
 import '../services/statistics_event_bus.dart';
 
@@ -230,6 +231,9 @@ class MonitorProvider with ChangeNotifier {
       if (response.success) {
         _setSuccess(response.message);
 
+        // Remove from local statistics cache
+        await DatabaseService.unregisterMonitor(_currentMonitor!.workNumber);
+
         // Обновляем статистику после отмены регистрации
         StatisticsEventBus()
             .notifyStatisticsUpdate('MonitorProvider.cancelRegistration');
@@ -250,9 +254,10 @@ class MonitorProvider with ChangeNotifier {
   // Save monitor to local database for offline access and statistics
   Future<void> _saveMonitorToLocalDB(Monitor monitor) async {
     try {
-      // TODO: Implement DatabaseService.registerMonitor method
-      // final now = DateTime.now().toIso8601String();
-      // await DatabaseService.registerMonitor(monitor, now);
+      final registrationDate = monitor.registerDate.isNotEmpty
+          ? monitor.registerDate
+          : DateTime.now().toIso8601String();
+      await DatabaseService.registerMonitor(monitor, registrationDate);
     } catch (e) {
       // Ignore local database errors
     }

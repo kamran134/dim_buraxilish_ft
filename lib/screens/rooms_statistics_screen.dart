@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/monitor_room_statistics.dart';
 import '../services/statistics_service.dart';
+import '../services/statistics_event_bus.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../widgets/admin_drawer.dart';
@@ -18,6 +20,7 @@ class RoomsStatisticsScreen extends StatefulWidget {
 
 class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
   final StatisticsService _statisticsService = StatisticsService();
+  StreamSubscription<String>? _statisticsUpdateSubscription;
   List<MonitorRoomStatistics> _roomStatistics = [];
   List<String> _examDates = [];
   String? _selectedExamDate;
@@ -27,8 +30,21 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
   @override
   void initState() {
     super.initState();
+    _statisticsUpdateSubscription =
+        StatisticsEventBus().onStatisticsUpdate.listen((_) {
+      if (_selectedExamDate != null && mounted) {
+        _loadRoomStatistics(_selectedExamDate!);
+      }
+    });
+
     _selectedExamDate = widget.initialExamDate;
     _loadExamDates();
+  }
+
+  @override
+  void dispose() {
+    _statisticsUpdateSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadExamDates() async {

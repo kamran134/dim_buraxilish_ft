@@ -128,8 +128,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   /// Публичный метод для обновления статистики (вызывается извне)
   Future<void> refreshStatistics() async {
-    if (_dashboardStats?.examDate != null) {
-      await _loadDashboardStatistics(_dashboardStats!.examDate);
+    final examDateToRefresh = _selectedExamDate ?? _dashboardStats?.examDate;
+    if (examDateToRefresh != null) {
+      await _loadDashboardStatistics(examDateToRefresh);
     }
   }
 
