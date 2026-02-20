@@ -1,4 +1,4 @@
-package com.example.dim_buraxilish_ft
+package com.dim.dim_buraxilish
 
 import io.flutter.embedding.android.FlutterActivity
 
