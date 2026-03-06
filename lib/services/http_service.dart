@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
@@ -15,6 +16,7 @@ class HttpService {
   static const String authKey = 'auth';
 
   late final Dio _dio;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   HttpService() {
     _dio = Dio(BaseOptions(
@@ -48,8 +50,7 @@ class HttpService {
   // Get stored JWT token
   Future<String?> getToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final tokenData = prefs.getString(jwtTokenKey);
+      final tokenData = await _secureStorage.read(key: jwtTokenKey);
 
       if (tokenData != null) {
         final tokenJson = jsonDecode(tokenData) as Map<String, dynamic>;
@@ -65,7 +66,21 @@ class HttpService {
       }
       return null;
     } catch (error) {
-      print('Error getting token: $error');
+      if (kDebugMode) print('Error getting token: $error');
+      return null;
+    }
+  }
+
+  // Get full stored AccessToken model
+  Future<AccessTokenModel?> getStoredAccessToken() async {
+    try {
+      final tokenData = await _secureStorage.read(key: jwtTokenKey);
+      if (tokenData != null) {
+        return AccessTokenModel.fromJson(
+            jsonDecode(tokenData) as Map<String, dynamic>);
+      }
+      return null;
+    } catch (error) {
       return null;
     }
   }
@@ -73,41 +88,40 @@ class HttpService {
   // Store JWT token
   Future<void> storeToken(AccessTokenModel token) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(jwtTokenKey, jsonEncode(token.toJson()));
+      await _secureStorage.write(
+          key: jwtTokenKey, value: jsonEncode(token.toJson()));
     } catch (error) {
-      print('Error storing token: $error');
+      if (kDebugMode) print('Error storing token: $error');
     }
   }
 
   // Remove JWT token
   Future<void> removeToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(jwtTokenKey);
-      await prefs.remove(authKey);
+      await _secureStorage.delete(key: jwtTokenKey);
+      await _secureStorage.delete(key: authKey);
     } catch (error) {
-      print('Error removing token: $error');
+      if (kDebugMode) print('Error removing token: $error');
     }
   }
 
   // Store auth status
   Future<void> storeAuth(bool isAuthenticated) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(authKey, isAuthenticated);
+      await _secureStorage.write(
+          key: authKey, value: isAuthenticated.toString());
     } catch (error) {
-      print('Error storing auth: $error');
+      if (kDebugMode) print('Error storing auth: $error');
     }
   }
 
   // Get auth status
   Future<bool> getAuth() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(authKey) ?? false;
+      final value = await _secureStorage.read(key: authKey);
+      return value == 'true';
     } catch (error) {
-      print('Error getting auth: $error');
+      if (kDebugMode) print('Error getting auth: $error');
       return false;
     }
   }
@@ -356,8 +370,7 @@ class HttpService {
   // Get exam details from storage
   Future<ExamDetails?> getExamDetailsFromStorage() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final examDetailsJson = prefs.getString('exam_details');
+      final examDetailsJson = await _secureStorage.read(key: 'exam_details');
 
       if (examDetailsJson != null) {
         final examDetailsData =
@@ -366,7 +379,7 @@ class HttpService {
       }
       return null;
     } catch (error) {
-      print('Error getting exam details from storage: $error');
+      if (kDebugMode) print('Error getting exam details from storage: $error');
       return null;
     }
   }
@@ -374,10 +387,10 @@ class HttpService {
   // Store exam details
   Future<void> storeExamDetails(ExamDetails examDetails) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('exam_details', jsonEncode(examDetails.toJson()));
+      await _secureStorage.write(
+          key: 'exam_details', value: jsonEncode(examDetails.toJson()));
     } catch (error) {
-      print('Error storing exam details: $error');
+      if (kDebugMode) print('Error storing exam details: $error');
     }
   }
 
@@ -439,10 +452,14 @@ class HttpService {
   // Clear all data
   Future<void> clearAllData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      await Future.wait([
+        _secureStorage.delete(key: jwtTokenKey),
+        _secureStorage.delete(key: authKey),
+        _secureStorage.delete(key: 'exam_details'),
+        _secureStorage.delete(key: 'supervisor_details'),
+      ]);
     } catch (error) {
-      print('Error clearing data: $error');
+      if (kDebugMode) print('Error clearing data: $error');
     }
   }
 
@@ -617,8 +634,7 @@ class HttpService {
   /// Get supervisor details/statistics from storage
   Future<SupervisorDetails?> getSupervisorDetailsFromStorage() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final detailsData = prefs.getString('supervisor_details');
+      final detailsData = await _secureStorage.read(key: 'supervisor_details');
 
       if (detailsData != null) {
         final detailsJson = jsonDecode(detailsData) as Map<String, dynamic>;
@@ -627,7 +643,8 @@ class HttpService {
 
       return null;
     } catch (error) {
-      print('Error getting supervisor details from storage: $error');
+      if (kDebugMode)
+        print('Error getting supervisor details from storage: $error');
       return null;
     }
   }
@@ -635,10 +652,10 @@ class HttpService {
   /// Store supervisor details/statistics
   Future<void> storeSupervisorDetails(SupervisorDetails details) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('supervisor_details', jsonEncode(details.toJson()));
+      await _secureStorage.write(
+          key: 'supervisor_details', value: jsonEncode(details.toJson()));
     } catch (error) {
-      print('Error storing supervisor details: $error');
+      if (kDebugMode) print('Error storing supervisor details: $error');
     }
   }
 

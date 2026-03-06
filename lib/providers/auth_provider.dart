@@ -1,6 +1,6 @@
-import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../utils/role_helper.dart';
@@ -18,6 +18,14 @@ class AuthProvider extends ChangeNotifier {
   Auth? _authData;
   String? _currentUserRole;
 
+  // Brute-force lockout state
+  int _failedAttempts = 0;
+  DateTime? _lockoutUntil;
+  int _lockoutSecondsLeft = 0;
+  Timer? _lockoutTimer;
+  static const int _maxFailedAttempts = 5;
+  static const int _lockoutDurationSeconds = 60;
+
   // Getters
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
@@ -31,6 +39,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => RoleHelper.isAdministrativeRole(_currentUserRole);
   bool get isMonitor => RoleHelper.isMonitorRole(_currentUserRole);
   bool get isSuperAdmin => RoleHelper.isSuperAdminRole(_currentUserRole);
+
+  // Lockout getters
+  bool get isLockedOut =>
+      _lockoutUntil != null && _lockoutUntil!.isAfter(DateTime.now());
+  int get lockoutSecondsLeft => _lockoutSecondsLeft;
 
   /// Проверяет, может ли текущий пользователь получить доступ к админ панели
   bool get canAccessDashboard => RoleHelper.canAccessAdmin(_currentUserRole);
@@ -56,14 +69,9 @@ class AuthProvider extends ChangeNotifier {
 
         // Пытаемся восстановить полный AccessToken из хранилища
         try {
-          final prefs = await SharedPreferences.getInstance();
-          final tokenData = prefs.getString('jwt_token');
-          if (tokenData != null) {
-            final tokenJson = jsonDecode(tokenData) as Map<String, dynamic>;
-            _accessToken = AccessTokenModel.fromJson(tokenJson);
-          }
+          _accessToken = await _httpService.getStoredAccessToken();
         } catch (e) {
-          print('Error restoring access token: $e');
+          if (kDebugMode) print('Error restoring access token: $e');
         }
 
         // Также восстанавливаем данные экзамена если они есть
@@ -116,6 +124,13 @@ class AuthProvider extends ChangeNotifier {
   // Login with JWT
   Future<bool> signInWithJWT(
       String userName, String password, String examDate) async {
+    // Check lockout before attempting login
+    if (isLockedOut) {
+      _setError(
+          'Hesab müvəqqəti bloklanıb. $lockoutSecondsLeft saniyə gözləyin.');
+      return false;
+    }
+
     _setLoading(true);
     _clearError();
 
@@ -153,11 +168,29 @@ class AuthProvider extends ChangeNotifier {
         _authData = Auth(bina: bina, examDate: examDate);
         _isAuthenticated = true;
 
+        // Reset lockout on successful login
+        _failedAttempts = 0;
+        _lockoutUntil = null;
+        _lockoutTimer?.cancel();
+
         _clearError();
         notifyListeners();
         return true;
       } else {
-        _setError(response.message);
+        _failedAttempts++;
+        if (_failedAttempts >= _maxFailedAttempts) {
+          _lockoutUntil = DateTime.now()
+              .add(const Duration(seconds: _lockoutDurationSeconds));
+          _failedAttempts = 0;
+          _startLockoutTimer();
+          _setError(
+              '$_maxFailedAttempts yanlış cəhd. $_lockoutDurationSeconds saniyə gözləyin.');
+        } else {
+          final remaining = _maxFailedAttempts - _failedAttempts;
+          _setError(response.message.isNotEmpty
+              ? response.message
+              : 'Məlumatlarınız səhvdir. $remaining cəhd qaldı.');
+        }
         return false;
       }
     } catch (e) {
@@ -224,6 +257,25 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Private helper methods
+  void _startLockoutTimer() {
+    _lockoutTimer?.cancel();
+    _lockoutSecondsLeft = _lockoutDurationSeconds;
+    _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_lockoutUntil != null && _lockoutUntil!.isAfter(DateTime.now())) {
+        _lockoutSecondsLeft =
+            _lockoutUntil!.difference(DateTime.now()).inSeconds + 1;
+        notifyListeners();
+      } else {
+        _lockoutTimer?.cancel();
+        _lockoutTimer = null;
+        _lockoutUntil = null;
+        _lockoutSecondsLeft = 0;
+        _clearError();
+        notifyListeners();
+      }
+    });
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

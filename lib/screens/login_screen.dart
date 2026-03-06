@@ -84,6 +84,19 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleLogin() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isLockedOut) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə gözləyin.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate() || _selectedExamDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -97,8 +110,6 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       _isLoading = true;
     });
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     final success = await authProvider.signInWithJWT(
       _usernameController.text.trim(),
@@ -175,9 +186,28 @@ class _LoginScreenState extends State<LoginScreen>
 
                         const SizedBox(height: 20),
 
-                        // Error Display
+                        // Error and Lockout Display
                         Consumer<AuthProvider>(
                           builder: (context, authProvider, child) {
+                            if (authProvider.isLockedOut) {
+                              return Container(
+                                margin: const EdgeInsets.only(top: 20),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.red.withOpacity(0.5)),
+                                ),
+                                child: Text(
+                                  'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə sonra yenidən cəhd edin.',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
                             if (authProvider.error != null) {
                               return MessageDisplay(
                                 message: authProvider.error!,
@@ -282,6 +312,9 @@ class _LoginScreenState extends State<LoginScreen>
                 if (value == null || value.isEmpty) {
                   return 'İstifadəçi adı tələb olunur';
                 }
+                if (value.length > 50) {
+                  return 'İstifadəçi adı 50 simvoldan çox ola bilməz';
+                }
                 return null;
               },
             ),
@@ -310,6 +343,9 @@ class _LoginScreenState extends State<LoginScreen>
                 if (value == null || value.isEmpty) {
                   return 'Şifrə tələb olunur';
                 }
+                if (value.length > 100) {
+                  return 'Şiəfrə 100 simvoldan çox ola bilməz';
+                }
                 return null;
               },
             ),
@@ -333,13 +369,22 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLoginButton() {
-    return CustomButton(
-      text: 'Sistemə daxil ol',
-      isLoading: _isLoading,
-      onPressed: _handleLogin,
-      backgroundColor: Colors.white,
-      textColor: AppColors.deepBlue,
-      icon: Icons.login,
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return Opacity(
+          opacity: authProvider.isLockedOut ? 0.5 : 1.0,
+          child: CustomButton(
+            text: authProvider.isLockedOut
+                ? 'Gözləyin (${authProvider.lockoutSecondsLeft}s)'
+                : 'Sistemə daxil ol',
+            isLoading: _isLoading,
+            onPressed: _handleLogin,
+            backgroundColor: Colors.white,
+            textColor: AppColors.deepBlue,
+            icon: Icons.login,
+          ),
+        );
+      },
     );
   }
 }
