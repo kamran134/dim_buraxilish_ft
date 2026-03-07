@@ -6,113 +6,135 @@ import '../../design/app_colors.dart';
 /// Карточка участника для отображения в списке статистики
 class ParticipantCard extends StatelessWidget {
   final Participant participant;
+  final bool isRegistered;
 
   const ParticipantCard({
     Key? key,
     required this.participant,
+    this.isRegistered = true,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final borderColor =
+        isRegistered ? AppColors.successGreen : Colors.red.shade400;
+    final bgColor = isRegistered
+        ? Colors.green.withOpacity(0.07)
+        : Colors.red.withOpacity(0.07);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: borderColor, width: 1.5),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.successGreen.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: participant.photo != null &&
-                        participant.photo!.isNotEmpty &&
-                        participant.photo != 'null'
-                    ? ClipRRect(
+          // Main content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: borderColor.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(25),
-                        child: Image.memory(
-                          const Base64Decoder().convert(participant.photo!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
+                      ),
+                      child: participant.photo != null &&
+                              participant.photo!.isNotEmpty &&
+                              participant.photo != 'null'
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: Image.memory(
+                                const Base64Decoder()
+                                    .convert(participant.photo!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 24,
+                                  );
+                                },
+                              ),
+                            )
+                          : const Icon(
                               Icons.person,
                               color: Colors.white,
                               size: 24,
-                            );
-                          },
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${participant.soy} ${participant.adi}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16, // bodyLarge
-                        fontWeight: FontWeight.w600,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Name block
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${participant.soy} ${participant.adi}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (participant.baba.isNotEmpty)
+                            Text(
+                              participant.baba,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (participant.baba.isNotEmpty)
-                      Text(
-                        participant.baba,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 14, // bodyMedium
-                        ),
-                      ),
+                    const SizedBox(width: 28), // space for corner badge
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.successGreen.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.badge,
+                  'İş nömrəsi',
+                  participant.isN.toString(),
                 ),
-                child: const Text(
-                  'Qeydiyyatlı',
-                  style: TextStyle(
-                    color: AppColors.successGreen,
-                    fontSize: 12, // bodySmall
-                    fontWeight: FontWeight.w500,
-                  ),
+                _buildInfoRow(
+                  Icons.access_time,
+                  'Qeydiyyat vaxtı',
+                  _formatDate(participant.qeydiyyat),
                 ),
+                _buildInfoRow(
+                  Icons.location_on,
+                  'Yer',
+                  '${participant.bina} - ${participant.zal} - ${participant.mertebe} - ${participant.sira} - ${participant.yer}',
+                ),
+              ],
+            ),
+          ),
+          // Corner status badge
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: borderColor,
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.badge,
-            'İş nömrəsi',
-            participant.isN.toString(),
-          ),
-          _buildInfoRow(
-            Icons.access_time,
-            'Qeydiyyat vaxtı',
-            _formatDate(participant.qeydiyyat),
-          ),
-          _buildInfoRow(
-            Icons.location_on,
-            'Yer',
-            '${participant.bina} - ${participant.zal} - ${participant.mertebe} - ${participant.sira} - ${participant.yer}',
+              child: Icon(
+                isRegistered ? Icons.check : Icons.close,
+                color: Colors.white,
+                size: 14,
+              ),
+            ),
           ),
         ],
       ),

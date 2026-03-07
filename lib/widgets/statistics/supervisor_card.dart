@@ -7,108 +7,131 @@ import '../../design/app_text_styles.dart';
 /// Карточка супервизора для отображения в списке статистики
 class SupervisorCard extends StatelessWidget {
   final Supervisor supervisor;
+  final bool isRegistered;
 
   const SupervisorCard({
     Key? key,
     required this.supervisor,
+    this.isRegistered = true,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final borderColor =
+        isRegistered ? AppColors.materialGreen : Colors.red.shade400;
+    final bgColor = isRegistered
+        ? Colors.green.withOpacity(0.07)
+        : Colors.red.withOpacity(0.07);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: borderColor, width: 1.5),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.materialBlue.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: supervisor.image.isNotEmpty && supervisor.image != 'null'
-                    ? ClipRRect(
+          // Main content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: borderColor.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(25),
-                        child: Image.memory(
-                          base64Decode(supervisor.image),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
+                      ),
+                      child: supervisor.image.isNotEmpty &&
+                              supervisor.image != 'null'
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: Image.memory(
+                                base64Decode(supervisor.image),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.supervisor_account,
+                                    color: Colors.white,
+                                    size: 24,
+                                  );
+                                },
+                              ),
+                            )
+                          : const Icon(
                               Icons.supervisor_account,
                               color: Colors.white,
                               size: 24,
-                            );
-                          },
-                        ),
-                      )
-                    : const Icon(
-                        Icons.supervisor_account,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${supervisor.lastName} ${supervisor.firstName}',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Name block
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${supervisor.lastName} ${supervisor.firstName}',
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (supervisor.fatherName.isNotEmpty)
+                            Text(
+                              supervisor.fatherName,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (supervisor.fatherName.isNotEmpty)
-                      Text(
-                        supervisor.fatherName,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
+                    const SizedBox(width: 28), // space for corner badge
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.materialGreen.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.credit_card,
+                  'Kart nömrəsi',
+                  supervisor.cardNumber,
                 ),
-                child: Text(
-                  'Qeydiyyatlı',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.materialGreen,
-                    fontWeight: FontWeight.w500,
-                  ),
+                _buildInfoRow(
+                  Icons.access_time,
+                  'Qeydiyyat vaxtı',
+                  _formatDate(supervisor.registerDate),
                 ),
+                _buildInfoRow(
+                  Icons.business,
+                  'Bina kodu',
+                  supervisor.buildingCode.toString(),
+                ),
+              ],
+            ),
+          ),
+          // Corner status badge
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: borderColor,
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.credit_card,
-            'Kart nömrəsi',
-            supervisor.cardNumber,
-          ),
-          _buildInfoRow(
-            Icons.access_time,
-            'Qeydiyyat vaxtı',
-            _formatDate(supervisor.registerDate),
-          ),
-          _buildInfoRow(
-            Icons.business,
-            'Bina kodu',
-            supervisor.buildingCode.toString(),
+              child: Icon(
+                isRegistered ? Icons.check : Icons.close,
+                color: Colors.white,
+                size: 14,
+              ),
+            ),
           ),
         ],
       ),

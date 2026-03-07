@@ -82,10 +82,9 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
 
             // Content
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Welcome Section
                     AnimatedWrapper(

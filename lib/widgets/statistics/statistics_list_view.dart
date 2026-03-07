@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../models/participant_models.dart';
 import '../../models/supervisor_models.dart';
-import '../../providers/participant_provider.dart';
-import '../../providers/supervisor_provider.dart';
+import '../../services/database_service.dart';
 import 'participant_card.dart';
 import 'supervisor_card.dart';
 
@@ -24,13 +22,33 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // All entries (offline DB or fallback registered-only)
   List<Participant>? _cachedParticipants;
+  Set<int> _registeredParticipantIds = {};
+
   List<Supervisor>? _cachedSupervisors;
+  Set<String> _registeredSupervisorIds = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+  }
+
+  @override
+  void didUpdateWidget(StatisticsListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Safety net: if isParticipants changes without a key-forced state recreation,
+    // reset cache and reload so the new list type is always shown correctly.
+    if (oldWidget.isParticipants != widget.isParticipants) {
+      setState(() {
+        _cachedParticipants = null;
+        _cachedSupervisors = null;
+        _registeredParticipantIds = {};
+        _registeredSupervisorIds = {};
+      });
+      _loadData();
+    }
   }
 
   @override
@@ -40,40 +58,89 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   }
 
   Future<void> _loadData() async {
-    if (widget.isParticipants) {
-      final provider = Provider.of<ParticipantProvider>(context, listen: false);
-      final result = await provider.getRegisteredParticipants();
-      if (mounted) setState(() => _cachedParticipants = result);
-    } else {
-      final provider = Provider.of<SupervisorProvider>(context, listen: false);
-      final result = await provider.getRegisteredSupervisors();
-      if (mounted) setState(() => _cachedSupervisors = result);
+    try {
+      if (widget.isParticipants) {
+        final allParticipants = await DatabaseService.getAllParticipants();
+        final registeredList =
+            await DatabaseService.getRegisteredParticipants();
+        final registeredIds = registeredList.map((p) => p.isN).toSet();
+
+        if (mounted) {
+          setState(() {
+            if (allParticipants.isEmpty) {
+              // Offline DB not downloaded — fall back to registered-only (old behavior)
+              _cachedParticipants = registeredList;
+            } else {
+              _cachedParticipants = allParticipants;
+            }
+            _registeredParticipantIds = registeredIds;
+          });
+        }
+      } else {
+        final allSupervisors = await DatabaseService.getAllSupervisors();
+        final registeredList = await DatabaseService.getRegisteredSupervisors();
+        final registeredIds = registeredList.map((s) => s.cardNumber).toSet();
+
+        if (mounted) {
+          setState(() {
+            if (allSupervisors.isEmpty) {
+              // Offline DB not downloaded — fall back to registered-only (old behavior)
+              _cachedSupervisors = registeredList;
+            } else {
+              _cachedSupervisors = allSupervisors;
+            }
+            _registeredSupervisorIds = registeredIds;
+          });
+        }
+      }
+    } catch (e) {
+      // On any error, show empty list so the spinner doesn't stay forever
+      if (mounted) {
+        setState(() {
+          if (widget.isParticipants) {
+            _cachedParticipants = [];
+          } else {
+            _cachedSupervisors = [];
+          }
+        });
+      }
     }
   }
 
   List<Participant> _filteredParticipants() {
-    final all = _cachedParticipants ?? [];
-    if (_searchQuery.isEmpty) return all;
-    final q = _searchQuery.toLowerCase();
-    return all.where((p) {
-      return p.adi.toLowerCase().contains(q) ||
-          p.soy.toLowerCase().contains(q) ||
-          p.baba.toLowerCase().contains(q) ||
-          p.isN.toString().contains(q);
-    }).toList();
+    var all = _cachedParticipants ?? [];
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      all = all.where((p) {
+        return p.adi.toLowerCase().contains(q) ||
+            p.soy.toLowerCase().contains(q) ||
+            p.baba.toLowerCase().contains(q) ||
+            p.isN.toString().contains(q);
+      }).toList();
+    }
+    // Registered first, then unregistered
+    return [
+      ...all.where((p) => _registeredParticipantIds.contains(p.isN)),
+      ...all.where((p) => !_registeredParticipantIds.contains(p.isN)),
+    ];
   }
 
   List<Supervisor> _filteredSupervisors() {
-    final all = _cachedSupervisors ?? [];
-    if (_searchQuery.isEmpty) return all;
-    final q = _searchQuery.toLowerCase();
-    return all.where((s) {
-      return s.firstName.toLowerCase().contains(q) ||
-          s.lastName.toLowerCase().contains(q) ||
-          s.fatherName.toLowerCase().contains(q) ||
-          s.cardNumber.toLowerCase().contains(q) ||
-          s.buildingName.toLowerCase().contains(q);
-    }).toList();
+    var all = _cachedSupervisors ?? [];
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      all = all.where((s) {
+        return s.firstName.toLowerCase().contains(q) ||
+            s.lastName.toLowerCase().contains(q) ||
+            s.fatherName.toLowerCase().contains(q) ||
+            s.cardNumber.toLowerCase().contains(q);
+      }).toList();
+    }
+    // Registered first, then unregistered
+    return [
+      ...all.where((s) => _registeredSupervisorIds.contains(s.cardNumber)),
+      ...all.where((s) => !_registeredSupervisorIds.contains(s.cardNumber)),
+    ];
   }
 
   @override
@@ -99,7 +166,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         style: const TextStyle(color: Colors.white),
         cursorColor: Colors.white,
         decoration: InputDecoration(
-          hintText: widget.isParticipants ? 'Axtar...' : 'Axtar...',
+          hintText: 'Axtar...',
           hintStyle: const TextStyle(color: Colors.white54),
           prefixIcon: const Icon(Icons.search, color: Colors.white70),
           suffixIcon: _searchQuery.isNotEmpty
@@ -133,8 +200,6 @@ class _StatisticsListViewState extends State<StatisticsListView> {
       );
     }
 
-    final participants = _filteredParticipants();
-
     if (_cachedParticipants!.isEmpty) {
       return _buildEmptyView(
         'Hələ ki, heç bir iştirakçı qeydiyyatdan keçməyib',
@@ -142,15 +207,21 @@ class _StatisticsListViewState extends State<StatisticsListView> {
       );
     }
 
+    final participants = _filteredParticipants();
+
     if (participants.isEmpty) {
       return _buildEmptyView('Nəticə tapılmadı', Icons.search_off);
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: participants.length,
       itemBuilder: (context, index) {
-        return ParticipantCard(participant: participants[index]);
+        final p = participants[index];
+        return ParticipantCard(
+          participant: p,
+          isRegistered: _registeredParticipantIds.contains(p.isN),
+        );
       },
     );
   }
@@ -164,8 +235,6 @@ class _StatisticsListViewState extends State<StatisticsListView> {
       );
     }
 
-    final supervisors = _filteredSupervisors();
-
     if (_cachedSupervisors!.isEmpty) {
       return _buildEmptyView(
         'Hələ ki, heç bir nəzarətçi qeydiyyatdan keçməyib',
@@ -173,15 +242,21 @@ class _StatisticsListViewState extends State<StatisticsListView> {
       );
     }
 
+    final supervisors = _filteredSupervisors();
+
     if (supervisors.isEmpty) {
       return _buildEmptyView('Nəticə tapılmadı', Icons.search_off);
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: supervisors.length,
       itemBuilder: (context, index) {
-        return SupervisorCard(supervisor: supervisors[index]);
+        final s = supervisors[index];
+        return SupervisorCard(
+          supervisor: s,
+          isRegistered: _registeredSupervisorIds.contains(s.cardNumber),
+        );
       },
     );
   }

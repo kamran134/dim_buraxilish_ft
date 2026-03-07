@@ -22,12 +22,17 @@ class SupervisorScreen extends StatefulWidget {
 }
 
 class _SupervisorScreenState extends State<SupervisorScreen> {
+  /// True only while THIS screen's initial detail-load is in progress.
+  /// Prevents the spinner from lighting up when the Statistics screen
+  /// independently calls supervisorProvider.loadSupervisorDetails().
+  bool _isDetailsLoading = false;
+
   @override
   void initState() {
     super.initState();
 
     // Load supervisor details when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<SupervisorProvider>();
       final offlineDbProvider = context.read<OfflineDatabaseProvider>();
 
@@ -39,7 +44,9 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
         _handleAuthenticationError();
       });
 
-      provider.loadSupervisorDetails();
+      if (mounted) setState(() => _isDetailsLoading = true);
+      await provider.loadSupervisorDetails();
+      if (mounted) setState(() => _isDetailsLoading = false);
     });
   }
 
@@ -81,10 +88,9 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
 
             // Content
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Welcome Section
                     AnimatedWrapper(
@@ -172,8 +178,9 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                         ),
                       ),
 
-                    // Loading indicator
-                    if (provider.isLoading)
+                    // Loading indicator — only during THIS screen's own initial load,
+                    // not when Statistics screen triggers a background refresh
+                    if (_isDetailsLoading)
                       const Padding(
                         padding: EdgeInsets.only(top: 20),
                         child: CircularProgressIndicator(
@@ -182,7 +189,7 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                       ),
 
                     // Error Display (only show if not loading and there's an error)
-                    if (!provider.isLoading && provider.errorMessage != null)
+                    if (!_isDetailsLoading && provider.errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
                         child: MessageDisplay(

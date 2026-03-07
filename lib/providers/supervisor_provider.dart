@@ -178,7 +178,6 @@ class SupervisorProvider with ChangeNotifier {
         if (kDebugMode) {
           debugPrint('[Supervisor] No JWT token found, redirecting to login');
         }
-        _setLoading(false);
         _onAuthenticationError?.call();
         return;
       }
@@ -228,13 +227,13 @@ class SupervisorProvider with ChangeNotifier {
         allPersonCount: 0,
         regPersonCount: 0,
       );
-
-      _setLoading(false);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[Supervisor] Error loading details: $e');
       }
       _setError('Nəzarətçi məlumatları yüklənə bilmədi');
+    } finally {
+      // Guaranteed reset – mirrors loadExamDetails() in participant_provider
       _setLoading(false);
     }
   }

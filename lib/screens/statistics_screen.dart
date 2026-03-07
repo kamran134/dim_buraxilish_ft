@@ -63,8 +63,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       final supervisorProvider =
           Provider.of<SupervisorProvider>(context, listen: false);
 
-      participantProvider.loadExamDetails();
-      supervisorProvider.loadSupervisorDetails();
+      // Only trigger network loads if the provider is not already loading
+      // Prevents cross-contamination of isLoading with scanning screens
+      if (!participantProvider.isLoading) participantProvider.loadExamDetails();
+      if (!supervisorProvider.isLoading)
+        supervisorProvider.loadSupervisorDetails();
     }
   }
 
@@ -256,11 +259,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildParticipantsView() {
-    return const StatisticsListView(isParticipants: true);
+    return const StatisticsListView(
+      key: ValueKey('participants'),
+      isParticipants: true,
+    );
   }
 
   Widget _buildSupervisorsView() {
-    return const StatisticsListView(isParticipants: false);
+    return const StatisticsListView(
+      key: ValueKey('supervisors'),
+      isParticipants: false,
+    );
   }
 
   // Методы для получения админской статистики из ExamStatisticsDto

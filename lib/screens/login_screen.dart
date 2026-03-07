@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/offline_database_provider.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/exam_date_dropdown.dart';
@@ -25,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen>
   String? _selectedExamDate;
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isDownloadingOffline = false;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -85,6 +87,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final offlineProvider =
+        Provider.of<OfflineDatabaseProvider>(context, listen: false);
 
     if (authProvider.isLockedOut) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,9 +111,7 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final success = await authProvider.signInWithJWT(
       _usernameController.text.trim(),
@@ -117,30 +119,54 @@ class _LoginScreenState extends State<LoginScreen>
       _selectedExamDate!,
     );
 
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() => _isLoading = false);
+      // Error will be shown via Consumer
+      return;
+    }
+
+    // Login succeeded — now download offline database
     setState(() {
       _isLoading = false;
+      _isDownloadingOffline = true;
     });
 
-    if (success) {
+    await offlineProvider.downloadOfflineDatabase();
+
+    if (!mounted) return;
+
+    setState(() => _isDownloadingOffline = false);
+
+    if (offlineProvider.errorMessage != null) {
+      // Download failed — sign out and show error so user retries
+      await authProvider.signOut(clearData: true);
       if (!mounted) return;
-
-      // Определяем куда перенаправить пользователя на основе роли
-      final targetScreen = authProvider.canAccessDashboard
-          ? const RealDashboardScreen()
-          : const MainScreen();
-
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 500),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(offlineProvider.errorMessage!),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
-    } else {
-      // Error will be shown via Consumer
+      return;
     }
+
+    // All good — navigate
+    final targetScreen = authProvider.canAccessDashboard
+        ? const RealDashboardScreen()
+        : const MainScreen();
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   @override
@@ -152,73 +178,147 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  Widget _buildDownloadOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.6),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 32),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0046a3),
+                Color(0xFF0c7bc5),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.35),
+                blurRadius: 30,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Məlumatlar yüklənir',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Zəhmət olmasa gözləyin...',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.75),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GradientBackground(
-        gradientType: GradientType.default_,
-        child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _refreshData,
-            child: Center(
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo and Title
-                        _buildHeader(),
+    return Stack(
+      children: [
+        Scaffold(
+          body: GradientBackground(
+            gradientType: GradientType.default_,
+            child: SafeArea(
+              child: RefreshIndicator(
+                onRefresh: _refreshData,
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Logo and Title
+                            _buildHeader(),
 
-                        const SizedBox(height: 40),
+                            const SizedBox(height: 40),
 
-                        // Login Form
-                        _buildLoginForm(),
+                            // Login Form
+                            _buildLoginForm(),
 
-                        const SizedBox(height: 30),
+                            const SizedBox(height: 30),
 
-                        // Login Button
-                        _buildLoginButton(),
+                            // Login Button
+                            _buildLoginButton(),
 
-                        const SizedBox(height: 20),
+                            const SizedBox(height: 20),
 
-                        // Error and Lockout Display
-                        Consumer<AuthProvider>(
-                          builder: (context, authProvider, child) {
-                            if (authProvider.isLockedOut) {
-                              return Container(
-                                margin: const EdgeInsets.only(top: 20),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                      color: Colors.red.withOpacity(0.5)),
-                                ),
-                                child: Text(
-                                  'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə sonra yenidən cəhd edin.',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                              );
-                            }
-                            if (authProvider.error != null) {
-                              return MessageDisplay(
-                                message: authProvider.error!,
-                                type: MessageType.error,
-                                margin: const EdgeInsets.only(top: 20),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                            // Error and Lockout Display
+                            Consumer<AuthProvider>(
+                              builder: (context, authProvider, child) {
+                                if (authProvider.isLockedOut) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(top: 20),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: Colors.red.withOpacity(0.5)),
+                                    ),
+                                    child: Text(
+                                      'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə sonra yenidən cəhd edin.',
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  );
+                                }
+                                if (authProvider.error != null) {
+                                  return MessageDisplay(
+                                    message: authProvider.error!,
+                                    type: MessageType.error,
+                                    margin: const EdgeInsets.only(top: 20),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -226,7 +326,8 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-      ),
+        if (_isDownloadingOffline) _buildDownloadOverlay(),
+      ],
     );
   }
 
