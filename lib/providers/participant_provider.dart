@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
-import '../services/storage_service.dart';
 import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
@@ -472,20 +471,10 @@ class ParticipantProvider with ChangeNotifier {
     clearMessages();
 
     try {
-      final storageService = StorageService();
-      final userProfile = await storageService.getUserProfile();
-      if (userProfile == null ||
-          userProfile.bina == null ||
-          userProfile.examDate == null) {
-        _setError('İmtahan məlumatları tapılmadı');
-        _setLoading(false);
-        return;
-      }
-
       final response = await _httpService.cancelParticipantRegistration(
         isN: _currentParticipant!.isN,
-        bina: userProfile.bina!.toString(),
-        examDate: userProfile.examDate!,
+        bina: _currentParticipant!.bina,
+        examDate: _currentParticipant!.imtTarix,
       );
 
       print(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
-import '../services/storage_service.dart';
 import 'offline_database_provider.dart';
 
 /// Состояния экрана Supervisor
@@ -457,20 +456,10 @@ class SupervisorProvider with ChangeNotifier {
     clearMessages();
 
     try {
-      final storageService = StorageService();
-      final userProfile = await storageService.getUserProfile();
-      if (userProfile == null ||
-          userProfile.bina == null ||
-          userProfile.examDate == null) {
-        _setError('İmtahan məlumatları tapılmadı');
-        _setLoading(false);
-        return;
-      }
-
       final response = await _httpService.cancelSupervisorRegistration(
         cardNumber: _currentSupervisor!.cardNumber,
-        buildingCode: userProfile.bina!,
-        examDate: userProfile.examDate!,
+        buildingCode: _currentSupervisor!.buildingCode,
+        examDate: _currentSupervisor!.examDate,
       );
 
       print(

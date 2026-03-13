@@ -975,18 +975,18 @@ class HttpService {
     required String examDate,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-
+      // NOTE: Imt_Tarix in DB is stored as raw string (e.g. Azerbaijani format).
+      // The cancel endpoint uses string comparison (b.Imt_Tarix == examDate),
+      // so we must NOT convert the date — pass the raw DB value as-is.
       print(
-          'Canceling participant registration: isN=$isN, bina=$bina, examDate=$formattedDate');
+          'Canceling participant registration: isN=$isN, bina=$bina, examDate=$examDate');
 
       final response = await _dio.post(
         '/buraxilishes/cancelregistration',
         queryParameters: {
           'isN': isN,
           'bina': bina,
-          'examDate': formattedDate,
+          'examDate': examDate,
         },
       );
 

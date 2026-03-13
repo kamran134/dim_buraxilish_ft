@@ -274,126 +274,7 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // Action buttons row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          // Cancel Registration Button (small, red, left side)
-                          SizedBox(
-                            width: 100,
-                            height: 40,
-                            child: ElevatedButton(
-                              onPressed: provider.isLoading
-                                  ? null
-                                  : () async {
-                                      // Show confirmation dialog
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => Theme(
-                                          data: Theme.of(context).copyWith(
-                                            dialogTheme: DialogThemeData(
-                                              backgroundColor: isDarkMode
-                                                  ? Colors.grey[850]
-                                                  : Colors.white,
-                                              titleTextStyle: TextStyle(
-                                                color: isDarkMode
-                                                    ? Colors.white
-                                                    : Colors.black87,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              contentTextStyle: TextStyle(
-                                                color: isDarkMode
-                                                    ? Colors.white70
-                                                    : Colors.black87,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          child: AlertDialog(
-                                            title: const Text('Təsdiq'),
-                                            content: const Text(
-                                              'Qeydiyyatını silmək istədiyinizdən əminsinizmi?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.of(context)
-                                                        .pop(false),
-                                                child: Text(
-                                                  'Xeyr',
-                                                  style: TextStyle(
-                                                    color: isDarkMode
-                                                        ? Colors.white70
-                                                        : Colors.black87,
-                                                  ),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.of(context)
-                                                        .pop(true),
-                                                child: const Text(
-                                                  'Bəli',
-                                                  style: TextStyle(
-                                                      color: Colors.red),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-
-                                      if (confirm == true) {
-                                        await provider
-                                            .cancelSupervisorRegistration();
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade700,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Text(
-                                'Ləğv et',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Next Button (main, large, right side)
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                provider.resetToInitial();
-                                provider.setScreenState(
-                                    SupervisorScreenState.scanning);
-                              },
-                              icon: const Icon(Icons.qr_code_scanner),
-                              label: const Text('Növbəti'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
                     // Statistics Card
                     if (supervisorDetails != null)
@@ -416,9 +297,120 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                         ],
                       ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                   ],
                 ),
+              ),
+            ),
+
+            // Action buttons — fixed above keyboard/bottom, always visible
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Row(
+                children: [
+                  // Cancel Registration Button (small, red, left side)
+                  SizedBox(
+                    width: 100,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: provider.isLoading
+                          ? null
+                          : () async {
+                              // Show confirmation dialog
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => Theme(
+                                  data: Theme.of(context).copyWith(
+                                    dialogTheme: DialogThemeData(
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey[850]
+                                          : Colors.white,
+                                      titleTextStyle: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black87,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      contentTextStyle: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  child: AlertDialog(
+                                    title: const Text('Təsdiq'),
+                                    content: const Text(
+                                      'Qeydiyyatını silmək istədiyinizdən əminsinizmi?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: Text(
+                                          'Xeyr',
+                                          style: TextStyle(
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: const Text(
+                                          'Bəli',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await provider.cancelSupervisorRegistration();
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ləğv et',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Next Button (main, large, right side)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        provider.resetToInitial();
+                        provider.setScreenState(SupervisorScreenState.scanning);
+                      },
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Növbəti'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
