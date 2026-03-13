@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/monitor_models.dart';
 import '../models/monitor_room_statistics.dart';
 import '../services/database_service.dart';
+import '../services/http_service.dart';
+import '../utils/date_formatter.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../widgets/common/photo_widget.dart';
@@ -51,15 +53,80 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     });
 
     try {
-      final monitors = await DatabaseService.getRegisteredMonitorsByRoom(
-        widget.roomStats.roomId,
-        examDate: widget.roomStats.examDate,
-      );
+      final httpService = HttpService();
+      final examDetails = await httpService.getExamDetailsFromStorage();
+      final imtTarix = examDetails?.imtTarix ?? '';
 
-      setState(() {
-        _monitors = monitors;
-        _isLoading = false;
-      });
+      List<Monitor> allMonitors = [];
+
+      // Try API: GetByRoomIdAndExamDate — no building code needed, same format as supervisors/scanMonitor
+      if (imtTarix.isNotEmpty) {
+        try {
+          allMonitors = await httpService.getMonitorsByRoomId(
+            roomId: widget.roomStats.roomId,
+            examDate: imtTarix,
+          );
+        } catch (_) {
+          // API unavailable, will try offline below
+        }
+      }
+
+      // Fallback: offline all_monitors table (cached on admin login)
+      if (allMonitors.isEmpty) {
+        allMonitors = await DatabaseService.getAllMonitorsByRoomOffline(
+          widget.roomStats.roomId,
+        );
+      }
+
+      if (allMonitors.isNotEmpty) {
+        // Overlay registration status from local registered_monitors
+        final registered = await DatabaseService.getRegisteredMonitorsByRoom(
+          widget.roomStats.roomId,
+          examDate: widget.roomStats.examDate,
+        );
+        final registeredMap = {for (final m in registered) m.workNumber: m};
+
+        final merged = allMonitors.map((m) {
+          final reg = registeredMap[m.workNumber];
+          if (reg == null) return m; // unregistered: use API data as-is
+          // registered: keep all API fields (incl. image), just override registerDate
+          return Monitor(
+            workNumber: m.workNumber,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            middleName: m.middleName,
+            idCardPin: m.idCardPin,
+            buildingCode: m.buildingCode,
+            buildingName: m.buildingName,
+            roomId: m.roomId,
+            roomName: m.roomName,
+            examDate: m.examDate,
+            registerDate: reg.registerDate,
+            image: m.image.isNotEmpty ? m.image : reg.image,
+            online: m.online,
+          );
+        }).toList()
+          ..sort((a, b) {
+            if (a.isRegistered && !b.isRegistered) return -1;
+            if (!a.isRegistered && b.isRegistered) return 1;
+            return 0;
+          });
+
+        setState(() {
+          _monitors = merged;
+          _isLoading = false;
+        });
+      } else {
+        // Last resort: only scanned-in monitors (monitor device, offline)
+        final monitors = await DatabaseService.getRegisteredMonitorsByRoom(
+          widget.roomStats.roomId,
+          examDate: widget.roomStats.examDate,
+        );
+        setState(() {
+          _monitors = monitors;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Xəta: $e';
@@ -382,7 +449,7 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
           height: 50,
           decoration: BoxDecoration(
             border: Border.all(
-              color: isRegistered ? Colors.green : Colors.grey,
+              color: isRegistered ? Colors.green : Colors.red,
               width: 2,
             ),
             borderRadius: BorderRadius.circular(25),
@@ -418,8 +485,8 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
         ],
       ),
       trailing: Icon(
-        isRegistered ? Icons.check_circle : Icons.pending,
-        color: isRegistered ? Colors.green : Colors.orange,
+        isRegistered ? Icons.check_circle : Icons.cancel,
+        color: isRegistered ? Colors.green : Colors.red,
       ),
     );
   }

@@ -734,6 +734,87 @@ class HttpService {
     }
   }
 
+  /// Get all monitors for a building and exam date (used for admin offline download)
+  Future<List<Monitor>> getMonitorsByBuilding({
+    required String buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      final formattedDate = _formatExamDateForApi(examDate);
+      print(
+          'getMonitorsByBuilding - buildingCode: $buildingCode, examDate: $formattedDate');
+
+      final response = await _dio.get(
+        '/monitors/GetByBuildingCodeAndExamDate',
+        queryParameters: {
+          'buildingCode': buildingCode,
+          'examDate': formattedDate,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Monitor.fromJson(json)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('Error getting monitors by building: $e');
+      return [];
+    }
+  }
+
+  /// Get ALL monitors with images for an exam date (admin — no building code needed)
+  Future<List<Monitor>> getAllMonitorsInExamDate(String examDate) async {
+    try {
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      print('getAllMonitorsInExamDate - examDate: $examDate -> $formattedDate');
+
+      final response = await _dio.get(
+        '/monitors/GetAllMonitorDetailDtoInExamDate',
+        queryParameters: {'examDate': formattedDate},
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Monitor.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting all monitors in exam date: $e');
+      return [];
+    }
+  }
+
+  /// Get monitors for a specific room and exam date (admin — no building code needed)
+  Future<List<Monitor>> getMonitorsByRoomId({
+    required int roomId,
+    required String examDate,
+  }) async {
+    try {
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      print(
+          'getMonitorsByRoomId - roomId: $roomId, examDate: $examDate -> $formattedDate');
+
+      final response = await _dio.get(
+        '/monitors/GetByRoomIdAndExamDate',
+        queryParameters: {
+          'roomId': roomId,
+          'examDate': formattedDate,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Monitor.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting monitors by room: $e');
+      return [];
+    }
+  }
+
   /// Convert exam date from Azerbaijani format to API format
   String _formatExamDateForApi(String examDate) {
     try {

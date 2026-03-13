@@ -7,12 +7,13 @@ import '../models/supervisor_models.dart';
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   // Table names
   static const String _participantsTable = 'participants';
   static const String _registeredParticipantsTable = 'registered_participants';
   static const String _registeredMonitorsTable = 'registered_monitors';
+  static const String _allMonitorsTable = 'all_monitors';
   static const String _supervisorsTable = 'supervisors';
   static const String _registeredSupervisorsTable = 'registered_supervisors';
 
@@ -119,6 +120,24 @@ class DatabaseService {
       )
     ''');
 
+    // Create all_monitors table (offline download for admin)
+    await db.execute('''
+      CREATE TABLE $_allMonitorsTable (
+        workNumber INTEGER PRIMARY KEY,
+        firstName TEXT,
+        lastName TEXT,
+        middleName TEXT,
+        idCardPin TEXT,
+        buildingCode INTEGER,
+        buildingName TEXT,
+        roomId INTEGER,
+        roomName TEXT,
+        examDate TEXT,
+        registerDate TEXT,
+        image TEXT
+      )
+    ''');
+
     // Create registered supervisors table
     await db.execute('''
       CREATE TABLE $_registeredSupervisorsTable (
@@ -158,6 +177,24 @@ class DatabaseService {
           registerDate TEXT,
           image TEXT,
           online INTEGER DEFAULT 0
+        )
+      ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_allMonitorsTable (
+          workNumber INTEGER PRIMARY KEY,
+          firstName TEXT,
+          lastName TEXT,
+          middleName TEXT,
+          idCardPin TEXT,
+          buildingCode INTEGER,
+          buildingName TEXT,
+          roomId INTEGER,
+          roomName TEXT,
+          examDate TEXT,
+          registerDate TEXT,
+          image TEXT
         )
       ''');
     }
@@ -766,6 +803,7 @@ class DatabaseService {
     await db.delete(_registeredMonitorsTable);
     await db.delete(_supervisorsTable);
     await db.delete(_registeredSupervisorsTable);
+    await db.delete(_allMonitorsTable);
   }
 
   /// Get all participants (for offline database management)
@@ -780,6 +818,89 @@ class DatabaseService {
     final db = await database;
     final results = await db.query(_supervisorsTable);
     return results.map((map) => _supervisorFromMap(map)).toList();
+  }
+
+  // ALL_MONITORS METHODS (offline download for admin)
+
+  /// Save all monitors to offline storage (admin download)
+  static Future<void> saveAllMonitors(List<Monitor> monitors) async {
+    final db = await database;
+    final batch = db.batch();
+    for (final monitor in monitors) {
+      batch.insert(
+        _allMonitorsTable,
+        {
+          'workNumber': monitor.workNumber,
+          'firstName': monitor.firstName,
+          'lastName': monitor.lastName,
+          'middleName': monitor.middleName,
+          'idCardPin': monitor.idCardPin,
+          'buildingCode': monitor.buildingCode,
+          'buildingName': monitor.buildingName,
+          'roomId': monitor.roomId,
+          'roomName': monitor.roomName,
+          'examDate': monitor.examDate,
+          'registerDate': monitor.registerDate,
+          'image': monitor.image,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit();
+  }
+
+  /// Get all monitors from offline storage (admin download)
+  static Future<List<Monitor>> getAllMonitorsOffline() async {
+    final db = await database;
+    final results = await db.query(_allMonitorsTable);
+    return results
+        .map((map) => Monitor(
+              workNumber: map['workNumber'] as int? ?? 0,
+              firstName: map['firstName'] as String? ?? '',
+              lastName: map['lastName'] as String? ?? '',
+              middleName: map['middleName'] as String? ?? '',
+              idCardPin: map['idCardPin'] as String? ?? '',
+              buildingCode: map['buildingCode'] as int? ?? 0,
+              buildingName: map['buildingName'] as String? ?? '',
+              roomId: map['roomId'] as int? ?? 0,
+              roomName: map['roomName'] as String? ?? '',
+              examDate: map['examDate'] as String? ?? '',
+              registerDate: map['registerDate'] as String? ?? '',
+              image: map['image'] as String? ?? '',
+            ))
+        .toList();
+  }
+
+  /// Get all monitors for a specific room from offline storage (admin download)
+  static Future<List<Monitor>> getAllMonitorsByRoomOffline(int roomId) async {
+    final db = await database;
+    final results = await db.query(
+      _allMonitorsTable,
+      where: 'roomId = ?',
+      whereArgs: [roomId],
+    );
+    return results
+        .map((map) => Monitor(
+              workNumber: map['workNumber'] as int? ?? 0,
+              firstName: map['firstName'] as String? ?? '',
+              lastName: map['lastName'] as String? ?? '',
+              middleName: map['middleName'] as String? ?? '',
+              idCardPin: map['idCardPin'] as String? ?? '',
+              buildingCode: map['buildingCode'] as int? ?? 0,
+              buildingName: map['buildingName'] as String? ?? '',
+              roomId: map['roomId'] as int? ?? 0,
+              roomName: map['roomName'] as String? ?? '',
+              examDate: map['examDate'] as String? ?? '',
+              registerDate: map['registerDate'] as String? ?? '',
+              image: map['image'] as String? ?? '',
+            ))
+        .toList();
+  }
+
+  /// Clear all_monitors table
+  static Future<void> clearAllMonitorsOffline() async {
+    final db = await database;
+    await db.delete(_allMonitorsTable);
   }
 
   /// Close database connection

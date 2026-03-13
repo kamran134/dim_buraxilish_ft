@@ -14,6 +14,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   bool _hasOfflineData = false;
   int _participantCount = 0;
   int _supervisorCount = 0;
+  int _allMonitorCount = 0;
   String? _successMessage;
   String? _errorMessage;
 
@@ -22,6 +23,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   bool get hasOfflineData => _hasOfflineData;
   int get participantCount => _participantCount;
   int get supervisorCount => _supervisorCount;
+  int get allMonitorCount => _allMonitorCount;
   String? get successMessage => _successMessage;
   String? get errorMessage => _errorMessage;
 
@@ -52,12 +54,18 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       _supervisorCount = supervisors.length;
       print('Found $_supervisorCount supervisors in offline database');
 
-      // Has offline data if both participants and supervisors exist (like React Native logic)
-      // React Native checks: (countEnrollees > 0) && (countSupervisors > 0)
-      _hasOfflineData = _participantCount > 0 && _supervisorCount > 0;
+      // Get all_monitors count (admin offline download)
+      final allMonitors = await DatabaseService.getAllMonitorsOffline();
+      _allMonitorCount = allMonitors.length;
+      print(
+          'Found $_allMonitorCount monitors in all_monitors offline database');
+
+      // Has offline data if monitor data OR participant+supervisor data exists
+      _hasOfflineData = (_participantCount > 0 && _supervisorCount > 0) ||
+          _allMonitorCount > 0;
 
       print(
-          'Offline database status: $_hasOfflineData (participants: $_participantCount, supervisors: $_supervisorCount)');
+          'Offline database status: $_hasOfflineData (participants: $_participantCount, supervisors: $_supervisorCount, monitors: $_allMonitorCount)');
 
       notifyListeners();
     } catch (e) {
@@ -65,7 +73,60 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       _hasOfflineData = false;
       _participantCount = 0;
       _supervisorCount = 0;
+      _allMonitorCount = 0;
       notifyListeners();
+    }
+  }
+
+  /// Download offline database for admin users (only monitors)
+  Future<void> downloadAdminOfflineDatabase() async {
+    _setLoading(true);
+    _clearMessages();
+
+    try {
+      final examDetails = await _httpService.getExamDetailsFromStorage();
+      if (examDetails == null) {
+        _setError('İmtahan məlumatları tapılmadı. Əvvəlcə giriş edin.');
+        return;
+      }
+
+      final examDate = examDetails.imtTarix ?? '';
+      if (examDate.isEmpty) {
+        _setError('İmtahan tarixi tapılmadı.');
+        return;
+      }
+
+      print('Admin offline download: examDate=$examDate');
+
+      // Download ALL monitors for this exam date (admin has no building code)
+      final monitors = await _httpService.getAllMonitorsInExamDate(examDate);
+
+      if (monitors.isEmpty) {
+        _setError('Bu tarix üçün monitor məlumatları tapılmadı.');
+        return;
+      }
+
+      print('Downloaded ${monitors.length} monitors');
+
+      // Clear existing and save
+      await DatabaseService.clearAllMonitorsOffline();
+      await DatabaseService.saveAllMonitors(monitors);
+
+      await _checkOfflineData();
+
+      _setSuccess('Baza uğurla yükləndi! ${monitors.length} monitor.');
+    } catch (e) {
+      print('Error downloading admin offline database: $e');
+      if (e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        _setError('Avtorizasiya vaxtı bitib. Yenidən daxil olun!');
+      } else if (e.toString().contains('404')) {
+        _setError('Bu bina üzrə məlumat bazası tapılmadı!');
+      } else {
+        _setError('İnternet bağlantı yoxdur və ya server xətası!');
+      }
+    } finally {
+      _setLoading(false);
     }
   }
 

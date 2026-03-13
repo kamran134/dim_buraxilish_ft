@@ -133,34 +133,40 @@ class _LoginScreenState extends State<LoginScreen>
       _isDownloadingOffline = true;
     });
 
-    await offlineProvider.downloadOfflineDatabase();
+    if (authProvider.canAccessDashboard) {
+      // Admin: download monitors list (non-blocking — errors don't prevent login)
+      await offlineProvider.downloadAdminOfflineDatabase();
+    } else {
+      // Monitor: download participants + supervisors (blocking — must succeed)
+      await offlineProvider.downloadOfflineDatabase();
 
-    if (!mounted) return;
-
-    setState(() => _isDownloadingOffline = false);
-
-    if (offlineProvider.errorMessage != null) {
-      // Download failed — sign out and show error so user retries
-      await authProvider.signOut(clearData: true);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(offlineProvider.errorMessage!),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-      return;
+      setState(() => _isDownloadingOffline = false);
+
+      if (offlineProvider.errorMessage != null) {
+        await authProvider.signOut(clearData: true);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(offlineProvider.errorMessage!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
     }
 
-    // All good — navigate
-    final targetScreen = authProvider.canAccessDashboard
-        ? const RealDashboardScreen()
-        : const MainScreen();
+    if (!mounted) return;
+    setState(() => _isDownloadingOffline = false);
 
+    // Navigate
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            authProvider.canAccessDashboard
+                ? const RealDashboardScreen()
+                : const MainScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
