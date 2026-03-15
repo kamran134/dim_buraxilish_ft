@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/monitor_provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import '../widgets/common/common_widgets.dart';
@@ -249,10 +250,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
                     // Monitor Info Card
                     InfoCard(
-                      fullName: '${monitor.firstName} ${monitor.lastName}',
-                      subtitle: monitor.middleName.isNotEmpty
-                          ? 'Ata adı: ${monitor.middleName}'
-                          : 'Əməkdaşlıq №: ${monitor.workNumber}',
+                      fullName:
+                          '${monitor.firstName} ${monitor.lastName} ${monitor.middleName}',
+                      subtitle: 'İş nömrəsi: ${monitor.workNumber}',
                       photoWidget: PhotoWidget.supervisor(
                         photoData: monitor.image,
                       ),
@@ -262,9 +262,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
                           : const Color(0xFF10B981), // green-500
                       actionButton: null,
                       details: [
-                        InfoDetail(
-                            label: 'Əməkdaşlıq №',
-                            value: monitor.workNumber.toString()),
+                        if (monitor.roomName.isNotEmpty)
+                          InfoDetail(label: 'Otaq', value: monitor.roomName),
                         if (monitor.idCardPin.isNotEmpty)
                           InfoDetail(label: 'FİN', value: monitor.idCardPin),
                         if (monitor.buildingCode > 0)
@@ -274,18 +273,11 @@ class _MonitorScreenState extends State<MonitorScreen> {
                         if (monitor.buildingName.isNotEmpty)
                           InfoDetail(
                               label: 'Bina adı', value: monitor.buildingName),
-                        if (monitor.roomId > 0)
-                          InfoDetail(
-                              label: 'Otaq №',
-                              value: monitor.roomId.toString()),
-                        if (monitor.roomName.isNotEmpty)
-                          InfoDetail(
-                              label: 'Otaq adı', value: monitor.roomName),
                         if (monitor.registerDate.isNotEmpty &&
                             monitor.registerDate != 'null')
                           InfoDetail(
                               label: 'Qeydiyyat tarixi',
-                              value: monitor.registerDate),
+                              value: DateFormatter.formatISOToAz(monitor.registerDate)),
                       ],
                     ),
 
@@ -542,4 +534,6 @@ class _MonitorScreenState extends State<MonitorScreen> {
       (route) => false,
     );
   }
+
+
 }

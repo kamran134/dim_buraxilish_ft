@@ -31,21 +31,6 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     _loadMonitors();
   }
 
-  String _formatDateTime(String dateTimeString, String format) {
-    try {
-      final dateTime = DateTime.parse(dateTimeString);
-      final day = dateTime.day.toString().padLeft(2, '0');
-      final month = dateTime.month.toString().padLeft(2, '0');
-      final year = dateTime.year.toString();
-      final hour = dateTime.hour.toString().padLeft(2, '0');
-      final minute = dateTime.minute.toString().padLeft(2, '0');
-
-      return '$day.$month.$year $hour:$minute';
-    } catch (e) {
-      return dateTimeString; // Return original string if parsing fails
-    }
-  }
-
   Future<void> _loadMonitors() async {
     setState(() {
       _isLoading = true;
@@ -477,7 +462,7 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
           ),
           if (isRegistered)
             Text(
-              'Qeydiyyat: ${_formatDateTime(monitor.registerDate, 'dd.MM.yyyy HH:mm')}',
+              'Qeydiyyat: ${DateFormatter.formatISOToAz(monitor.registerDate)}',
               style: AppTextStyles.caption.copyWith(
                 color: Colors.green,
               ),
