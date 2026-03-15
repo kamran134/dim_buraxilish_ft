@@ -349,6 +349,38 @@ class DatabaseService {
     );
   }
 
+  /// Remove participant from local registered table and clear qeydiyyat (after cancellation)
+  static Future<void> unregisterParticipant(int isN) async {
+    final db = await database;
+    await db.delete(
+      _registeredParticipantsTable,
+      where: 'is_N = ?',
+      whereArgs: [isN],
+    );
+    await db.update(
+      _participantsTable,
+      {'qeydiyyat': null},
+      where: 'is_N = ?',
+      whereArgs: [isN],
+    );
+  }
+
+  /// Remove supervisor from local registered table and clear registerDate (after cancellation)
+  static Future<void> unregisterSupervisor(String cardNumber) async {
+    final db = await database;
+    await db.delete(
+      _registeredSupervisorsTable,
+      where: 'cardNumber = ?',
+      whereArgs: [cardNumber],
+    );
+    await db.update(
+      _supervisorsTable,
+      {'registerDate': null},
+      where: 'cardNumber = ?',
+      whereArgs: [cardNumber],
+    );
+  }
+
   /// Get registered monitors from local database
   static Future<List<Monitor>> getRegisteredMonitors({String? examDate}) async {
     final db = await database;

@@ -316,6 +316,11 @@ class HttpService {
           success: false,
           message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
         );
+      } else if (e.response?.statusCode == 400) {
+        return ParticipantResponse(
+          success: false,
+          message: 'Axtarılan şəxs haqqında məlumat tapılmadı',
+        );
       } else {
         return ParticipantResponse(
           success: false,
@@ -500,7 +505,12 @@ class HttpService {
       }
     } on DioException catch (e) {
       print('Dio error scanning supervisor: $e');
-      if (e.response != null) {
+      if (e.response?.statusCode == 400) {
+        return SupervisorResponse(
+          success: false,
+          message: 'Axtarılan şəxs haqqında məlumat tapılmadı',
+        );
+      } else if (e.response != null) {
         print('Error response data: ${e.response!.data}');
         try {
           return SupervisorResponse.fromJson(e.response!.data);
@@ -1139,7 +1149,12 @@ class HttpService {
       }
     } on DioException catch (e) {
       print('Dio error scanning monitor: $e');
-      if (e.response != null) {
+      if (e.response?.statusCode == 400) {
+        return MonitorResponse(
+          success: false,
+          message: 'Axtarılan şəxs haqqında məlumat tapılmadı',
+        );
+      } else if (e.response != null) {
         print('Error response data: ${e.response!.data}');
         try {
           return MonitorResponse.fromJson(e.response!.data);

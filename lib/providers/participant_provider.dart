@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import '../services/statistics_event_bus.dart';
 import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
@@ -482,6 +483,14 @@ class ParticipantProvider with ChangeNotifier {
 
       if (response.success) {
         _setSuccess(response.message);
+
+        // Remove from local statistics cache
+        await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
+
+        // Notify statistics listeners
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('ParticipantProvider.cancelRegistration');
+
         // Move to next participant (which opens scanner)
         print('Moving to next participant...');
         nextParticipant();

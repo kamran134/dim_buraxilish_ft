@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import '../services/statistics_event_bus.dart';
 import 'offline_database_provider.dart';
 
 /// Состояния экрана Supervisor
@@ -467,6 +468,15 @@ class SupervisorProvider with ChangeNotifier {
 
       if (response.success) {
         _setSuccess(response.message);
+
+        // Remove from local statistics cache
+        await DatabaseService.unregisterSupervisor(
+            _currentSupervisor!.cardNumber);
+
+        // Notify statistics listeners
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('SupervisorProvider.cancelRegistration');
+
         // Return to scanning state after successful cancellation
         print('Returning to scanning state...');
         resetToInitial();

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/participant_models.dart';
 import '../../models/supervisor_models.dart';
 import '../../services/database_service.dart';
+import '../../services/http_service.dart';
+import '../../services/statistics_event_bus.dart';
 import 'participant_card.dart';
 import 'supervisor_card.dart';
 
@@ -20,6 +22,7 @@ class StatisticsListView extends StatefulWidget {
 
 class _StatisticsListViewState extends State<StatisticsListView> {
   final TextEditingController _searchController = TextEditingController();
+  final HttpService _httpService = HttpService();
   String _searchQuery = '';
 
   // All entries (offline DB or fallback registered-only)
@@ -55,6 +58,70 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cancelParticipant(Participant participant) async {
+    try {
+      final response = await _httpService.cancelParticipantRegistration(
+        isN: participant.isN,
+        bina: participant.bina,
+        examDate: participant.imtTarix,
+      );
+      if (!mounted) return;
+      if (response.success) {
+        await DatabaseService.unregisterParticipant(participant.isN);
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('StatisticsListView.cancelParticipant');
+        await _loadData();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.green,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Xəta baş verdi'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
+  Future<void> _cancelSupervisor(Supervisor supervisor) async {
+    try {
+      final response = await _httpService.cancelSupervisorRegistration(
+        cardNumber: supervisor.cardNumber,
+        buildingCode: supervisor.buildingCode,
+        examDate: supervisor.examDate,
+      );
+      if (!mounted) return;
+      if (response.success) {
+        await DatabaseService.unregisterSupervisor(supervisor.cardNumber);
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('StatisticsListView.cancelSupervisor');
+        await _loadData();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.green,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Xəta baş verdi'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   Future<void> _loadData() async {
@@ -221,6 +288,9 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         return ParticipantCard(
           participant: p,
           isRegistered: _registeredParticipantIds.contains(p.isN),
+          onCancel: _registeredParticipantIds.contains(p.isN)
+              ? () => _cancelParticipant(p)
+              : null,
         );
       },
     );
@@ -256,6 +326,9 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         return SupervisorCard(
           supervisor: s,
           isRegistered: _registeredSupervisorIds.contains(s.cardNumber),
+          onCancel: _registeredSupervisorIds.contains(s.cardNumber)
+              ? () => _cancelSupervisor(s)
+              : null,
         );
       },
     );

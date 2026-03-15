@@ -7,11 +7,13 @@ import '../../design/app_colors.dart';
 class ParticipantCard extends StatelessWidget {
   final Participant participant;
   final bool isRegistered;
+  final VoidCallback? onCancel;
 
   const ParticipantCard({
     Key? key,
     required this.participant,
     this.isRegistered = true,
+    this.onCancel,
   }) : super(key: key);
 
   @override
@@ -33,7 +35,7 @@ class ParticipantCard extends StatelessWidget {
         children: [
           // Main content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, isRegistered ? 44 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -136,6 +138,57 @@ class ParticipantCard extends StatelessWidget {
               ),
             ),
           ),
+          // Cancel button (only for registered)
+          if (isRegistered && onCancel != null)
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Təsdiq'),
+                      content: const Text(
+                          'Qeydiyyatını ləğv etmək istədiyinizdən əminsinizmi?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Xeyr'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          child: const Text('Bəli',
+                              style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) onCancel!();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade700,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cancel_outlined,
+                          size: 12, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text('Ləğv et',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
