@@ -141,8 +141,7 @@ class SyncService extends ChangeNotifier {
               '[SyncService] Syncing ${unsyncedSupervisors.length} supervisors...');
         }
 
-        final result =
-            await _httpService.syncSupervisors(unsyncedSupervisors);
+        final result = await _httpService.syncSupervisors(unsyncedSupervisors);
 
         if (result.success) {
           await DatabaseService.clearUnSyncedSupervisors();

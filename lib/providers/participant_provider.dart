@@ -90,7 +90,6 @@ class ParticipantProvider with ChangeNotifier {
   // No-op: online/offline toggle is removed — always works offline after login.
   void toggleOnlineMode() {}
 
-
   // Set reference to OfflineDatabaseProvider
   void setOfflineDatabaseProvider(OfflineDatabaseProvider provider) {
     _offlineDatabaseProvider = provider;
@@ -209,8 +208,7 @@ class ParticipantProvider with ChangeNotifier {
           kodBina: _examDetails!.kodBina,
           imtTarix: _examDetails!.imtTarix,
           // Prefer totals from the downloaded data; fall back to local count
-          allManCount:
-              storedAllMen > 0 ? storedAllMen : (stats['allMen'] ?? 0),
+          allManCount: storedAllMen > 0 ? storedAllMen : (stats['allMen'] ?? 0),
           allWomanCount:
               storedAllWomen > 0 ? storedAllWomen : (stats['allWomen'] ?? 0),
           // Always use local registered counts (updated after every scan)

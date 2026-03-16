@@ -275,9 +275,8 @@ class SupervisorProvider with ChangeNotifier {
         _currentSupervisor = response.data;
 
         // Detect repeat: supervisor already has a registerDate set
-        final alreadyRegistered =
-            _currentSupervisor!.registerDate.isNotEmpty &&
-                _currentSupervisor!.registerDate != 'null';
+        final alreadyRegistered = _currentSupervisor!.registerDate.isNotEmpty &&
+            _currentSupervisor!.registerDate != 'null';
 
         if (alreadyRegistered) {
           _isRepeatEntry = true;
