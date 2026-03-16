@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -20,8 +21,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _pinControllers = List.generate(4, (_) => TextEditingController());
+  final _pinFocusNodes = List.generate(4, (_) => FocusNode());
+  final _adminUsernameController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  bool _isAdmin = false;
+
+  String get _resolvedUsername {
+    if (_isAdmin) {
+      return _adminUsernameController.text.trim();
+    }
+    final digits = _pinControllers.map((c) => c.text).join();
+    return 'bina$digits';
+  }
 
   String? _selectedExamDate;
   bool _obscurePassword = true;
@@ -101,7 +114,12 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    if (!_formKey.currentState!.validate() || _selectedExamDate == null) {
+    final pinFilled = _isAdmin
+        ? _adminUsernameController.text.trim().isNotEmpty
+        : _pinControllers.every((c) => c.text.isNotEmpty);
+    if (!_formKey.currentState!.validate() ||
+        _selectedExamDate == null ||
+        !pinFilled) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Zəhmət olmasa bütün xanaları doldurun'),
@@ -114,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
 
     final success = await authProvider.signInWithJWT(
-      _usernameController.text.trim(),
+      _resolvedUsername,
       _passwordController.text,
       _selectedExamDate!,
     );
@@ -179,7 +197,13 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
-    _usernameController.dispose();
+    for (final c in _pinControllers) {
+      c.dispose();
+    }
+    for (final f in _pinFocusNodes) {
+      f.dispose();
+    }
+    _adminUsernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -409,22 +433,112 @@ class _LoginScreenState extends State<LoginScreen>
         key: _formKey,
         child: Column(
           children: [
-            // Username Field
-            CustomTextField(
-              controller: _usernameController,
-              hintText: 'İstifadəçi adı',
-              prefixIcon: Icons.person_outline,
-              forceLight: true, // Принудительно светлая тема
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'İstifadəçi adı tələb olunur';
-                }
-                if (value.length > 50) {
-                  return 'İstifadəçi adı 50 simvoldan çox ola bilməz';
-                }
-                return null;
-              },
+            // Role toggle
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  _buildRoleChip('İmtahan rəhbəri', false),
+                  _buildRoleChip('Admin', true),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 20),
+
+            // Username input — PIN boxes or text field
+            if (!_isAdmin)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.apartment_outlined,
+                          color: Colors.grey[600], size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Bina kodu',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(4, (i) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: SizedBox(
+                          width: 56,
+                          height: 60,
+                          child: TextField(
+                            controller: _pinControllers[i],
+                            focusNode: _pinFocusNodes[i],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(1),
+                            ],
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              contentPadding: EdgeInsets.zero,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[300]!),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[300]!),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: AppColors.deepBlue, width: 2),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              if (value.isNotEmpty && i < 3) {
+                                _pinFocusNodes[i + 1].requestFocus();
+                              } else if (value.isEmpty && i > 0) {
+                                _pinFocusNodes[i - 1].requestFocus();
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              )
+            else
+              CustomTextField(
+                controller: _adminUsernameController,
+                hintText: 'İstifadəçi adı',
+                prefixIcon: Icons.person_outline,
+                forceLight: true,
+                validator: (value) {
+                  if (_isAdmin && (value == null || value.isEmpty)) {
+                    return 'İstifadəçi adı tələb olunur';
+                  }
+                  return null;
+                },
+              ),
 
             const SizedBox(height: 20),
 
@@ -492,6 +606,49 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildRoleChip(String label, bool isAdminChip) {
+    final selected = _isAdmin == isAdminChip;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isAdmin = isAdminChip;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(4),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.deepBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isAdminChip
+                    ? Icons.admin_panel_settings_outlined
+                    : Icons.apartment_outlined,
+                size: 16,
+                color: selected ? Colors.white : Colors.grey[600],
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
