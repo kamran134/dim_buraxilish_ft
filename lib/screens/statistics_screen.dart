@@ -9,6 +9,7 @@ import '../widgets/statistics/statistics_widgets.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../services/statistics_service.dart';
+import '../services/sync_service.dart';
 import '../models/exam_statistics_dto.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -248,13 +249,95 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           ),
         ),
 
-        // Кнопка обновления
-        StatisticsRefreshButton(
-          isRefreshing: _isRefreshing,
-          onRefresh: _refreshStatistics,
-          animationController: _refreshController,
+        // Buttons row: Refresh (local stats) + Manual Sync (send to server)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              // Refresh local stats
+              Expanded(
+                child: StatisticsRefreshButton(
+                  isRefreshing: _isRefreshing,
+                  onRefresh: _refreshStatistics,
+                  animationController: _refreshController,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Manual sync to server
+              Expanded(
+                child: _buildSyncButton(),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSyncButton() {
+    return ListenableBuilder(
+      listenable: SyncService.instance,
+      builder: (context, _) {
+        final sync = SyncService.instance;
+        final pending = sync.pendingTotal;
+        final isSyncing = sync.isSyncing;
+        final lastSuccess = sync.lastSyncSuccess;
+
+        Color btnColor = AppColors.primary;
+        IconData btnIcon = Icons.cloud_upload_outlined;
+        String btnLabel = 'Sinxronizasiya';
+
+        if (isSyncing) {
+          btnLabel = 'Göndərilir...';
+          btnIcon = Icons.sync;
+        } else if (pending > 0) {
+          btnLabel = 'Göndər ($pending)';
+          btnIcon = Icons.cloud_upload_outlined;
+          btnColor = Colors.orange.shade700;
+        } else if (lastSuccess == true) {
+          btnLabel = 'Sinxron edildi';
+          btnIcon = Icons.cloud_done_outlined;
+          btnColor = Colors.green.shade700;
+        } else if (lastSuccess == false) {
+          btnLabel = 'Yenidən cəhd et';
+          btnIcon = Icons.cloud_off_outlined;
+          btnColor = Colors.red.shade700;
+        }
+
+        return ElevatedButton.icon(
+          onPressed: isSyncing
+              ? null
+              : () async {
+                  await SyncService.instance.syncNow();
+                  if (mounted) {
+                    // Reload local stats after sync
+                    _loadData();
+                  }
+                },
+          icon: isSyncing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Icon(btnIcon, size: 16),
+          label: Text(
+            btnLabel,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: btnColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -281,16 +364,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   int _getAdminRegisteredSupervisors() {
     return _adminStatistics.fold(
         0, (sum, stat) => sum + (stat.regSupervisorCount ?? 0));
-  }
-
-  int _getAdminTotalParticipants() {
-    return _adminStatistics.fold(
-        0, (sum, stat) => sum + stat.totalParticipants);
-  }
-
-  int _getAdminRegisteredParticipants() {
-    return _adminStatistics.fold(
-        0, (sum, stat) => sum + stat.registeredParticipants);
   }
 
   // Теперь у нас есть разбивка по полу участников

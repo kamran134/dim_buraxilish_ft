@@ -4,6 +4,7 @@ import '../models/supervisor_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../services/statistics_event_bus.dart';
+import '../services/sync_service.dart';
 import 'offline_database_provider.dart';
 
 /// Состояния экрана Supervisor
@@ -26,7 +27,8 @@ class SupervisorProvider with ChangeNotifier {
   String?
       _supervisorMessage; // Сообщение для повторных входов или другие статусные сообщения
   bool _isLoading = false;
-  bool _isOnlineMode = true;
+  // Always offline after login — no online scanning mode
+  final bool _isOnlineMode = false;
   bool _isRepeatEntry = false;
   bool _isScanning = false; // Флаг для предотвращения дублирования запросов
 
@@ -106,17 +108,8 @@ class SupervisorProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle online/offline mode
-  void toggleOnlineMode() {
-    // If switching to offline mode, check if database is available
-    if (_isOnlineMode && !hasOfflineDatabase) {
-      _setError('Oflayn rejimə keçmək üçün əvvəlcə lokal bazanı yükləyin!');
-      return;
-    }
-
-    _isOnlineMode = !_isOnlineMode;
-    notifyListeners();
-  }
+  // No-op: online/offline toggle is removed — always works offline after login.
+  void toggleOnlineMode() {}
 
   // Set reference to OfflineDatabaseProvider
   void setOfflineDatabaseProvider(OfflineDatabaseProvider provider) {
@@ -166,74 +159,50 @@ class SupervisorProvider with ChangeNotifier {
     _onAuthenticationError = callback;
   }
 
-  // Load supervisor details (statistics)
+  // Load supervisor details (statistics) from local SQLite DB
   Future<void> loadSupervisorDetails() async {
     _setLoading(true);
     clearMessages();
 
     try {
-      // First check if user is authenticated
-      final token = await _httpService.getToken();
-      if (token == null) {
-        if (kDebugMode) {
-          debugPrint('[Supervisor] No JWT token found, redirecting to login');
-        }
-        _onAuthenticationError?.call();
-        return;
-      }
-
-      // Get exam details to use for the request
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails != null) {
-        // Try to get supervisor details from API
         final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
         final examDate = examDetails.imtTarix ?? '';
 
         if (kDebugMode) {
           debugPrint(
-              '[Supervisor] Loading details: buildingCode=$buildingCode, examDate=$examDate');
+              '[Supervisor] Loading local stats: buildingCode=$buildingCode');
         }
 
-        final supervisorDetails = await _httpService.getSupervisorDetails(
+        final stats = await DatabaseService.getLocalSupervisorStats(
+            buildingCode, examDate);
+        _supervisorDetails = SupervisorDetails(
+          allPersonCount: stats['allCount'] ?? 0,
+          regPersonCount: stats['regCount'] ?? 0,
           buildingCode: buildingCode,
           examDate: examDate,
         );
 
-        if (supervisorDetails != null) {
-          _supervisorDetails = supervisorDetails;
-          if (kDebugMode) {
-            debugPrint(
-                '[Supervisor] Loaded from API: total=${supervisorDetails.allPersonCount}, registered=${supervisorDetails.regPersonCount}');
-          }
-        } else {
-          // Fallback to storage if API fails
-          _supervisorDetails =
-              await _httpService.getSupervisorDetailsFromStorage();
-          if (kDebugMode) {
-            debugPrint('[Supervisor] Loaded from storage');
-          }
+        if (kDebugMode) {
+          debugPrint(
+              '[Supervisor] Local stats — total=${_supervisorDetails!.allPersonCount}, reg=${_supervisorDetails!.regPersonCount}');
         }
       } else {
-        // Fallback to storage if no exam details
-        _supervisorDetails =
-            await _httpService.getSupervisorDetailsFromStorage();
-        if (kDebugMode) {
-          debugPrint('[Supervisor] Loaded from storage (no exam details)');
-        }
+        _supervisorDetails = const SupervisorDetails(
+          allPersonCount: 0,
+          regPersonCount: 0,
+        );
       }
-
-      // If still null, use default values
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Supervisor] Error loading local stats: $e');
+      }
       _supervisorDetails ??= const SupervisorDetails(
         allPersonCount: 0,
         regPersonCount: 0,
       );
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Supervisor] Error loading details: $e');
-      }
-      _setError('Nəzarətçi məlumatları yüklənə bilmədi');
     } finally {
-      // Guaranteed reset – mirrors loadExamDetails() in participant_provider
       _setLoading(false);
     }
   }
@@ -298,44 +267,29 @@ class SupervisorProvider with ChangeNotifier {
         return;
       }
 
-      SupervisorResponse response;
-
-      if (_isOnlineMode) {
-        // Online mode: make API call
-        response = await _httpService.scanSupervisor(
-          cardNumber: qrCode,
-          buildingCode: int.tryParse(examDetails.kodBina ?? '0') ?? 0,
-          examDate: examDetails.imtTarix ?? '',
-        );
-      } else {
-        // Offline mode: check local database
-        response = await _httpService.getSupervisorFromOfflineDB(qrCode);
-
-        // If supervisor found and not repeat, register offline
-        if (response.success &&
-            response.data != null &&
-            !response.message.toLowerCase().contains('təkrar')) {
-          await _httpService.registerSupervisorOffline(qrCode);
-        }
-      }
+      // Always use offline scan path
+      SupervisorResponse response =
+          await _httpService.getSupervisorFromOfflineDB(qrCode);
 
       if (response.success && response.data != null) {
         _currentSupervisor = response.data;
 
-        // Check for repeat entry
-        if (response.message.contains('Təkrar giriş') ||
-            response.message.toLowerCase().contains('repeat') ||
-            response.message.toLowerCase().contains('təkrar')) {
+        // Detect repeat: supervisor already has a registerDate set
+        final alreadyRegistered =
+            _currentSupervisor!.registerDate.isNotEmpty &&
+                _currentSupervisor!.registerDate != 'null';
+
+        if (alreadyRegistered) {
           _isRepeatEntry = true;
           _setSupervisorMessage('TƏKRAR GİRİŞ');
         } else {
+          // New registration — save to local DB and sync queue
+          await _httpService.registerSupervisorOffline(qrCode);
           _isRepeatEntry = false;
           _supervisorMessage = null;
 
-          // Save the supervisor to local database for statistics
-          await _saveSupervisorToLocalDB(_currentSupervisor!);
-
-          // Update statistics when new supervisor is registered
+          // Notify background sync service and update local statistics
+          SyncService.instance.notifyScan();
           await _updateSupervisorStatistics();
         }
 
@@ -367,19 +321,7 @@ class SupervisorProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Save supervisor to local database for offline access and statistics
-  Future<void> _saveSupervisorToLocalDB(Supervisor supervisor) async {
-    try {
-      final now = DateTime.now().toIso8601String();
-      await DatabaseService.registerSupervisor(supervisor, now);
-      print('Saved supervisor ${supervisor.cardNumber} to local database');
-    } catch (e) {
-      print('Error saving supervisor to local database: $e');
-      // Don't show error to user, continue with normal flow
-    }
-  }
-
-  // Update supervisor statistics after successful registration
+  // Update supervisor statistics from local DB after registration
   Future<void> _updateSupervisorStatistics() async {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
@@ -388,23 +330,23 @@ class SupervisorProvider with ChangeNotifier {
           examDetails.imtTarix != null) {
         final buildingCode = int.tryParse(examDetails.kodBina!);
         if (buildingCode != null) {
-          print('Updating supervisor statistics after registration');
-          final updatedDetails = await _httpService.getSupervisorDetails(
+          final stats = await DatabaseService.getLocalSupervisorStats(
+              buildingCode, examDetails.imtTarix!);
+          _supervisorDetails = SupervisorDetails(
+            allPersonCount: stats['allCount'] ?? 0,
+            regPersonCount: stats['regCount'] ?? 0,
             buildingCode: buildingCode,
-            examDate: examDetails.imtTarix!,
+            examDate: examDetails.imtTarix,
           );
-
-          if (updatedDetails != null) {
-            _supervisorDetails = updatedDetails;
-            print(
-                'Updated supervisor statistics: registered=${updatedDetails.regPersonCount}, unregistered=${updatedDetails.unregisteredCount}');
-            notifyListeners();
+          if (kDebugMode) {
+            debugPrint(
+                '[Supervisor] Stats updated — reg=${_supervisorDetails!.regPersonCount}');
           }
+          notifyListeners();
         }
       }
     } catch (e) {
-      print('Error updating supervisor statistics: $e');
-      // Don't show error to user, statistics are not critical for functionality
+      if (kDebugMode) debugPrint('[Supervisor] Stats update error: $e');
     }
   }
 

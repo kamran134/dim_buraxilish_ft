@@ -6,6 +6,7 @@ import '../models/participant_models.dart';
 import '../utils/role_helper.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
+import '../services/sync_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -234,6 +235,8 @@ class AuthProvider extends ChangeNotifier {
   // Sign out
   Future<void> signOut({bool clearData = true}) async {
     _setLoading(true);
+    // Stop background sync timer immediately on logout
+    SyncService.instance.stopTimer();
     try {
       if (clearData) {
         await _httpService.clearAllData();

@@ -4,6 +4,7 @@ import '../models/participant_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../services/statistics_event_bus.dart';
+import '../services/sync_service.dart';
 import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
@@ -16,7 +17,8 @@ class ParticipantProvider with ChangeNotifier {
   String? _errorMessage;
   String? _successMessage;
   bool _isLoading = false;
-  bool _isOnlineMode = true;
+  // Always offline after login — no online scanning mode
+  final bool _isOnlineMode = false;
   bool _isRepeatEntry = false;
   bool _isScanning = false; // Флаг для предотвращения дублирования запросов
 
@@ -85,17 +87,9 @@ class ParticipantProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle online/offline mode
-  void toggleOnlineMode() {
-    // If switching to offline mode, check if database is available
-    if (_isOnlineMode && !hasOfflineDatabase) {
-      _setError('Oflayn rejimə keçmək üçün əvvəlcə lokal bazanı yükləyin!');
-      return;
-    }
+  // No-op: online/offline toggle is removed — always works offline after login.
+  void toggleOnlineMode() {}
 
-    _isOnlineMode = !_isOnlineMode;
-    notifyListeners();
-  }
 
   // Set reference to OfflineDatabaseProvider
   void setOfflineDatabaseProvider(OfflineDatabaseProvider provider) {
@@ -200,41 +194,37 @@ class ParticipantProvider with ChangeNotifier {
     }
   }
 
-  // Load statistics from API
+  // Load statistics from local SQLite database (no network needed)
   Future<void> _loadStatistics(int bina, String examDate) async {
     try {
-      print('Loading statistics: bina=$bina, examDate=$examDate');
+      final binaStr = bina.toString();
+      final stats =
+          await DatabaseService.getLocalParticipantStats(binaStr, examDate);
 
-      final updatedDetails = await _httpService.getExamDetails(
-        bina: bina,
-        examDate: examDate,
-      );
-
-      if (updatedDetails != null) {
-        _examDetails = updatedDetails;
-        print('Updated exam details with statistics loaded');
-        print('Total registered: ${updatedDetails.totalRegisteredCount}');
-        print('Total not registered: ${updatedDetails.notRegisteredCount}');
+      if (_examDetails != null) {
+        final storedAllMen = _examDetails!.allManCount ?? 0;
+        final storedAllWomen = _examDetails!.allWomanCount ?? 0;
+        _examDetails = ExamDetails(
+          adBina: _examDetails!.adBina,
+          kodBina: _examDetails!.kodBina,
+          imtTarix: _examDetails!.imtTarix,
+          // Prefer totals from the downloaded data; fall back to local count
+          allManCount:
+              storedAllMen > 0 ? storedAllMen : (stats['allMen'] ?? 0),
+          allWomanCount:
+              storedAllWomen > 0 ? storedAllWomen : (stats['allWomen'] ?? 0),
+          // Always use local registered counts (updated after every scan)
+          regManCount: stats['regMen'] ?? 0,
+          regWomanCount: stats['regWomen'] ?? 0,
+        );
+        if (kDebugMode) {
+          debugPrint(
+              '[Participant] Local stats — reg: ${_examDetails!.totalRegisteredCount}, not reg: ${_examDetails!.notRegisteredCount}');
+        }
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading statistics: $e');
-      // Don't show error to user, statistics are not critical for functionality
-    }
-  }
-
-  // Update participant statistics after successful registration
-  // Save participant to local database for offline access and statistics
-  Future<void> _saveParticipantToLocalDB(Participant participant) async {
-    try {
-      print(
-          'Saving participant ${participant.isN} to local database with photo: "${participant.photo}"');
-      final now = DateTime.now().toIso8601String();
-      await DatabaseService.registerParticipant(participant, now);
-      print('Saved participant ${participant.isN} to local database');
-    } catch (e) {
-      print('Error saving participant to local database: $e');
-      // Don't show error to user, continue with normal flow
+      if (kDebugMode) debugPrint('[Participant] Error loading local stats: $e');
     }
   }
 
@@ -292,11 +282,7 @@ class ParticipantProvider with ChangeNotifier {
     clearMessages();
 
     try {
-      if (_isOnlineMode) {
-        await _scanParticipantOnline(qrCode);
-      } else {
-        await _scanParticipantOffline(qrCode);
-      }
+      await _scanParticipantOffline(qrCode);
     } catch (e) {
       _setError('Skan zamanı xəta baş verdi');
       _screenState = ParticipantScreenState.error;
@@ -304,86 +290,6 @@ class ParticipantProvider with ChangeNotifier {
       _isScanning = false; // Освобождаем флаг
       _setLoading(false);
       notifyListeners();
-    }
-  }
-
-  // Online participant scanning
-  Future<void> _scanParticipantOnline(String qrCode) async {
-    try {
-      if (_examDetails == null) {
-        _setError('İmtahan məlumatları tapılmadı');
-        _screenState = ParticipantScreenState.error;
-        return;
-      }
-
-      // Call actual API endpoint from React Native project
-      final response = await _httpService.scanParticipant(
-        jobNo: qrCode,
-        building: _examDetails!.kodBina ?? '0',
-        examDate: _examDetails!.imtTarix ?? '',
-      );
-
-      if (response.success && response.data != null) {
-        _currentParticipant = response.data!;
-
-        // Log the response message for debugging
-        print('API Response message: "${response.message}"');
-        print(
-            'Received participant ${_currentParticipant!.isN} with photo: "${_currentParticipant!.photo}"');
-
-        // Check if participant is already registered (TƏKRAR)
-        // Convert to lowercase for case-insensitive comparison
-        final messageLower = response.message.toLowerCase();
-        if (messageLower == 'təkrar' ||
-            messageLower.contains('təkrar') ||
-            messageLower == 'tekrar' ||
-            messageLower.contains('tekrar')) {
-          _isRepeatEntry = true;
-          print('Detected repeat entry');
-          _setSuccess('Bu iştirakçı artıq qeydiyyatdan keçib');
-        } else {
-          _isRepeatEntry = false;
-          print('New participant registration');
-          _setSuccess('İştirakçı tapıldı və qeydiyyata alındı');
-
-          // Save the participant to local database for statistics
-          await _saveParticipantToLocalDB(_currentParticipant!);
-
-          // Update statistics when new participant is registered
-          await _updateParticipantStatistics();
-        }
-
-        _screenState = ParticipantScreenState.scanned;
-      } else {
-        // Check if error is related to authentication
-        if (response.message.contains('401') ||
-            response.message.contains('Unauthorized') ||
-            response.message.contains('Token') ||
-            response.message.toLowerCase().contains('avtorizasiya')) {
-          print('Authentication error during scanning, redirecting to login');
-          _onAuthenticationError?.call();
-          return;
-        }
-
-        _setError(response.message.isNotEmpty
-            ? response.message
-            : 'İştirakçı tapılmadı');
-        _screenState = ParticipantScreenState.error;
-      }
-    } catch (e) {
-      final errorMessage = e.toString();
-      // Check if error is authentication related
-      if (errorMessage.contains('401') ||
-          errorMessage.contains('Unauthorized') ||
-          errorMessage.contains('Token expired') ||
-          errorMessage.toLowerCase().contains('avtorizasiya')) {
-        print('Authentication error during scanning: $e, redirecting to login');
-        _onAuthenticationError?.call();
-        return;
-      }
-
-      _setError('İnternet bağlantı problemi və ya server xətası');
-      _screenState = ParticipantScreenState.error;
     }
   }
 
@@ -416,7 +322,11 @@ class ParticipantProvider with ChangeNotifier {
           // Register participant offline
           await _httpService.registerParticipantOffline(workNumber);
           _isRepeatEntry = false;
-          _setSuccess('İştirakçı qeydiyyata alındı (oflayn)');
+          _setSuccess('İştirakçı qeydiyyata alındı');
+
+          // Notify background sync service and update local statistics
+          SyncService.instance.notifyScan();
+          await _updateParticipantStatistics();
         }
 
         _screenState = ParticipantScreenState.scanned;

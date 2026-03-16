@@ -8,6 +8,7 @@ import 'providers/offline_database_provider.dart';
 import 'providers/unsent_data_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/font_provider.dart';
+import 'services/sync_service.dart';
 import 'design/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -30,6 +31,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MonitorProvider()),
         ChangeNotifierProvider(create: (_) => OfflineDatabaseProvider()),
         ChangeNotifierProvider(create: (_) => UnsentDataProvider()),
+        // SyncService singleton exposed as a ChangeNotifier so widgets can
+        // listen to pendingCount / isSyncing without manual subscriptions.
+        ChangeNotifierProvider.value(value: SyncService.instance),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

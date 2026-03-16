@@ -943,4 +943,122 @@ class DatabaseService {
       _database = null;
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SYNC QUEUE METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Get participants that have not yet been synced to the server (online = 0).
+  static Future<List<Participant>> getUnSyncedParticipants() async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT is_N, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, imt_Tarix, photo, qeydiyyat, online
+      FROM $_registeredParticipantsTable
+      WHERE online = 0
+      ORDER BY qeydiyyat ASC
+    ''');
+    return results.map((map) => _registeredParticipantFromMap(map)).toList();
+  }
+
+  /// Get supervisors that have not yet been synced to the server (online = 0).
+  static Future<List<Supervisor>> getUnSyncedSupervisors() async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT * FROM $_registeredSupervisorsTable
+      WHERE online = 0
+      ORDER BY registerDate ASC
+    ''');
+    return results.map((map) => _registeredSupervisorFromMap(map)).toList();
+  }
+
+  /// Delete unsynced participants from the queue after a successful server sync.
+  /// NOTE: The `participants` table still holds `qeydiyyat` for local statistics.
+  static Future<void> clearUnSyncedParticipants() async {
+    final db = await database;
+    await db.delete(
+      _registeredParticipantsTable,
+      where: 'online = 0',
+    );
+  }
+
+  /// Delete unsynced supervisors from the queue after a successful server sync.
+  /// NOTE: The `supervisors` table still holds `registerDate` for local statistics.
+  static Future<void> clearUnSyncedSupervisors() async {
+    final db = await database;
+    await db.delete(
+      _registeredSupervisorsTable,
+      where: 'online = 0',
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // LOCAL STATISTICS METHODS (read from offline tables — no network needed)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Returns participant statistics computed entirely from the local SQLite DB.
+  ///
+  /// [bina] – building code as stored in the participants table.
+  /// [examDate] – exam date string as stored in the participants table.
+  ///
+  /// Returns a map with keys:
+  ///   allMen, allWomen, regMen, regWomen
+  ///
+  /// `gins = 1` → male;  `gins = 0 or 2` → female  (per `_getGenderFromName`).
+  static Future<Map<String, int>> getLocalParticipantStats(
+      String bina, String examDate) async {
+    final db = await database;
+
+    // Total by gender
+    final allMenResult = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 1',
+      [bina, examDate],
+    );
+    final allWomenResult = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins != 1',
+      [bina, examDate],
+    );
+
+    // Registered by gender (qeydiyyat IS NOT NULL and not empty)
+    final regMenResult = await db.rawQuery(
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
+      [bina, examDate],
+    );
+    final regWomenResult = await db.rawQuery(
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins != 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
+      [bina, examDate],
+    );
+
+    return {
+      'allMen': Sqflite.firstIntValue(allMenResult) ?? 0,
+      'allWomen': Sqflite.firstIntValue(allWomenResult) ?? 0,
+      'regMen': Sqflite.firstIntValue(regMenResult) ?? 0,
+      'regWomen': Sqflite.firstIntValue(regWomenResult) ?? 0,
+    };
+  }
+
+  /// Returns supervisor statistics computed entirely from the local SQLite DB.
+  ///
+  /// [buildingCode] – building code.
+  /// [examDate] – exam date string as stored in the supervisors table.
+  ///
+  /// Returns a map with keys: allCount, regCount
+  static Future<Map<String, int>> getLocalSupervisorStats(
+      int buildingCode, String examDate) async {
+    final db = await database;
+
+    final allResult = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM $_supervisorsTable WHERE buildingCode = ?',
+      [buildingCode],
+    );
+
+    final regResult = await db.rawQuery(
+      "SELECT COUNT(*) as cnt FROM $_supervisorsTable WHERE buildingCode = ? AND registerDate IS NOT NULL AND registerDate != ''",
+      [buildingCode],
+    );
+
+    return {
+      'allCount': Sqflite.firstIntValue(allResult) ?? 0,
+      'regCount': Sqflite.firstIntValue(regResult) ?? 0,
+    };
+  }
 }

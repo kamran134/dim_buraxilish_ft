@@ -169,15 +169,6 @@ class _SupervisorScreenState extends State<SupervisorScreen> {
                       child: _buildOfflineDbStatus(offlineProvider),
                     ),
 
-                    // Online/Offline Toggle
-                    if (provider.hasOfflineDatabase)
-                      AnimatedWrapper(
-                        child: OnlineToggle(
-                          isOnlineMode: provider.isOnlineMode,
-                          onToggle: () => provider.toggleOnlineMode(),
-                        ),
-                      ),
-
                     // Loading indicator — only during THIS screen's own initial load,
                     // not when Statistics screen triggers a background refresh
                     if (_isDetailsLoading)

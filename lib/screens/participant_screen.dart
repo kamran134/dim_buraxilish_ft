@@ -162,15 +162,6 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                       child: _buildOfflineDbStatus(offlineProvider),
                     ),
 
-                    // Online/Offline Toggle
-                    if (provider.hasOfflineDatabase)
-                      AnimatedWrapper(
-                        child: OnlineToggle(
-                          isOnlineMode: provider.isOnlineMode,
-                          onToggle: () => provider.toggleOnlineMode(),
-                        ),
-                      ),
-
                     // Loading indicator
                     if (provider.isLoading)
                       const Padding(
