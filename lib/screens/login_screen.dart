@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -209,69 +210,73 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildDownloadOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.6),
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 32),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0046a3),
-                Color(0xFF0c7bc5),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 30,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+      child: Container(
+        color: Colors.black.withOpacity(0.45),
+        child: Center(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.4),
+                    blurRadius: 40,
+                    offset: const Offset(0, 16),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Məlumatlar yüklənir',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Məlumatlar yüklənir',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Zəhmət olmasa gözləyin...',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Zəhmət olmasa gözləyin...',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.75),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 4),
-            ],
+            ),
           ),
         ),
       ),
