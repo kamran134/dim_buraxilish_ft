@@ -158,36 +158,35 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
       // Step 1: Download participants (like getEnrolleesByBuilding in React Native)
       print('Step 1: Downloading participants...');
-      final participants = await _httpService.getParticipantsByBuilding(
-        buildingCode: buildingCode,
-        examDate: examDate,
-      );
-
-      if (participants.isEmpty) {
-        _setError('Bu bina üçün iştirakçı məlumatları tapılmadı.');
-        return;
+      List<Participant> participants = [];
+      try {
+        final result = await _httpService.getParticipantsByBuilding(
+          buildingCode: buildingCode,
+          examDate: examDate,
+        );
+        participants = result.cast<Participant>();
+        print('Downloaded ${participants.length} participants');
+      } catch (e) {
+        print('Could not download participants, skipping: $e');
       }
-
-      print('Downloaded ${participants.length} participants');
 
       // Step 2: Download supervisors (like getSupervisorsByBuilding in React Native)
       print('Step 2: Downloading supervisors...');
-      final supervisors = await _httpService.getSupervisorsByBuilding(
-        buildingCode: buildingCode,
-        examDate: examDate,
-      );
-
-      if (supervisors.isEmpty) {
-        _setError('Bu bina üçün nəzarətçi məlumatları tapılmadı.');
-        return;
+      List<Supervisor> supervisors = [];
+      try {
+        final result = await _httpService.getSupervisorsByBuilding(
+          buildingCode: buildingCode,
+          examDate: examDate,
+        );
+        supervisors = result.cast<Supervisor>();
+        print('Downloaded ${supervisors.length} supervisors');
+      } catch (e) {
+        print('Could not download supervisors, skipping: $e');
       }
 
-      print('Downloaded ${supervisors.length} supervisors');
-
-      // Step 3: Save both to database (like saveDownloaded in React Native)
+      // Step 3: Save to database (only non-empty results)
       print('Step 3: Saving to offline database...');
-      await _saveOfflineData(
-          participants.cast<Participant>(), supervisors.cast<Supervisor>());
+      await _saveOfflineData(participants, supervisors);
 
       // Step 4: Update status and show success
       await _checkOfflineData();
@@ -197,14 +196,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('Error downloading offline database: $e');
-      if (e.toString().contains('401') ||
-          e.toString().toLowerCase().contains('unauthorized')) {
-        _setError('Avtorizasiya vaxtı bitib. Yenidən daxil olun!');
-      } else if (e.toString().contains('404')) {
-        _setError('Bu bina üzrə məlumat bazası tapılmadı!');
-      } else {
-        _setError('İnternet bağlantı yoxdur və ya server xətası!');
-      }
     } finally {
       _setLoading(false);
     }
@@ -214,19 +205,17 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   Future<void> _saveOfflineData(
       List<Participant> participants, List<Supervisor> supervisors) async {
     try {
-      print('Clearing existing offline data...');
-      // Clear existing data first (like React Native does with INSERT OR REPLACE)
-      await DatabaseService.clearAllParticipants();
-      await DatabaseService.clearAllSupervisors();
+      if (participants.isNotEmpty) {
+        print('Clearing and saving ${participants.length} participants...');
+        await DatabaseService.clearAllParticipants();
+        await _httpService.saveParticipantsOffline(participants);
+      }
 
-      print(
-          'Saving ${participants.length} participants to offline database...');
-      // Save participants to offline database
-      await _httpService.saveParticipantsOffline(participants);
-
-      print('Saving ${supervisors.length} supervisors to offline database...');
-      // Save supervisors to offline database
-      await _httpService.saveSupervisorsOffline(supervisors);
+      if (supervisors.isNotEmpty) {
+        print('Clearing and saving ${supervisors.length} supervisors...');
+        await DatabaseService.clearAllSupervisors();
+        await _httpService.saveSupervisorsOffline(supervisors);
+      }
 
       print('Offline data saved successfully!');
     } catch (e) {

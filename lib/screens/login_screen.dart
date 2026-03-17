@@ -161,19 +161,6 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (!mounted) return;
       setState(() => _isDownloadingOffline = false);
-
-      if (offlineProvider.errorMessage != null) {
-        await authProvider.signOut(clearData: true);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(offlineProvider.errorMessage!),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-        return;
-      }
     }
 
     if (!mounted) return;
