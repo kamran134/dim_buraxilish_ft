@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); proj=list\\(d['projects'].keys\\(\\)\\); print\\('Projects:', proj\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); proj=d['projects']['Buraxilish']['architect']['build']['options']; print\\('outputPath:', proj.get\\('outputPath'\\)\\); print\\('baseHref:', proj.get\\('baseHref'\\)\\)\")"
+    ]
+  }
+}

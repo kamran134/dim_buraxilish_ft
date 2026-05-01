@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/monitor_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/date_formatter.dart';
@@ -7,6 +9,7 @@ import '../widgets/qr_scanner.dart';
 import '../widgets/manual_input_dialog.dart';
 import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
+import 'monitor_search_screen.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 
@@ -158,6 +161,33 @@ class _MonitorScreenState extends State<MonitorScreen> {
                             backgroundColor:
                                 const Color(0xFF059669), // green-600
                           ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const MonitorSearchScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.person_search),
+                              label: const Text(
+                                'Ad ilə axtar',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0EA5E9),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -277,9 +307,14 @@ class _MonitorScreenState extends State<MonitorScreen> {
                             monitor.registerDate != 'null')
                           InfoDetail(
                               label: 'Qeydiyyat tarixi',
-                              value: DateFormatter.formatISOToAz(monitor.registerDate)),
+                              value: DateFormatter.formatISOToAz(
+                                  monitor.registerDate)),
                       ],
                     ),
+
+                    // Phone numbers block
+                    if (monitor.phone != null && monitor.phone!.isNotEmpty)
+                      _buildPhoneBlock(monitor.phone!, isDarkMode),
 
                     const SizedBox(height: 20),
 
@@ -535,5 +570,84 @@ class _MonitorScreenState extends State<MonitorScreen> {
     );
   }
 
+  Widget _buildPhoneBlock(String phoneData, bool isDarkMode) {
+    final phones = phoneData
+        .split(',')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
 
+    if (phones.isEmpty) return const SizedBox.shrink();
+
+    final cardColor = isDarkMode
+        ? Colors.white.withOpacity(0.1)
+        : Colors.white.withOpacity(0.9);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF0EA5E9).withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.phone, size: 16, color: Color(0xFF0EA5E9)),
+              const SizedBox(width: 6),
+              Text(
+                'Telefon nömrəsi',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : const Color(0xFF6B7280),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: phones.map((phone) {
+              return GestureDetector(
+                onTap: () async {
+                  final uri = Uri(scheme: 'tel', path: phone);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0EA5E9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.call, size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        phone,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1247,4 +1247,36 @@ class HttpService {
       );
     }
   }
+
+  /// Search İmtahan rəhbərləri by name/surname/patronymic for a given exam date
+  Future<List<Monitor>> searchMonitorsByName({
+    required String searchTerm,
+    required String examDate,
+  }) async {
+    try {
+      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      print(
+          'searchMonitorsByName - searchTerm: $searchTerm, examDate: $formattedDate');
+
+      final response = await _dio.get(
+        '/monitors/SearchByName',
+        queryParameters: {
+          'searchTerm': searchTerm,
+          'examDate': formattedDate,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => Monitor.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      print('Error searching monitors: $e');
+      return [];
+    } catch (e) {
+      print('General error searching monitors: $e');
+      return [];
+    }
+  }
 }

@@ -239,7 +239,10 @@ class AuthProvider extends ChangeNotifier {
     SyncService.instance.stopTimer();
     try {
       if (clearData) {
-        await _httpService.clearAllData();
+        await Future.wait([
+          _httpService.clearAllData(),
+          DatabaseService.clearAllDatabase(),
+        ]);
       } else {
         await _httpService.removeToken();
       }

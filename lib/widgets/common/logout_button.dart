@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/login_screen.dart';
+import '../../services/sync_service.dart';
 
 /// Типы отображения кнопки выхода
 enum LogoutButtonType {
@@ -193,6 +194,15 @@ class LogoutButton extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final pendingCount = SyncService.instance.pendingTotal;
+    if (pendingCount > 0) {
+      _showPendingDataDialog(context, pendingCount);
+    } else {
+      _showSimpleLogoutDialog(context);
+    }
+  }
+
+  void _showSimpleLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -202,17 +212,11 @@ class LogoutButton extends StatelessWidget {
           ),
           title: Row(
             children: [
-              Icon(
-                Icons.logout_outlined,
-                color: Colors.red,
-                size: 24,
-              ),
+              const Icon(Icons.logout_outlined, color: Colors.red, size: 24),
               const SizedBox(width: 12),
               Text(
                 confirmTitle ?? 'Çıxış et',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -229,10 +233,7 @@ class LogoutButton extends StatelessWidget {
               ),
               child: Text(
                 'Ləğv et',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
             ),
             ElevatedButton(
@@ -250,10 +251,7 @@ class LogoutButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Text(
-                'Çıxış',
-                style: const TextStyle(fontSize: 14),
-              ),
+              child: const Text('Çıxış', style: TextStyle(fontSize: 14)),
             ),
           ],
         );
@@ -261,23 +259,127 @@ class LogoutButton extends StatelessWidget {
     );
   }
 
+  void _showPendingDataDialog(BuildContext context, int pendingCount) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        bool isSyncing = false;
+
+        return StatefulBuilder(
+          builder: (_, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.orange, size: 24),
+                  SizedBox(width: 12),
+                  Text(
+                    'Göndərilməmiş məlumat',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$pendingCount qeydiyyat hələ serverə göndərilməyib.',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Çıxış etsəniz bu məlumatlar silinəcək.',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSyncing
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(60, 36),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    'Ləğv et',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                ),
+                TextButton(
+                  onPressed: isSyncing
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                          _performLogout(context);
+                        },
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(60, 36),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text(
+                    'Hər halda çıx',
+                    style: TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isSyncing
+                      ? null
+                      : () async {
+                          setState(() => isSyncing = true);
+                          await SyncService.instance.syncNow();
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                          if (context.mounted) {
+                            _performLogout(context);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(60, 36),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isSyncing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Sinxronlaşdır və çıx',
+                          style: TextStyle(fontSize: 14)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _performLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // Perform logout
     await authProvider.signOut();
-
-    // Call success callback if provided
     if (onLogoutSuccess != null) {
       onLogoutSuccess!();
     }
-
-    // Navigate to login screen
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
       );
     }

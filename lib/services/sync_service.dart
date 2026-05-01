@@ -58,6 +58,11 @@ class SyncService extends ChangeNotifier {
   /// Stop the sync timer (call on logout).
   void stopTimer() {
     _cancelTimers();
+    _pendingParticipants = 0;
+    _pendingSupervisors = 0;
+    _lastSyncSuccess = null;
+    _isSyncing = false;
+    notifyListeners();
     if (kDebugMode) debugPrint('[SyncService] Timers stopped (logout)');
   }
 

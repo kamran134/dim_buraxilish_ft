@@ -5,6 +5,7 @@ class Monitor {
   final String lastName;
   final String middleName;
   final String idCardPin;
+  final String? phone;
   final int buildingCode;
   final String buildingName;
   final int roomId;
@@ -20,6 +21,7 @@ class Monitor {
     required this.lastName,
     required this.middleName,
     required this.idCardPin,
+    this.phone,
     required this.buildingCode,
     required this.buildingName,
     required this.roomId,
@@ -46,6 +48,7 @@ class Monitor {
       lastName: json['lastName'] as String? ?? '',
       middleName: json['middleName'] as String? ?? '',
       idCardPin: json['idCardPin'] as String? ?? '',
+      phone: json['phone'] as String?,
       buildingCode: json['buildingCode'] as int? ?? 0,
       buildingName: json['buildingName'] as String? ?? '',
       roomId: json['roomId'] as int? ?? 0,
@@ -64,6 +67,7 @@ class Monitor {
       'lastName': lastName,
       'middleName': middleName,
       'idCardPin': idCardPin,
+      if (phone != null) 'phone': phone,
       'buildingCode': buildingCode,
       'buildingName': buildingName,
       'roomId': roomId,
