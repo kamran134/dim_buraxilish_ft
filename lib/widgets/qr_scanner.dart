@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'manual_input_dialog.dart';
 
 class QRScannerWidget extends StatefulWidget {
@@ -51,6 +52,30 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
   }
 
   Future<void> _initializeScanner() async {
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Kamera icazəsi verilmədi.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: status.isPermanentlyDenied
+                ? SnackBarAction(
+                    label: 'Ayarlar',
+                    textColor: Colors.white,
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) widget.onClose();
+        });
+      }
+      return;
+    }
+
     try {
       controller = MobileScannerController(
         detectionSpeed: DetectionSpeed.noDuplicates,
@@ -74,9 +99,7 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
           ),
         );
         Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            widget.onClose();
-          }
+          if (mounted) widget.onClose();
         });
       }
     }
