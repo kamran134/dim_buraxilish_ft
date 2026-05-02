@@ -3,11 +3,12 @@ import 'package:path/path.dart';
 import '../models/participant_models.dart';
 import '../models/monitor_models.dart';
 import '../models/supervisor_models.dart';
+import '../models/violator_models.dart';
 
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   // Table names
   static const String _participantsTable = 'participants';
@@ -16,6 +17,7 @@ class DatabaseService {
   static const String _allMonitorsTable = 'all_monitors';
   static const String _supervisorsTable = 'supervisors';
   static const String _registeredSupervisorsTable = 'registered_supervisors';
+  static const String _participantViolationsTable = 'participant_violations';
 
   // Get database instance
   static Future<Database> get database async {
@@ -156,6 +158,15 @@ class DatabaseService {
         online INTEGER DEFAULT 0
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE $_participantViolationsTable (
+        is_N INTEGER PRIMARY KEY,
+        altKatName TEXT,
+        katName TEXT,
+        qeyd TEXT
+      )
+    ''');
   }
 
   // Handle database upgrades
@@ -195,6 +206,16 @@ class DatabaseService {
           examDate TEXT,
           registerDate TEXT,
           image TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_participantViolationsTable (
+          is_N INTEGER PRIMARY KEY,
+          altKatName TEXT,
+          katName TEXT,
+          qeyd TEXT
         )
       ''');
     }
@@ -942,6 +963,70 @@ class DatabaseService {
       await db.close();
       _database = null;
     }
+  }
+
+  // VIOLATIONS METHODS
+
+  /// Save list of violators downloaded from server (replaces previous data)
+  static Future<void> saveViolations(List<ViolatorInfo> violators) async {
+    final db = await database;
+    await db.delete(_participantViolationsTable);
+    final batch = db.batch();
+    for (final v in violators) {
+      batch.insert(
+        _participantViolationsTable,
+        {
+          'is_N': v.isN,
+          'altKatName': v.altKatName,
+          'katName': v.katName,
+          'qeyd': v.qeyd,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit();
+  }
+
+  /// Returns all violations as a map keyed by is_N
+  static Future<Map<int, ViolatorInfo>> getAllViolations() async {
+    final db = await database;
+    final results = await db.query(_participantViolationsTable);
+    final map = <int, ViolatorInfo>{};
+    for (final row in results) {
+      final isN = row['is_N'] as int;
+      map[isN] = ViolatorInfo(
+        isN: isN,
+        altKatName: row['altKatName'] as String?,
+        katName: row['katName'] as String?,
+        qeyd: row['qeyd'] as String?,
+      );
+    }
+    return map;
+  }
+
+  /// Returns violation info for a participant, or null if no violation exists
+  static Future<ViolatorInfo?> getViolationForParticipant(int isN) async {
+    final db = await database;
+    final results = await db.query(
+      _participantViolationsTable,
+      where: 'is_N = ?',
+      whereArgs: [isN],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    final row = results.first;
+    return ViolatorInfo(
+      isN: row['is_N'] as int,
+      altKatName: row['altKatName'] as String?,
+      katName: row['katName'] as String?,
+      qeyd: row['qeyd'] as String?,
+    );
+  }
+
+  /// Clear all violations
+  static Future<void> clearAllViolations() async {
+    final db = await database;
+    await db.delete(_participantViolationsTable);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

@@ -149,9 +149,11 @@ class AuthProvider extends ChangeNotifier {
         await _httpService.storeToken(response.data);
         await _httpService.storeAuth(true);
 
-        // Extract role from JWT token
+        // Extract role and adBina from JWT token
         _currentUserRole =
             RoleHelper.getRoleFromToken(response.data.token) ?? 'monitor';
+        final adBinaFromToken =
+            RoleHelper.getAdBinaFromToken(response.data.token);
 
         // Extract bina from userName (following the original logic)
         final bina = int.tryParse(userName.substring(4)) ?? 0;
@@ -160,7 +162,7 @@ class AuthProvider extends ChangeNotifier {
         final examDetails = ExamDetails(
           kodBina: bina.toString(),
           imtTarix: examDate,
-          adBina: 'Bina $bina', // This could be fetched from server
+          adBina: adBinaFromToken,
         );
         await _httpService.storeExamDetails(examDetails);
 

@@ -1,28 +1,35 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/participant_models.dart';
+import '../../models/violator_models.dart';
 import '../../design/app_colors.dart';
 
 /// Карточка участника для отображения в списке статистики
 class ParticipantCard extends StatelessWidget {
   final Participant participant;
   final bool isRegistered;
+  final ViolatorInfo? violatorInfo;
   final VoidCallback? onCancel;
 
   const ParticipantCard({
     Key? key,
     required this.participant,
     this.isRegistered = true,
+    this.violatorInfo,
     this.onCancel,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        isRegistered ? AppColors.successGreen : Colors.red.shade400;
-    final bgColor = isRegistered
-        ? Colors.green.withOpacity(0.07)
-        : Colors.red.withOpacity(0.07);
+    final hasViolation = violatorInfo != null && violatorInfo!.hasViolation;
+    final borderColor = hasViolation
+        ? Colors.orange.shade600
+        : (isRegistered ? AppColors.successGreen : Colors.red.shade400);
+    final bgColor = hasViolation
+        ? Colors.orange.withOpacity(0.10)
+        : (isRegistered
+            ? Colors.green.withOpacity(0.07)
+            : Colors.red.withOpacity(0.07));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -117,6 +124,7 @@ class ParticipantCard extends StatelessWidget {
                   'Yer',
                   '${participant.bina} - ${participant.zal} - ${participant.mertebe} - ${participant.sira} - ${participant.yer}',
                 ),
+                if (hasViolation) _buildViolationRow(violatorInfo!),
               ],
             ),
           ),
@@ -124,19 +132,41 @@ class ParticipantCard extends StatelessWidget {
           Positioned(
             top: 8,
             right: 8,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: borderColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isRegistered ? Icons.check : Icons.close,
-                color: Colors.white,
-                size: 14,
-              ),
-            ),
+            child: hasViolation
+                ? Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade700,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 14, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text('DİQQƏT',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  )
+                : Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: borderColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isRegistered ? Icons.check : Icons.close,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
           ),
           // Cancel button (only for registered)
           if (isRegistered && onCancel != null)
@@ -189,6 +219,50 @@ class ParticipantCard extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViolationRow(ViolatorInfo violation) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade600, width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: 16, color: Colors.orange.shade300),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Əvvəlki imtahanlarda qayda pozuntusuna yol verib',
+                  style: TextStyle(
+                    color: Colors.orange.shade200,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Nəzarətdə saxlanılsın',
+                  style: TextStyle(
+                    color: Colors.orange.shade300,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/participant_models.dart';
 import '../../models/supervisor_models.dart';
+import '../../models/violator_models.dart';
 import '../../services/database_service.dart';
 import '../../services/http_service.dart';
 import '../../services/statistics_event_bus.dart';
@@ -28,14 +30,20 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   // All entries (offline DB or fallback registered-only)
   List<Participant>? _cachedParticipants;
   Set<int> _registeredParticipantIds = {};
+  Map<int, ViolatorInfo> _violationMap = {};
 
   List<Supervisor>? _cachedSupervisors;
   Set<String> _registeredSupervisorIds = {};
+
+  StreamSubscription<String>? _eventBusSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    _eventBusSubscription = StatisticsEventBus().onStatisticsUpdate.listen((_) {
+      if (mounted) _loadData();
+    });
   }
 
   @override
@@ -56,6 +64,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
 
   @override
   void dispose() {
+    _eventBusSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -131,6 +140,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         final registeredList =
             await DatabaseService.getRegisteredParticipants();
         final registeredIds = registeredList.map((p) => p.isN).toSet();
+        final violationMap = await DatabaseService.getAllViolations();
 
         if (mounted) {
           setState(() {
@@ -141,6 +151,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
               _cachedParticipants = allParticipants;
             }
             _registeredParticipantIds = registeredIds;
+            _violationMap = violationMap;
           });
         }
       } else {
@@ -288,6 +299,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         return ParticipantCard(
           participant: p,
           isRegistered: _registeredParticipantIds.contains(p.isN),
+          violatorInfo: _violationMap[p.isN],
           onCancel: _registeredParticipantIds.contains(p.isN)
               ? () => _cancelParticipant(p)
               : null,

@@ -6,6 +6,7 @@ import '../models/auth_models.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/monitor_models.dart';
+import '../models/violator_models.dart';
 import '../utils/date_formatter.dart';
 import 'database_service.dart';
 
@@ -1245,6 +1246,27 @@ class HttpService {
         success: false,
         message: 'Xəta baş verdi',
       );
+    }
+  }
+
+  /// Get violators for a building and exam date (offline download)
+  Future<List<ViolatorInfo>> getViolatorsInBuilding({
+    required String buildingCode,
+    required String examDate,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/buraxilishes/getviolatorsinbuildingandexamdate',
+        queryParameters: {'bina': buildingCode, 'examDate': examDate},
+      );
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        return data.map((json) => ViolatorInfo.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) print('Error getting violators: $e');
+      return [];
     }
   }
 

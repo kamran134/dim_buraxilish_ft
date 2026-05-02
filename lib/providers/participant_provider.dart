@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
+import '../models/violator_models.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../services/statistics_event_bus.dart';
@@ -21,6 +22,7 @@ class ParticipantProvider with ChangeNotifier {
   final bool _isOnlineMode = false;
   bool _isRepeatEntry = false;
   bool _isScanning = false; // Флаг для предотвращения дублирования запросов
+  ViolatorInfo? _currentViolation;
 
   // Кэш последнего отсканированного кода для предотвращения быстрых дубликатов
   String? _lastScannedCode;
@@ -45,6 +47,7 @@ class ParticipantProvider with ChangeNotifier {
   bool get hasOfflineDatabase =>
       _offlineDatabaseProvider?.hasOfflineData ?? false;
   bool get isRepeatEntry => _isRepeatEntry;
+  ViolatorInfo? get currentViolation => _currentViolation;
 
   // Set loading state
   void _setLoading(bool loading) {
@@ -81,6 +84,7 @@ class ParticipantProvider with ChangeNotifier {
     if (state == ParticipantScreenState.scanning) {
       _currentParticipant = null;
       _isRepeatEntry = false;
+      _currentViolation = null;
       clearMessages();
     }
 
@@ -273,6 +277,7 @@ class ParticipantProvider with ChangeNotifier {
     // Принудительно очищаем старые данные перед новым сканированием
     _currentParticipant = null;
     _isRepeatEntry = false;
+    _currentViolation = null;
     notifyListeners();
 
     _isScanning = true;
@@ -308,6 +313,14 @@ class ParticipantProvider with ChangeNotifier {
       if (participant != null) {
         _currentParticipant = participant;
 
+        // Check for protocol violation (silently ignore errors — field is optional)
+        try {
+          _currentViolation =
+              await DatabaseService.getViolationForParticipant(workNumber);
+        } catch (_) {
+          _currentViolation = null;
+        }
+
         // Check if already registered (for offline mode, check if qeydiyyat has today's date)
         final today = DateTime.now().toIso8601String().substring(0, 10);
         if (participant.qeydiyyat != null &&
@@ -325,6 +338,8 @@ class ParticipantProvider with ChangeNotifier {
           // Notify background sync service and update local statistics
           SyncService.instance.notifyScan();
           await _updateParticipantStatistics();
+          StatisticsEventBus()
+              .notifyStatisticsUpdate('ParticipantProvider.scan');
         }
 
         _screenState = ParticipantScreenState.scanned;
@@ -353,17 +368,18 @@ class ParticipantProvider with ChangeNotifier {
     _screenState = ParticipantScreenState.initial;
     _currentParticipant = null;
     _isRepeatEntry = false;
-    _isScanning = false; // Сбрасываем флаг сканирования
+    _currentViolation = null;
+    _isScanning = false;
     clearMessages();
     notifyListeners();
   }
 
   // Go to next participant
   void nextParticipant() {
-    // Очищаем все данные и переходим к сканированию
     _screenState = ParticipantScreenState.scanning;
     _currentParticipant = null;
     _isRepeatEntry = false;
+    _currentViolation = null;
     _isScanning = false;
     clearMessages();
     notifyListeners();

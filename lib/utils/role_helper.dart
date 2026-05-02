@@ -52,6 +52,25 @@ class RoleHelper {
     }
   }
 
+  /// Извлекает название здания (adBina) из JWT токена
+  static String? getAdBinaFromToken(String? token) {
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+      final normalizedPayload = base64Url.normalize(payload);
+      final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
+      final Map<String, dynamic> claims = json.decode(decodedPayload);
+
+      return claims['adBina'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Получает описание роли на азербайджанском языке
   static String getRoleDescription(String? role) {
     if (role == null) return 'İstifadəçi';

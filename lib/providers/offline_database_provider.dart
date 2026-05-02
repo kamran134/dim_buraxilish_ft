@@ -3,6 +3,7 @@ import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
+import '../models/violator_models.dart';
 
 /// Provider for managing offline database operations
 /// Handles downloading and deleting offline data for participants and supervisors
@@ -184,11 +185,24 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         print('Could not download supervisors, skipping: $e');
       }
 
-      // Step 3: Save to database (only non-empty results)
-      print('Step 3: Saving to offline database...');
-      await _saveOfflineData(participants, supervisors);
+      // Step 3: Download violators (new app versions only — gracefully skipped on error)
+      print('Step 3: Downloading violators...');
+      List<ViolatorInfo> violators = [];
+      try {
+        violators = await _httpService.getViolatorsInBuilding(
+          buildingCode: buildingCode,
+          examDate: examDate,
+        );
+        print('Downloaded ${violators.length} violators');
+      } catch (e) {
+        print('Could not download violators, skipping: $e');
+      }
 
-      // Step 4: Update status and show success
+      // Step 4: Save to database (only non-empty results)
+      print('Step 4: Saving to offline database...');
+      await _saveOfflineData(participants, supervisors, violators);
+
+      // Step 5: Update status and show success
       await _checkOfflineData();
 
       _setSuccess(
@@ -203,7 +217,9 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
   /// Save downloaded data to offline database (like saveDownloaded in React Native)
   Future<void> _saveOfflineData(
-      List<Participant> participants, List<Supervisor> supervisors) async {
+      List<Participant> participants,
+      List<Supervisor> supervisors,
+      List<ViolatorInfo> violators) async {
     try {
       if (participants.isNotEmpty) {
         print('Clearing and saving ${participants.length} participants...');
@@ -216,6 +232,9 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         await DatabaseService.clearAllSupervisors();
         await _httpService.saveSupervisorsOffline(supervisors);
       }
+
+      // Always overwrite violations (empty list clears previous data)
+      await DatabaseService.saveViolations(violators);
 
       print('Offline data saved successfully!');
     } catch (e) {

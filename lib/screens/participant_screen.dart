@@ -14,6 +14,7 @@ import 'protocol_notes_screen.dart';
 import 'protocol_reports_screen.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
+import '../models/violator_models.dart';
 
 class ParticipantScreen extends StatefulWidget {
   const ParticipantScreen({super.key});
@@ -231,6 +232,11 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                         type: MessageType.success,
                       ),
 
+                    // Violation warning banner (shown only when violation data exists)
+                    if (provider.currentViolation != null &&
+                        provider.currentViolation!.hasViolation)
+                      _buildViolationBanner(provider.currentViolation!),
+
                     // Participant Info Card
                     InfoCard(
                       fullName: participant.fullName,
@@ -239,9 +245,12 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                         photoData: participant.photo,
                       ),
                       isRepeatEntry: provider.isRepeatEntry,
-                      borderColor: provider.isRepeatEntry
-                          ? AppColors.darkRed
-                          : Colors.green,
+                      borderColor: provider.currentViolation != null &&
+                              provider.currentViolation!.hasViolation
+                          ? Colors.orange.shade800
+                          : provider.isRepeatEntry
+                              ? AppColors.darkRed
+                              : Colors.green,
                       actionButton: null,
                       details: [
                         InfoDetail(
@@ -505,6 +514,85 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
         builder: (context) => const LoginScreen(),
       ),
       (route) => false,
+    );
+  }
+
+  Widget _buildViolationBanner(ViolatorInfo violation) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade700, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 245, 16, 0),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(10)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'DİQQƏT!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Body
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (violation.katName != null)
+                  Text(
+                    // violation.katName!,
+                    'Əvvəlki imtahanlarda qayda pozuntusuna yol vermişdir',
+                    style: TextStyle(
+                      color: Colors.orange.shade900,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                Text(
+                  'ÖZÜNƏ HİSS ETDİRMƏDƏN NƏZARƏTDƏ SAXLANILSIN!',
+                  style: TextStyle(
+                    color: Colors.orange.shade900,
+                    fontSize: 13,
+                  ),
+                ),
+                // if (violation.qeyd != null) ...[
+                //   if (violation.katName != null) const SizedBox(height: 6),
+                //   Text(
+                //     violation.qeyd!,
+                //     style: TextStyle(
+                //       color: Colors.orange.shade900,
+                //       fontSize: 13,
+                //     ),
+                //   ),
+                // ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
