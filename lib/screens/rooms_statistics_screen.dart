@@ -137,23 +137,67 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
         children: [
           // Header with date selector
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: isDark
                 ? AppColors.surfaceDark
                 : AppColors.primaryBlue.withOpacity(0.1),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedExamDate,
-                    decoration: const InputDecoration(
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 14,
+                    ),
+                    dropdownColor:
+                        isDark ? AppColors.surfaceDark : Colors.white,
+                    decoration: InputDecoration(
                       labelText: 'İmtahan tarixi',
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white70 : AppColors.primaryBlue,
+                      ),
+                      filled: true,
+                      fillColor:
+                          isDark ? AppColors.backgroundDark : Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? Colors.white24
+                              : AppColors.primaryBlue.withOpacity(0.4),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? Colors.white24
+                              : AppColors.primaryBlue.withOpacity(0.4),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? AppColors.splashLightBlue
+                              : AppColors.primaryBlue,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     items: _examDates.map((date) {
                       return DropdownMenuItem(
                         value: date,
-                        child: Text(date),
+                        child: Text(
+                          date,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -166,17 +210,27 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
-                IconButton(
-                  onPressed: () {
-                    if (_selectedExamDate != null) {
-                      _loadRoomStatistics(_selectedExamDate!);
-                    }
-                  },
-                  icon: const Icon(Icons.refresh),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 46,
+                  height: 46,
+                  child: IconButton.filled(
+                    onPressed: () {
+                      if (_selectedExamDate != null) {
+                        _loadRoomStatistics(_selectedExamDate!);
+                      }
+                    },
+                    icon: const Icon(Icons.refresh, size: 20),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.splashLightBlue
+                          : AppColors.primaryBlue,
+                      foregroundColor:
+                          isDark ? AppColors.backgroundDark : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                 ),
               ],

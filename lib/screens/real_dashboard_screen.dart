@@ -322,15 +322,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   Widget _buildExamDateSelector() {
     if (_examDates.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -338,12 +339,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       ),
       child: Row(
         children: [
-          Icon(Icons.date_range, color: AppColors.primaryBlue),
+          Icon(Icons.date_range,
+              color:
+                  isDark ? AppColors.splashLightBlue : AppColors.primaryBlue),
           const SizedBox(width: 12),
           Text(
             'İmtahan tarixi:',
-            style:
-                AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -351,6 +356,12 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               value: _selectedExamDate,
               isExpanded: true,
               underline: Container(),
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 14,
+              ),
+              dropdownColor: isDark ? AppColors.surfaceDark : Colors.white,
+              iconEnabledColor: isDark ? Colors.white70 : Colors.black54,
               items: _examDates.map((date) {
                 return DropdownMenuItem<String>(
                   value: date,
@@ -489,17 +500,18 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   Widget _buildExamStatistics() {
     if (_dashboardStats?.examSum == null) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final examSum = _dashboardStats!.examSum;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -510,16 +522,19 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.analytics,
-                color: AppColors.primaryBlue,
+                color:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 'Ümumi statistika',
                 style: AppTextStyles.h3.copyWith(
-                  color: AppColors.primaryBlue,
+                  color: isDark
+                      ? AppColors.splashLightBlue
+                      : AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -538,7 +553,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           _buildProgressBar('Qeydiyyat faizi', _getMonitorRegistrationRate()),
           const Divider(height: 32),
           _buildStatisticRow('Nəzarətçi sayı (ümumi)', _getTotalSupervisors(),
-              AppColors.primaryBlue),
+              isDark ? AppColors.splashLightBlue : AppColors.primaryBlue),
           _buildStatisticRow('Qeydiyyatdan keçənlər',
               _getRegisteredSupervisors(), AppColors.successGreen),
           _buildStatisticRow('Qeydiyyatdan keçməyənlər',
@@ -547,8 +562,10 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           _buildProgressBar(
               'Qeydiyyat faizi', _getSupervisorRegistrationRate()),
           const Divider(height: 32),
-          _buildStatisticRow('İştirakçı sayı (ümumi)',
-              examSum.totalParticipants, AppColors.primaryBlue),
+          _buildStatisticRow(
+              'İştirakçı sayı (ümumi)',
+              examSum.totalParticipants,
+              isDark ? AppColors.splashLightBlue : AppColors.primaryBlue),
           _buildStatisticRow('Qeydiyyatdan keçənlər', examSum.totalRegistered,
               AppColors.successGreen),
           _buildStatisticRow('Qeydiyyatdan keçməyənlər',
@@ -561,6 +578,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   Widget _buildStatisticRow(String title, int value, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -568,7 +586,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         children: [
           Text(
             title,
-            style: AppTextStyles.body1,
+            style: AppTextStyles.body1.copyWith(
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -590,6 +610,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   Widget _buildProgressBar(String title, double percentage) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -598,7 +619,10 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           children: [
             Text(
               title,
-              style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
+              style: AppTextStyles.body1.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
             Text(
               '${percentage.toStringAsFixed(1)}%',
@@ -624,6 +648,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     if (_roomStatistics.isEmpty) {
       return const SizedBox.shrink();
     }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final totalRooms = _roomStatistics.length;
     final problematicRooms = _roomStatistics
@@ -636,11 +661,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -651,16 +676,19 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.meeting_room,
-                color: AppColors.primaryBlue,
+                color:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 'Otaqlar üzrə statistika',
                 style: AppTextStyles.h3.copyWith(
-                  color: AppColors.primaryBlue,
+                  color: isDark
+                      ? AppColors.splashLightBlue
+                      : AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -675,7 +703,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 child: _buildRoomSummaryCard(
                   'Ümumi',
                   totalRooms.toString(),
-                  AppColors.primaryBlue,
+                  isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                   Icons.meeting_room,
                 ),
               ),
@@ -737,8 +765,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               icon: const Icon(Icons.analytics),
               label: Text('Ətraflı statistika ($totalRooms otaq)'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue,
-                backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                foregroundColor:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
+                backgroundColor: isDark
+                    ? AppColors.splashLightBlue.withOpacity(0.15)
+                    : AppColors.primaryBlue.withOpacity(0.1),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
@@ -757,6 +788,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         _dashboardStats!.examDetails.isEmpty) {
       return const SizedBox.shrink();
     }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final totalBuildings = _dashboardStats!.examDetails.length;
     final problematicCount = _getProblematicBuildingsCount();
@@ -766,11 +798,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -781,16 +813,19 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.apartment,
-                color: AppColors.primaryBlue,
+                color:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 'Binalar üzrə statistika',
                 style: AppTextStyles.h3.copyWith(
-                  color: AppColors.primaryBlue,
+                  color: isDark
+                      ? AppColors.splashLightBlue
+                      : AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -805,7 +840,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 child: _buildBuildingSummaryCard(
                   'Ümumi',
                   totalBuildings.toString(),
-                  AppColors.primaryBlue,
+                  isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                   Icons.apartment,
                 ),
               ),
@@ -869,8 +904,11 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               icon: const Icon(Icons.analytics),
               label: Text('Ətraflı statistika ($totalBuildings bina)'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue,
-                backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                foregroundColor:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
+                backgroundColor: isDark
+                    ? AppColors.splashLightBlue.withOpacity(0.15)
+                    : AppColors.primaryBlue.withOpacity(0.1),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
@@ -916,6 +954,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   Widget _buildRoomStatItem(MonitorRoomStatistics room) {
     final registrationRate = room.registrationPercentage;
     final isProblematic = registrationRate < 85.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white54 : AppColors.textGrey;
 
     return InkWell(
       onTap: () => _navigateToRoomDetails(room),
@@ -928,14 +969,18 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
+                color:
+                    (isDark ? AppColors.splashLightBlue : AppColors.primaryBlue)
+                        .withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
                   room.roomId.toString(),
                   style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.primaryBlue,
+                    color: isDark
+                        ? AppColors.splashLightBlue
+                        : AppColors.primaryBlue,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -948,13 +993,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 children: [
                   Text(
                     room.roomName,
-                    style: AppTextStyles.body1
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.body1.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
                   ),
                   Text(
                     '${room.allPersonCount} imtahan rəhbəri',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textGrey),
+                    style: AppTextStyles.caption.copyWith(
+                      color: subTextColor,
+                    ),
                   ),
                   // Индикатор процента регистрации
                   const SizedBox(height: 4),
@@ -984,13 +1032,17 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
+                color:
+                    (isDark ? AppColors.splashLightBlue : AppColors.primaryBlue)
+                        .withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '${room.regPersonCount}/${room.allPersonCount}',
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primaryBlue,
+                  color: isDark
+                      ? AppColors.splashLightBlue
+                      : AppColors.primaryBlue,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1031,7 +1083,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   Widget _buildBuildingStatItem(ExamDetailsDto building) {
-    // Найдем соответствующую объединенную статистику для этого здания
+    // Find combined statistics for this building
     final combinedStats = _examStatistics.firstWhere(
       (stat) => stat.kodBina == building.kodBina,
       orElse: () => ExamStatisticsDto(
@@ -1041,6 +1093,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         hallCount: 0,
       ),
     );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white54 : AppColors.textGrey;
 
     return InkWell(
       onTap: () => _navigateToBuildingDetails(building),
@@ -1053,14 +1108,18 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
+                color:
+                    (isDark ? AppColors.splashLightBlue : AppColors.primaryBlue)
+                        .withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
                   building.kodBina ?? '?',
                   style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.primaryBlue,
+                    color: isDark
+                        ? AppColors.splashLightBlue
+                        : AppColors.primaryBlue,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1073,13 +1132,16 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 children: [
                   Text(
                     building.adBina ?? 'Bilinməyən bina',
-                    style: AppTextStyles.body1
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.body1.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
                   ),
                   Text(
                     '${building.totalParticipants} iştirakçı',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textGrey),
+                    style: AppTextStyles.caption.copyWith(
+                      color: subTextColor,
+                    ),
                   ),
                   // Индикатор Yetərsay
                   const SizedBox(height: 4),
@@ -1142,7 +1204,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                     Text(
                       '${combinedStats.regSupervisorCount ?? 0}',
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryBlue,
+                        color: isDark
+                            ? AppColors.splashLightBlue
+                            : AppColors.primaryBlue,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1157,14 +1221,15 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   }
 
   Widget _buildQuickActions() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1175,16 +1240,19 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.flash_on,
-                color: AppColors.primaryBlue,
+                color:
+                    isDark ? AppColors.splashLightBlue : AppColors.primaryBlue,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 'Sürətli Əməliyyatlar',
                 style: AppTextStyles.h3.copyWith(
-                  color: AppColors.primaryBlue,
+                  color: isDark
+                      ? AppColors.splashLightBlue
+                      : AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
