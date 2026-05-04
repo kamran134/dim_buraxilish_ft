@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/monitor_models.dart';
@@ -7,7 +8,6 @@ import '../services/http_service.dart';
 import '../utils/date_formatter.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
-import '../widgets/common/photo_widget.dart';
 
 class RoomMonitorsScreen extends StatefulWidget {
   final MonitorRoomStatistics roomStats;
@@ -124,8 +124,10 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.lightBackground,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(),
@@ -133,9 +135,9 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
             padding: const EdgeInsets.all(20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _buildStatisticsCard(),
+                _buildStatisticsCard(isDark),
                 const SizedBox(height: 20),
-                _buildMonitorsList(),
+                _buildMonitorsList(isDark),
               ]),
             ),
           ),
@@ -192,17 +194,18 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     );
   }
 
-  Widget _buildStatisticsCard() {
+  Widget _buildStatisticsCard(bool isDark) {
     final stats = widget.roomStats;
+    final cardBg = isDark ? AppColors.surfaceDark : Colors.white;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -278,6 +281,8 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
 
   Widget _buildStatItem(
       String label, String value, Color color, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? Colors.white70 : Colors.black54;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -300,7 +305,7 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
           Text(
             label,
             style: AppTextStyles.caption.copyWith(
-              color: Colors.black87,
+              color: labelColor,
             ),
             textAlign: TextAlign.center,
           ),
@@ -309,7 +314,9 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     );
   }
 
-  Widget _buildMonitorsList() {
+  Widget _buildMonitorsList(bool isDark) {
+    final cardBg = isDark ? AppColors.surfaceDark : Colors.white;
+    final headerColor = isDark ? Colors.white : const Color(0xFF059669);
     if (_isLoading) {
       return const Center(
         child: Padding(
@@ -376,11 +383,11 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -392,93 +399,187 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.list,
-                  color: Color(0xFF059669),
+                  color: headerColor,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
                 Text(
                   'İmtahan rəhbərləri siyahısı',
                   style: AppTextStyles.heading4.copyWith(
-                    color: const Color(0xFF059669),
+                    color: headerColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _monitors!.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final monitor = _monitors![index];
-              return _buildMonitorItem(monitor);
-            },
+          Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _monitors!.length,
+              itemBuilder: (context, index) {
+                final monitor = _monitors![index];
+                return _buildMonitorItem(monitor, isDark);
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMonitorItem(Monitor monitor) {
+  Widget _buildMonitorItem(Monitor monitor, bool isDark) {
     final isRegistered = monitor.registerDate.isNotEmpty;
+    final borderColor =
+        isRegistered ? const Color(0xFF059669) : Colors.red.shade400;
+    final bgColor = isDark
+        ? (isRegistered
+            ? Colors.green.withOpacity(0.15)
+            : Colors.red.withOpacity(0.15))
+        : (isRegistered
+            ? Colors.green.withOpacity(0.10)
+            : Colors.red.withOpacity(0.10));
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: isRegistered ? Colors.green : Colors.red,
-              width: 2,
-            ),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: PhotoWidget(
-            photoData: monitor.image,
-            placeholderIcon: Icons.monitor_heart,
-            width: 50,
-            height: 50,
-          ),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.5),
       ),
-      title: Text(
-        '${monitor.firstName} ${monitor.lastName}',
-        style: AppTextStyles.body1.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Text(
-            'İş nömrəsi: ${monitor.workNumber}',
-            style: AppTextStyles.caption,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: borderColor.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: monitor.image.isNotEmpty && monitor.image != 'null'
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: Image.memory(
+                                base64Decode(monitor.image),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.person,
+                                        color: Colors.white, size: 24),
+                              ),
+                            )
+                          : const Icon(Icons.person,
+                              color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    // Name
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${monitor.lastName} ${monitor.firstName}',
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (monitor.middleName.isNotEmpty)
+                            Text(
+                              monitor.middleName,
+                              style:
+                                  TextStyle(color: subTextColor, fontSize: 14),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 28),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.badge, 'İş nömrəsi',
+                    monitor.workNumber.toString(), textColor, subTextColor),
+                if (isRegistered)
+                  _buildInfoRow(
+                      Icons.access_time,
+                      'Qeydiyyat vaxtı',
+                      DateFormatter.formatISOToAz(monitor.registerDate),
+                      textColor,
+                      subTextColor),
+                if (monitor.idCardPin.isNotEmpty)
+                  _buildInfoRow(Icons.credit_card, 'FİN', monitor.idCardPin,
+                      textColor, subTextColor),
+                if (monitor.roomName.isNotEmpty)
+                  _buildInfoRow(Icons.meeting_room, 'Otaq', monitor.roomName,
+                      textColor, subTextColor),
+                if (monitor.phone != null && monitor.phone!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _buildPhoneChips(monitor.phone!),
+                ],
+              ],
+            ),
           ),
-          if (isRegistered)
-            Text(
-              'Qeydiyyat: ${DateFormatter.formatISOToAz(monitor.registerDate)}',
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.green,
+          // Corner status badge
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: borderColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isRegistered ? Icons.check : Icons.close,
+                color: Colors.white,
+                size: 14,
               ),
             ),
-          if (monitor.phone != null && monitor.phone!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: _buildPhoneChips(monitor.phone!),
-            ),
+          ),
         ],
       ),
-      trailing: Icon(
-        isRegistered ? Icons.check_circle : Icons.cancel,
-        color: isRegistered ? Colors.green : Colors.red,
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value,
+      Color textColor, Color subTextColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: subTextColor),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(color: subTextColor, fontSize: 14),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
