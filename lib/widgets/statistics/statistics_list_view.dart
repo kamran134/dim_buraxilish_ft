@@ -139,8 +139,17 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         final allParticipants = await DatabaseService.getAllParticipants();
         final registeredList =
             await DatabaseService.getRegisteredParticipants();
-        final registeredIds = registeredList.map((p) => p.isN).toSet();
         final violationMap = await DatabaseService.getAllViolations();
+
+        // Combine: participants in sync queue + participants already synced to server
+        // (synced participants are removed from registered_participants after sync,
+        // but their qeydiyyat field is set in the participants table)
+        final queueIds = registeredList.map((p) => p.isN).toSet();
+        final syncedIds = allParticipants
+            .where((p) => p.qeydiyyat != null && p.qeydiyyat!.isNotEmpty)
+            .map((p) => p.isN)
+            .toSet();
+        final registeredIds = queueIds.union(syncedIds);
 
         if (mounted) {
           setState(() {
@@ -157,7 +166,14 @@ class _StatisticsListViewState extends State<StatisticsListView> {
       } else {
         final allSupervisors = await DatabaseService.getAllSupervisors();
         final registeredList = await DatabaseService.getRegisteredSupervisors();
-        final registeredIds = registeredList.map((s) => s.cardNumber).toSet();
+
+        // Combine: supervisors in sync queue + supervisors already synced to server
+        final queueIds = registeredList.map((s) => s.cardNumber).toSet();
+        final syncedIds = allSupervisors
+            .where((s) => s.registerDate.isNotEmpty)
+            .map((s) => s.cardNumber)
+            .toSet();
+        final registeredIds = queueIds.union(syncedIds);
 
         if (mounted) {
           setState(() {

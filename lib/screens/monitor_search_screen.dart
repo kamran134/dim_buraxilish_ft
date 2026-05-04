@@ -80,7 +80,7 @@ class _MonitorSearchScreenState extends State<MonitorSearchScreen> {
     if (cleaned.isEmpty) return;
     final uri = Uri(scheme: 'tel', path: cleaned);
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 

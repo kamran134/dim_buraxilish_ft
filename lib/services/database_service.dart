@@ -8,7 +8,7 @@ import '../models/violator_models.dart';
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
 
   // Table names
   static const String _participantsTable = 'participants';
@@ -136,7 +136,8 @@ class DatabaseService {
         roomName TEXT,
         examDate TEXT,
         registerDate TEXT,
-        image TEXT
+        image TEXT,
+        phone TEXT
       )
     ''');
 
@@ -219,6 +220,9 @@ class DatabaseService {
         )
       ''');
     }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE $_allMonitorsTable ADD COLUMN phone TEXT');
+    }
   }
 
   // PARTICIPANTS METHODS
@@ -280,7 +284,7 @@ class DatabaseService {
         'imt_Tarix': participant.imtTarix,
         'qeydiyyat': registrationDate,
         'online': 0, // Offline registration
-        'gins': _getGenderFromName(participant.adi), // Determine gender
+        'gins': participant.gins,
         'photo': participant.photo,
         'zal': participant.zal,
         'mertebe': participant.mertebe,
@@ -642,7 +646,7 @@ class DatabaseService {
       'adi': participant.adi,
       'baba': participant.baba,
       'tev': '', // Not used in current model
-      'gins': _getGenderFromName(participant.adi),
+      'gins': participant.gins,
       'sv_Seriya': '', // Not used in current model
       's_Ves': '', // Not used in current model
       'bina': participant.bina,
@@ -817,13 +821,6 @@ class DatabaseService {
   }
 
   /// Simple gender detection by name (placeholder logic)
-  static int _getGenderFromName(String firstName) {
-    // This is a simplified logic - in real app you might have a more sophisticated approach
-    final femaleEndings = ['a', 'ə', 'e'];
-    final lastChar = firstName.toLowerCase().substring(firstName.length - 1);
-    return femaleEndings.contains(lastChar) ? 0 : 1; // 0 = female, 1 = male
-  }
-
   /// Clear all participants from offline database
   static Future<void> clearAllParticipants() async {
     final db = await database;
@@ -895,6 +892,7 @@ class DatabaseService {
           'examDate': monitor.examDate,
           'registerDate': monitor.registerDate,
           'image': monitor.image,
+          'phone': monitor.phone,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -920,6 +918,7 @@ class DatabaseService {
               examDate: map['examDate'] as String? ?? '',
               registerDate: map['registerDate'] as String? ?? '',
               image: map['image'] as String? ?? '',
+              phone: map['phone'] as String?,
             ))
         .toList();
   }
@@ -946,6 +945,7 @@ class DatabaseService {
               examDate: map['examDate'] as String? ?? '',
               registerDate: map['registerDate'] as String? ?? '',
               image: map['image'] as String? ?? '',
+              phone: map['phone'] as String?,
             ))
         .toList();
   }
@@ -1088,7 +1088,7 @@ class DatabaseService {
   /// Returns a map with keys:
   ///   allMen, allWomen, regMen, regWomen
   ///
-  /// `gins = 1` → male;  `gins = 0 or 2` → female  (per `_getGenderFromName`).
+  /// `gins = 1` → male;  `gins = 2` → female  (values from server).
   static Future<Map<String, int>> getLocalParticipantStats(
       String bina, String examDate) async {
     final db = await database;
@@ -1099,7 +1099,7 @@ class DatabaseService {
       [bina, examDate],
     );
     final allWomenResult = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins != 1',
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 2',
       [bina, examDate],
     );
 
@@ -1109,7 +1109,7 @@ class DatabaseService {
       [bina, examDate],
     );
     final regWomenResult = await db.rawQuery(
-      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins != 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 2 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
       [bina, examDate],
     );
 

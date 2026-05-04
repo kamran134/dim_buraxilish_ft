@@ -11,6 +11,7 @@ class Participant {
   final String? qeydiyyat; // Qeydiyyat tarixi
   final String bina; // Bina
   final String imtTarix; // İmtahan tarixi
+  final int gins; // Cins: 1 = kişi, 2 = qadın
 
   Participant({
     required this.isN,
@@ -25,6 +26,7 @@ class Participant {
     this.qeydiyyat,
     required this.bina,
     required this.imtTarix,
+    this.gins = 0,
   });
 
   factory Participant.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class Participant {
       qeydiyyat: json['qeydiyyat'] as String?,
       bina: json['bina'] as String? ?? '',
       imtTarix: json['imt_Tarix'] as String? ?? '',
+      gins: (json['gins'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -58,6 +61,7 @@ class Participant {
       'qeydiyyat': qeydiyyat,
       'bina': bina,
       'imt_Tarix': imtTarix,
+      'gins': gins,
     };
   }
 

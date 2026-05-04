@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/monitor_models.dart';
 import '../models/monitor_room_statistics.dart';
 import '../services/database_service.dart';
@@ -88,6 +89,7 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
             examDate: m.examDate,
             registerDate: reg.registerDate,
             image: m.image.isNotEmpty ? m.image : reg.image,
+            phone: m.phone,
             online: m.online,
           );
         }).toList()
@@ -467,6 +469,11 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
                 color: Colors.green,
               ),
             ),
+          if (monitor.phone != null && monitor.phone!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _buildPhoneChips(monitor.phone!),
+            ),
         ],
       ),
       trailing: Icon(
@@ -474,5 +481,55 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
         color: isRegistered ? Colors.green : Colors.red,
       ),
     );
+  }
+
+  Widget _buildPhoneChips(String phones) {
+    final numbers = phones
+        .split(RegExp(r'[,،]\s*'))
+        .map((n) => n.trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: numbers.map(_buildPhoneChip).toList(),
+    );
+  }
+
+  Widget _buildPhoneChip(String phone) {
+    return InkWell(
+      onTap: () => _callPhone(phone),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0EA5E9).withOpacity(0.1),
+          border: Border.all(color: const Color(0xFF0EA5E9)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.phone, size: 13, color: Color(0xFF0EA5E9)),
+            const SizedBox(width: 5),
+            Text(
+              phone,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF0EA5E9),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _callPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone.trim());
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 }
