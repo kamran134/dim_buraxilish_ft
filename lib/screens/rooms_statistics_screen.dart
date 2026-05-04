@@ -122,7 +122,10 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.lightBackground,
       drawer: const AdminDrawer(),
       appBar: AppBar(
         title: const Text('Otaqlar üzrə statistika'),
@@ -135,7 +138,9 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
           // Header with date selector
           Container(
             padding: const EdgeInsets.all(16),
-            color: AppColors.primaryBlue.withOpacity(0.1),
+            color: isDark
+                ? AppColors.surfaceDark
+                : AppColors.primaryBlue.withOpacity(0.1),
             child: Row(
               children: [
                 Expanded(
@@ -236,6 +241,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
   }
 
   Widget _buildRoomsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Sort rooms by registration percentage (problematic first)
     final sortedRooms = List<MonitorRoomStatistics>.from(_roomStatistics)
       ..sort((a, b) =>
@@ -250,7 +256,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
         }
 
         final room = sortedRooms[index - 1];
-        return _buildRoomCard(room);
+        return _buildRoomCard(room, isDark);
       },
     );
   }
@@ -345,7 +351,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
     );
   }
 
-  Widget _buildRoomCard(MonitorRoomStatistics room) {
+  Widget _buildRoomCard(MonitorRoomStatistics room, bool isDark) {
     final registrationRate = room.registrationPercentage;
     final isProblematic = registrationRate < 85.0;
     final isExcellent = registrationRate >= 95.0;
@@ -364,6 +370,11 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
       statusIcon = Icons.info;
     }
 
+    final cardBg = isDark ? AppColors.surfaceDark : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white54 : Colors.grey[600]!;
+    final arrowColor = isDark ? Colors.white38 : Colors.grey[400]!;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -372,7 +383,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: statusColor.withOpacity(0.3),
@@ -380,7 +391,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -424,13 +435,14 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
                       room.roomName,
                       style: AppTextStyles.bodyLarge.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${room.regPersonCount}/${room.allPersonCount} imtahan rəhbəri',
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.grey[600],
+                        color: subTextColor,
                       ),
                     ),
                   ],
@@ -460,7 +472,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 14,
-                    color: Colors.grey[400],
+                    color: arrowColor,
                   ),
                 ],
               ),
