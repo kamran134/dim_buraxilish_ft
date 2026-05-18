@@ -68,6 +68,9 @@ dependencies:
   # Phone calls and URLs
   url_launcher: ^6.2.6
 
+  # SignalR for real-time emergency messages
+  signalr_netcore: ^1.4.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

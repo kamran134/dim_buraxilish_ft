@@ -6,7 +6,21 @@
       "Bash(Get-ChildItem -Path \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
       "Bash(Format-Table -AutoSize)",
-      "Bash(Get-ChildItem -Path \"d:\\\\Others Programs\\\\BuraxilishBackend\" -Force)"
+      "Bash(Get-ChildItem -Path \"d:\\\\Others Programs\\\\BuraxilishBackend\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\Others Programs\\\\BuraxilishBackend\\\\WebApi\\\\Hubs\")",
+      "Bash(Out-Null)",
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Others Programs\\\\BuraxilishBackend\\\\WebApi\\\\Hubs\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Others Programs\\\\Buraxilish_Front\\\\src\\\\app\\\\modules\\\\admin\\\\components\\\\emergency-message\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)",
+      "Bash(findstr /s /i \"longPolling\\\\|LongPolling\\\\|HttpTransportType\" \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\\\\.dart_tool\\\\package_config.json\")",
+      "Bash(dir /s /b \"d:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\signalr_netcore*\")",
+      "Bash(dir /s /b \"%LOCALAPPDATA%\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\signalr_netcore*\")",
+      "Read(//c/Users/kamran.kz/AppData/Local/Pub/Cache/hosted/pub.dev//**)",
+      "Read(//c/Users/**)"
     ]
   }
 }

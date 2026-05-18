@@ -9,10 +9,14 @@ import 'providers/unsent_data_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/font_provider.dart';
 import 'services/sync_service.dart';
+import 'services/emergency_message_service.dart';
 import 'design/app_theme.dart';
 import 'screens/splash_screen.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
+  EmergencyMessageService.instance.init(navigatorKey);
   runApp(const MyApp());
 }
 
@@ -40,6 +44,7 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: 'DİM Buraxılış Sistemi',
             debugShowCheckedModeBanner: false,
+            navigatorKey: navigatorKey,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.flutterThemeMode,

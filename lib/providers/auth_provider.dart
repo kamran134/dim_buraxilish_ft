@@ -7,6 +7,7 @@ import '../utils/role_helper.dart';
 import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
+import '../services/emergency_message_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -80,6 +81,15 @@ class AuthProvider extends ChangeNotifier {
         if (examDetails != null) {
           final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
           _authData = Auth(bina: bina, examDate: examDetails.imtTarix ?? '');
+
+          // Reconnect to emergency hub after app restart
+          final storedToken = await _httpService.getToken();
+          if (storedToken != null && bina > 0) {
+            EmergencyMessageService.instance.connect(
+              buildingCode: bina.toString(),
+              token: storedToken,
+            );
+          }
         }
 
         _clearError();
@@ -176,6 +186,12 @@ class AuthProvider extends ChangeNotifier {
         _lockoutUntil = null;
         _lockoutTimer?.cancel();
 
+        // Connect to emergency message hub
+        EmergencyMessageService.instance.connect(
+          buildingCode: bina.toString(),
+          token: response.data.token,
+        );
+
         _clearError();
         notifyListeners();
         return true;
@@ -239,6 +255,8 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     // Stop background sync timer immediately on logout
     SyncService.instance.stopTimer();
+    // Disconnect from emergency message hub
+    EmergencyMessageService.instance.disconnect();
     try {
       if (clearData) {
         await Future.wait([
