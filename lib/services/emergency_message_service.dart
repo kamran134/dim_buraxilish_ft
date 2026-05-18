@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -17,50 +18,78 @@ class EmergencyMessageService with WidgetsBindingObserver {
   static const String _pendingUrl =
       'https://eservices.dim.gov.az/buraxilishScan/api/api/emergencyacks/pending';
 
-  HubConnection? _connection;
   GlobalKey<NavigatorState>? _navigatorKey;
-  bool _isConnected = false;
+
+  // Credentials — survive connect/disconnect cycles
   String? _buildingCode;
   String? _token;
 
-  // Guards against showing the same message twice (live + pending race)
+  // Connection
+  HubConnection? _connection;
+  bool _connecting = false;
+  Timer? _healthTimer;
+
+  // Dialog dedup
   final Set<int> _activeDialogIds = {};
   bool _pendingCheckInProgress = false;
 
-  bool get isConnected => _isConnected;
+  /// True only when SignalR reports Connected — no manual flag that can lie.
+  bool get _isConnected =>
+      _connection?.state == HubConnectionState.Connected;
+
+  // ─── Init ──────────────────────────────────────────────────────────────────
 
   void init(GlobalKey<NavigatorState> navigatorKey) {
     _navigatorKey = navigatorKey;
     WidgetsBinding.instance.addObserver(this);
   }
 
+  // ─── Public API ────────────────────────────────────────────────────────────
+
+  void connect({required String buildingCode, required String token}) {
+    _buildingCode = buildingCode;
+    _token = token;
+    _startConnection();
+    _startHealthTimer();
+  }
+
+  Future<void> disconnect() async {
+    _buildingCode = null;
+    _token = null;
+    _healthTimer?.cancel();
+    _healthTimer = null;
+    await _stopConnection();
+  }
+
+  // ─── Lifecycle ─────────────────────────────────────────────────────────────
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      debugPrint('[Emergency] App paused — stopping SignalR connection.');
-      _connection?.stop();
-      _connection = null;
-      _isConnected = false;
+      debugPrint('[Emergency] Paused — stopping.');
+      _healthTimer?.cancel();
+      _stopConnection();
     } else if (state == AppLifecycleState.resumed) {
-      debugPrint('[Emergency] App resumed — reconnecting and checking pending.');
+      debugPrint('[Emergency] Resumed — reconnecting.');
       if (_buildingCode != null && _token != null) {
-        connect(buildingCode: _buildingCode!, token: _token!);
+        _startConnection();
+        _startHealthTimer();
       }
       checkPending();
     }
   }
 
-  void connect({
-    required String buildingCode,
-    required String token,
-  }) {
-    if (_isConnected) return;
+  // ─── Connection internals ──────────────────────────────────────────────────
 
-    _buildingCode = buildingCode;
-    _token = token;
+  void _startConnection() {
+    if (_connecting || _isConnected) return;
+    if (_buildingCode == null || _token == null) return;
+    _connecting = true;
 
-    debugPrint('[Emergency] Connecting to hub: $_hubUrl');
-    debugPrint('[Emergency] Building code: $buildingCode');
+    final buildingCode = _buildingCode!;
+    final token = _token!;
+
+    debugPrint('[Emergency] Connecting — building $buildingCode');
 
     _connection = HubConnectionBuilder()
         .withUrl(
@@ -74,53 +103,70 @@ class EmergencyMessageService with WidgetsBindingObserver {
         .build();
 
     _connection!.onclose(({error}) {
-      _isConnected = false;
-      debugPrint('[Emergency] Connection closed. Error: $error');
+      debugPrint('[Emergency] Connection closed. error=$error');
     });
 
     _connection!.onreconnecting(({error}) {
-      debugPrint('[Emergency] Reconnecting... Error: $error');
+      debugPrint('[Emergency] Reconnecting... error=$error');
     });
 
     _connection!.onreconnected(({connectionId}) {
-      _isConnected = true;
-      debugPrint('[Emergency] Reconnected. ID: $connectionId');
-      _connection!.invoke('JoinBuilding', args: [buildingCode]).then((_) {
-        debugPrint('[Emergency] JoinBuilding ok after reconnect');
-        checkPending();
-      }).catchError((e) {
-        debugPrint('[Emergency] JoinBuilding error: $e');
-        return null;
-      });
+      debugPrint('[Emergency] Reconnected id=$connectionId');
+      checkPending();
     });
 
     _connection!.on('ReceiveEmergencyMessage', _onMessage);
 
-    _connection!.start()?.then((_) {
-      _isConnected = true;
-      debugPrint('[Emergency] Connected successfully!');
-      return _connection?.invoke('JoinBuilding', args: [buildingCode]);
-    }).then((_) {
-      debugPrint('[Emergency] Joined building group: building_$buildingCode');
-    }).catchError((e) {
-      debugPrint('[Emergency] Connection error: $e — retrying in 5s...');
-      Future.delayed(const Duration(seconds: 5), () {
-        if (!_isConnected && _buildingCode != null) {
-          _connection = null;
-          connect(buildingCode: buildingCode, token: token);
-        }
+    final startFuture = _connection!.start();
+    if (startFuture == null) {
+      // start() returned null — connection established synchronously
+      _connecting = false;
+      debugPrint('[Emergency] Connected (sync)!');
+      checkPending();
+    } else {
+      startFuture.then((_) {
+        _connecting = false;
+        debugPrint('[Emergency] Connected!');
+        checkPending();
+      }).catchError((e) {
+        _connecting = false;
+        debugPrint('[Emergency] start() error: $e — retry in 5s');
+        Future.delayed(const Duration(seconds: 5), () {
+          if (!_isConnected && !_connecting && _buildingCode != null) {
+            _connection = null;
+            _startConnection();
+          }
+        });
       });
+    }
+  }
+
+  Future<void> _stopConnection() async {
+    _connecting = false;
+    final conn = _connection;
+    _connection = null;
+    try {
+      await conn?.stop();
+    } catch (_) {}
+  }
+
+  void _startHealthTimer() {
+    _healthTimer?.cancel();
+    _healthTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (_buildingCode == null) return;
+      if (!_isConnected && !_connecting) {
+        debugPrint('[Emergency] Health: not connected — restarting.');
+        _connection = null;
+        _startConnection();
+      }
     });
   }
 
+  // ─── Message handling ──────────────────────────────────────────────────────
+
   void _onMessage(List<Object?>? args) {
-    debugPrint('[Emergency] Message received! Args: $args');
-
     if (args == null || args.isEmpty) return;
-
     final raw = args[0];
-    debugPrint('[Emergency] Raw arg type: ${raw.runtimeType}');
-
     Map<String, dynamic> data;
     try {
       if (raw is Map<String, dynamic>) {
@@ -132,7 +178,7 @@ class EmergencyMessageService with WidgetsBindingObserver {
         return;
       }
     } catch (e) {
-      debugPrint('[Emergency] Failed to parse message: $e');
+      debugPrint('[Emergency] Parse error: $e');
       return;
     }
 
@@ -140,17 +186,27 @@ class EmergencyMessageService with WidgetsBindingObserver {
     final title = data['title']?.toString() ?? '';
     final body = data['body']?.toString() ?? '';
     final importance = (data['importance'] as num?)?.toInt() ?? 0;
+    final targetType = data['targetType']?.toString() ?? 'ALL';
+    final rawCodes = data['buildingCodes'];
 
-    debugPrint('[Emergency] Showing live dialog — title: $title, importance: $importance, messageId: $messageId');
+    if (targetType == 'SPECIFIC' && rawCodes != null) {
+      final List codes = rawCodes is List ? rawCodes : [];
+      if (_buildingCode == null || !codes.any((c) => c.toString() == _buildingCode)) {
+        debugPrint('[Emergency] Message id=$messageId not for this building — skipped.');
+        return;
+      }
+    }
 
+    debugPrint('[Emergency] Live message id=$messageId title=$title');
     _showDialog(messageId: messageId, title: title, body: body, importance: importance);
   }
+
+  // ─── Pending check ─────────────────────────────────────────────────────────
 
   Future<void> checkPending() async {
     if (_buildingCode == null || _token == null) return;
     if (_pendingCheckInProgress) return;
     _pendingCheckInProgress = true;
-
     try {
       final response = await http.get(
         Uri.parse('$_pendingUrl?buildingCode=$_buildingCode'),
@@ -158,38 +214,28 @@ class EmergencyMessageService with WidgetsBindingObserver {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) return;
-
       final decoded = jsonDecode(response.body);
       if (decoded['success'] != true) return;
-
       final List msgs = decoded['data'] ?? [];
-      if (msgs.isEmpty) {
-        debugPrint('[Emergency] No pending messages.');
-        return;
-      }
+      if (msgs.isEmpty) return;
 
-      debugPrint('[Emergency] ${msgs.length} pending message(s) found.');
-
+      debugPrint('[Emergency] ${msgs.length} pending message(s).');
       for (final msg in msgs) {
-        final id = (msg['id'] as num?)?.toInt() ?? 0;
-        final title = msg['title']?.toString() ?? '';
-        final body = msg['body']?.toString() ?? '';
-        final importance = (msg['importance'] as num?)?.toInt() ?? 0;
-
-        // Wait for each dialog to close before showing the next
         await _showDialog(
-          messageId: id,
-          title: title,
-          body: body,
-          importance: importance,
+          messageId: (msg['id'] as num?)?.toInt() ?? 0,
+          title: msg['title']?.toString() ?? '',
+          body: msg['body']?.toString() ?? '',
+          importance: (msg['importance'] as num?)?.toInt() ?? 0,
         );
       }
     } catch (e) {
-      debugPrint('[Emergency] Pending check failed: $e');
+      debugPrint('[Emergency] checkPending error: $e');
     } finally {
       _pendingCheckInProgress = false;
     }
   }
+
+  // ─── Dialog ────────────────────────────────────────────────────────────────
 
   Future<void> _showDialog({
     required int messageId,
@@ -197,17 +243,12 @@ class EmergencyMessageService with WidgetsBindingObserver {
     required String body,
     required int importance,
   }) async {
-    if (_activeDialogIds.contains(messageId)) {
-      debugPrint('[Emergency] Dialog for messageId=$messageId already showing, skipping.');
-      return;
-    }
-
+    if (_activeDialogIds.contains(messageId)) return;
     final context = _navigatorKey?.currentContext;
     if (context == null) {
-      debugPrint('[Emergency] No navigator context, cannot show dialog');
+      debugPrint('[Emergency] No navigator context.');
       return;
     }
-
     _activeDialogIds.add(messageId);
     try {
       await showDialog(
@@ -226,6 +267,8 @@ class EmergencyMessageService with WidgetsBindingObserver {
     }
   }
 
+  // ─── Acknowledge ───────────────────────────────────────────────────────────
+
   Future<void> _acknowledge(int messageId) async {
     if (messageId <= 0 || _buildingCode == null || _token == null) return;
     try {
@@ -240,24 +283,9 @@ class EmergencyMessageService with WidgetsBindingObserver {
           'buildingCode': _buildingCode,
         }),
       );
-      debugPrint('[Emergency] Acknowledged messageId=$messageId for building=$_buildingCode');
+      debugPrint('[Emergency] Acknowledged messageId=$messageId');
     } catch (e) {
-      debugPrint('[Emergency] Acknowledge failed: $e');
+      debugPrint('[Emergency] Acknowledge error: $e');
     }
-  }
-
-  Future<void> disconnect() async {
-    if (_connection != null) {
-      try {
-        await _connection!.stop();
-        debugPrint('[Emergency] Disconnected.');
-      } catch (e) {
-        debugPrint('[Emergency] Disconnect error: $e');
-      }
-      _connection = null;
-    }
-    _isConnected = false;
-    _buildingCode = null;
-    _token = null;
   }
 }
