@@ -16,6 +16,7 @@ import 'screens/splash_screen.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   EmergencyMessageService.instance.init(navigatorKey);
   runApp(const MyApp());
 }

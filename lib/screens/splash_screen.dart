@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/emergency_message_service.dart';
 import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
@@ -111,6 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
           transitionDuration: const Duration(milliseconds: 500),
         ),
       );
+      EmergencyMessageService.instance.checkPending();
     } else {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
