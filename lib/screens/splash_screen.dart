@@ -177,10 +177,12 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.school,
-                              size: 60,
-                              color: AppColors.deepBlue,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Image.asset(
+                                'assets/images/icons/DIMLogo.png',
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                         );

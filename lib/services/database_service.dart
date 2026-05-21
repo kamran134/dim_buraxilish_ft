@@ -4,11 +4,12 @@ import '../models/participant_models.dart';
 import '../models/monitor_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/violator_models.dart';
+import '../models/notification_message.dart';
 
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 5;
+  static const int _databaseVersion = 7;
 
   // Table names
   static const String _participantsTable = 'participants';
@@ -18,6 +19,7 @@ class DatabaseService {
   static const String _supervisorsTable = 'supervisors';
   static const String _registeredSupervisorsTable = 'registered_supervisors';
   static const String _participantViolationsTable = 'participant_violations';
+  static const String _notificationsTable = 'emergency_notifications';
 
   // Get database instance
   static Future<Database> get database async {
@@ -168,6 +170,20 @@ class DatabaseService {
         qeyd TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE $_notificationsTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER UNIQUE,
+        title TEXT,
+        body TEXT,
+        importance INTEGER DEFAULT 0,
+        received_at TEXT,
+        is_read INTEGER DEFAULT 0,
+        read_at TEXT,
+        building_code TEXT
+      )
+    ''');
   }
 
   // Handle database upgrades
@@ -222,6 +238,28 @@ class DatabaseService {
     }
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE $_allMonitorsTable ADD COLUMN phone TEXT');
+    }
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_notificationsTable (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          message_id INTEGER UNIQUE,
+          title TEXT,
+          body TEXT,
+          importance INTEGER DEFAULT 0,
+          received_at TEXT,
+          is_read INTEGER DEFAULT 0,
+          read_at TEXT,
+          building_code TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 7) {
+      // Add read_at column if table already existed from v6
+      try {
+        await db.execute(
+            'ALTER TABLE $_notificationsTable ADD COLUMN read_at TEXT');
+      } catch (_) {}
     }
   }
 
@@ -963,6 +1001,62 @@ class DatabaseService {
       await db.close();
       _database = null;
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // NOTIFICATIONS METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Save an emergency notification. Skips duplicates by message_id.
+  static Future<void> saveNotification(NotificationMessage msg) async {
+    final db = await database;
+    await db.insert(
+      _notificationsTable,
+      msg.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Get all notifications sorted newest first.
+  static Future<List<NotificationMessage>> getNotifications() async {
+    final db = await database;
+    final results = await db.query(
+      _notificationsTable,
+      orderBy: 'received_at DESC',
+    );
+    return results.map(NotificationMessage.fromMap).toList();
+  }
+
+  /// Count unread notifications.
+  static Future<int> getUnreadNotificationCount() async {
+    final db = await database;
+    return Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM $_notificationsTable WHERE is_read = 0',
+          ),
+        ) ??
+        0;
+  }
+
+  /// Mark a single notification as read, recording the read timestamp.
+  static Future<void> markNotificationRead(int id, String readAt) async {
+    final db = await database;
+    await db.update(
+      _notificationsTable,
+      {'is_read': 1, 'read_at': readAt},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Mark all unread notifications as read, recording the read timestamp.
+  static Future<void> markAllNotificationsRead(String readAt) async {
+    final db = await database;
+    await db.update(
+      _notificationsTable,
+      {'is_read': 1, 'read_at': readAt},
+      where: 'is_read = 0',
+    );
   }
 
   // VIOLATIONS METHODS

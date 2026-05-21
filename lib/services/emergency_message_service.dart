@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:signalr_netcore/signalr_client.dart';
+import '../models/notification_message.dart';
+import '../providers/notifications_provider.dart';
 import '../widgets/emergency_message_dialog.dart';
 
 class EmergencyMessageService with WidgetsBindingObserver {
@@ -49,6 +51,7 @@ class EmergencyMessageService with WidgetsBindingObserver {
   void connect({required String buildingCode, required String token}) {
     _buildingCode = buildingCode;
     _token = token;
+    NotificationsProvider.instance.setCredentials(buildingCode, token);
     _startConnection();
     _startHealthTimer();
   }
@@ -56,6 +59,7 @@ class EmergencyMessageService with WidgetsBindingObserver {
   Future<void> disconnect() async {
     _buildingCode = null;
     _token = null;
+    NotificationsProvider.instance.clearCredentials();
     _healthTimer?.cancel();
     _healthTimer = null;
     await _stopConnection();
@@ -198,6 +202,16 @@ class EmergencyMessageService with WidgetsBindingObserver {
     }
 
     debugPrint('[Emergency] Live message id=$messageId title=$title');
+    NotificationsProvider.instance.onMessageReceived(NotificationMessage(
+      id: 0,
+      messageId: messageId,
+      title: title,
+      body: body,
+      importance: importance,
+      receivedAt: DateTime.now().toIso8601String(),
+      isRead: false,
+      buildingCode: _buildingCode ?? '',
+    ));
     _showDialog(messageId: messageId, title: title, body: body, importance: importance);
   }
 
@@ -221,11 +235,25 @@ class EmergencyMessageService with WidgetsBindingObserver {
 
       debugPrint('[Emergency] ${msgs.length} pending message(s).');
       for (final msg in msgs) {
+        final messageId = (msg['id'] as num?)?.toInt() ?? 0;
+        final title = msg['title']?.toString() ?? '';
+        final body = msg['body']?.toString() ?? '';
+        final importance = (msg['importance'] as num?)?.toInt() ?? 0;
+        await NotificationsProvider.instance.onMessageReceived(NotificationMessage(
+          id: 0,
+          messageId: messageId,
+          title: title,
+          body: body,
+          importance: importance,
+          receivedAt: DateTime.now().toIso8601String(),
+          isRead: false,
+          buildingCode: _buildingCode ?? '',
+        ));
         await _showDialog(
-          messageId: (msg['id'] as num?)?.toInt() ?? 0,
-          title: msg['title']?.toString() ?? '',
-          body: msg['body']?.toString() ?? '',
-          importance: (msg['importance'] as num?)?.toInt() ?? 0,
+          messageId: messageId,
+          title: title,
+          body: body,
+          importance: importance,
         );
       }
     } catch (e) {

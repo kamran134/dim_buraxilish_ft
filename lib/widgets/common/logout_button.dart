@@ -233,7 +233,13 @@ class LogoutButton extends StatelessWidget {
               ),
               child: Text(
                 'Ləğv et',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(
+                  color: Theme.of(dialogContext)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                  fontSize: 14,
+                ),
               ),
             ),
             ElevatedButton(
@@ -310,7 +316,13 @@ class LogoutButton extends StatelessWidget {
                   ),
                   child: Text(
                     'Ləğv et',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    style: TextStyle(
+                      color: Theme.of(dialogContext)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 TextButton(

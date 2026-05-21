@@ -20,7 +20,32 @@
       "Bash(dir /s /b \"d:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\signalr_netcore*\")",
       "Bash(dir /s /b \"%LOCALAPPDATA%\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\signalr_netcore*\")",
       "Read(//c/Users/kamran.kz/AppData/Local/Pub/Cache/hosted/pub.dev//**)",
-      "Read(//c/Users/**)"
+      "Read(//c/Users/**)",
+      "Bash(adb devices *)",
+      "Bash(adb shell *)",
+      "Bash(findstr dim *)",
+      "Bash(adb install *)",
+      "Bash(findstr \"Activity\")",
+      "Bash(adb logcat *)",
+      "Bash(flutter run *)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\beov6dp8i.output' | Select-Object -Last 40\")",
+      "Bash(taskkill /F /IM dart.exe)",
+      "Bash(taskkill /F /IM java.exe)",
+      "Bash(flutter clean *)",
+      "Bash(gradlew clean *)",
+      "Bash(cmd /c gradlew.bat clean)",
+      "Bash(ping -n 90 127.0.0.1)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\b1e1lqrcg.output' | Select-Object -Last 20\")",
+      "Bash(ping -n 150 127.0.0.1)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\b1e1lqrcg.output' | Select-Object -Last 25\")",
+      "Bash(ping -n 60 127.0.0.1)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\b1e1lqrcg.output' | Select-Object -Last 15\")",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\b1e1lqrcg.output' | Select-Object -Last 10\")",
+      "Bash(ping -n 30 127.0.0.1)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\bpyjjxtat.output' | Select-Object -Last 15\")",
+      "Bash(ping -n 20 127.0.0.1)",
+      "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\bpyjjxtat.output' | Select-Object -Last 20\")",
+      "Bash(not exist *)"
     ]
   }
 }

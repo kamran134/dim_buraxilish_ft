@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "369997884560",
+    "project_id": "dim-buraxilish",
+    "storage_bucket": "dim-buraxilish.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369997884560:android:8460480d8c7254c0747c15",
+        "android_client_info": {
+          "package_name": "com.dim.dim_buraxilish"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsHHF5Ttp61t8NIxjLmhFzua67Kv445_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

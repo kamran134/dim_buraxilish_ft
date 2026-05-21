@@ -8,6 +8,7 @@ import '../services/http_service.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../services/emergency_message_service.dart';
+import '../services/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -88,6 +89,10 @@ class AuthProvider extends ChangeNotifier {
             EmergencyMessageService.instance.connect(
               buildingCode: bina.toString(),
               token: storedToken,
+            );
+            PushNotificationService.instance.activate(
+              buildingCode: bina.toString(),
+              authToken: storedToken,
             );
           }
         }
@@ -191,6 +196,10 @@ class AuthProvider extends ChangeNotifier {
           buildingCode: bina.toString(),
           token: response.data.token,
         );
+        PushNotificationService.instance.activate(
+          buildingCode: bina.toString(),
+          authToken: response.data.token,
+        );
 
         _clearError();
         notifyListeners();
@@ -257,6 +266,7 @@ class AuthProvider extends ChangeNotifier {
     SyncService.instance.stopTimer();
     // Disconnect from emergency message hub
     EmergencyMessageService.instance.disconnect();
+    PushNotificationService.instance.deactivate();
     try {
       if (clearData) {
         await Future.wait([

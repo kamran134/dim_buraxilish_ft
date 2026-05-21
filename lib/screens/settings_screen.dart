@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../constants/app_version.dart';
 import '../widgets/common/logout_button.dart';
+import 'offline_database_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -48,6 +49,27 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.text_fields_outlined,
               children: [
                 _buildFontSizeSelector(context),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Offline Database Section
+            _buildSectionCard(
+              context: context,
+              title: 'Oflayn baza',
+              icon: Icons.storage_outlined,
+              children: [
+                _buildNavigationTile(
+                  context: context,
+                  icon: Icons.storage_outlined,
+                  label: 'Oflayn bazanı idarə et',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const OfflineDatabaseScreen(),
+                    ),
+                  ),
+                ),
               ],
             ),
 
@@ -109,6 +131,36 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ...children,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNavigationTile({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Consumer<FontProvider>(
+      builder: (context, fontProvider, _) {
+        return InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+            child: Row(
+              children: [
+                Icon(icon, size: fontProvider.getTextSize(20),
+                    color: const Color(0xFF1976D2)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(label, style: fontProvider.bodyLarge),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.grey),
               ],
             ),
           ),

@@ -105,6 +105,11 @@ class AppColors {
     Color(0xFF9b59b6)
   ];
 
+  static const List<Color> notificationGradient = [
+    Color(0xFFe74c3c),
+    Color(0xFFc0392b)
+  ];
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ ЦВЕТА ==========
 
   /// Вспомогательные цвета

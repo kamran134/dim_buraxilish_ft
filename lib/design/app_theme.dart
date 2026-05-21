@@ -130,7 +130,7 @@ class AppTheme {
     );
   }
 
-  /// Темная тема приложения (для будущего использования)
+  /// Темная тема приложения
   static ThemeData get darkTheme {
     return lightTheme.copyWith(
       brightness: Brightness.dark,
@@ -149,6 +149,20 @@ class AppTheme {
         onError: AppColors.textOnDark,
       ),
       scaffoldBackgroundColor: AppColors.backgroundDark,
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.2),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.3),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.3),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.4),
+        titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.4),
+        titleSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.3),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.textOnDark, height: 1.5),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textOnDark, height: 1.5),
+        bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xCCFFFFFF), height: 1.4),
+        labelLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textOnDark, height: 1.2),
+        labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xCCFFFFFF), height: 1.4),
+        labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xCCFFFFFF), height: 1.6, letterSpacing: 1.2),
+      ),
     );
   }
 

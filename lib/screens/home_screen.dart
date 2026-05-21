@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/participant_provider.dart';
+import '../providers/notifications_provider.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
-import 'offline_database_screen.dart';
+import 'notifications_screen.dart';
 import 'unsent_data_screen.dart';
 import 'settings_screen.dart';
 import '../design/app_theme.dart';
@@ -49,10 +50,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       route: '/statistics',
     ),
     MenuItemData(
-      title: 'Oflayn baza',
-      icon: Icons.storage,
-      gradient: AppColors.purpleGradient,
-      route: '/database',
+      title: 'Bildirişlər',
+      icon: Icons.notifications_outlined,
+      gradient: AppColors.notificationGradient,
+      route: '/notifications',
     ),
     MenuItemData(
       title: 'Ayarlar',
@@ -230,10 +231,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         scale: _scaleAnimations[index].value,
                         child: FadeTransition(
                           opacity: _fadeAnimations[index],
-                          child: MenuCard(
-                            item: _menuItems[index],
-                            onTap: () => _handleMenuTap(_menuItems[index]),
-                          ),
+                          child: index == 4
+                              ? Consumer<NotificationsProvider>(
+                                  builder: (context, notifProvider, _) {
+                                    return MenuCard(
+                                      item: _menuItems[index],
+                                      onTap: () =>
+                                          _handleMenuTap(_menuItems[index]),
+                                      badgeCount: notifProvider.unreadCount,
+                                    );
+                                  },
+                                )
+                              : MenuCard(
+                                  item: _menuItems[index],
+                                  onTap: () =>
+                                      _handleMenuTap(_menuItems[index]),
+                                ),
                         ),
                       );
                     },
@@ -245,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
 
           // Bottom padding
-          SliverToBoxAdapter(
+          const SliverToBoxAdapter(
             child: AppSpacing.verticalGapXL,
           ),
         ],
@@ -287,10 +300,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
         break;
-      case '/database':
+      case '/notifications':
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const OfflineDatabaseScreen(),
+            builder: (context) => const NotificationsScreen(),
           ),
         );
         break;
@@ -304,31 +317,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _showComingSoonDialog(String screenName) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(screenName),
-        content: const Text('Bu bölmə tezliklə hazır olacaq...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class MenuCard extends StatefulWidget {
   final MenuItemData item;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const MenuCard({
     super.key,
     required this.item,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -385,16 +385,15 @@ class _MenuCardState extends State<MenuCard>
                 boxShadow: [
                   BoxShadow(
                     color: isDarkMode
-                        ? Colors.black.withOpacity(0.5)
-                        : Colors.grey.withOpacity(0.3),
+                        ? Colors.black.withValues(alpha: 0.5)
+                        : Colors.grey.withValues(alpha: 0.3),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                     spreadRadius: 2,
                   ),
-                  // Дополнительная подсветка для светлой темы
                   if (!isDarkMode)
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                       spreadRadius: 1,
@@ -408,32 +407,64 @@ class _MenuCardState extends State<MenuCard>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Icon container с градиентом
-                      Container(
-                        width: AppSpacing.iconXXL,
-                        height: AppSpacing.iconXXL,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: widget.item.gradient,
-                          ),
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.iconXXL / 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  widget.item.gradient.first.withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                      // Icon container с градиентом + optional badge
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: AppSpacing.iconXXL,
+                            height: AppSpacing.iconXXL,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: widget.item.gradient,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                  AppSpacing.iconXXL / 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: widget.item.gradient.first
+                                      .withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Icon(
-                          widget.item.icon,
-                          size: AppSpacing.iconLG,
-                          color: Colors.white,
-                        ),
+                            child: Icon(
+                              widget.item.icon,
+                              size: AppSpacing.iconLG,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (widget.badgeCount > 0)
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE53935),
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 20,
+                                  minHeight: 20,
+                                ),
+                                child: Text(
+                                  widget.badgeCount > 99
+                                      ? '99+'
+                                      : '${widget.badgeCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       AppSpacing.verticalGapMD,
                       // Title с адаптивным цветом
