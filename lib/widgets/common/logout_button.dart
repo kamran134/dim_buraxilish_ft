@@ -271,6 +271,9 @@ class LogoutButton extends StatelessWidget {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         bool isSyncing = false;
+        String? syncError;
+        String?
+            syncWarning; // set when sync succeeded but some records were deleted from server
 
         return StatefulBuilder(
           builder: (_, setState) {
@@ -278,14 +281,25 @@ class LogoutButton extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      color: Colors.orange, size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    'Göndərilməmiş məlumat',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  Icon(
+                    syncWarning != null
+                        ? Icons.info_outline
+                        : Icons.warning_amber_rounded,
+                    color: syncWarning != null
+                        ? Colors.amber.shade700
+                        : Colors.orange,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      syncWarning != null
+                          ? 'Məlumat xəbərdarlığı'
+                          : 'Göndərilməmiş məlumat',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
@@ -293,88 +307,175 @@ class LogoutButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$pendingCount qeydiyyat hələ serverə göndərilməyib.',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Çıxış etsəniz bu məlumatlar silinəcək.',
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  if (syncWarning == null) ...[
+                    Text(
+                      '$pendingCount qeydiyyat hələ serverə göndərilməyib.',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Çıxış etmək üçün əvvəlcə məlumatları serverə göndərin.',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ],
+                  if (syncError != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.wifi_off,
+                              color: Colors.red, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              syncError!,
+                              style: const TextStyle(
+                                  color: Colors.red, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (syncWarning != null)
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.amber.shade700, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              syncWarning!,
+                              style: TextStyle(
+                                  color: Colors.amber.shade900, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: isSyncing
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(60, 36),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: Text(
-                    'Ləğv et',
-                    style: TextStyle(
-                      color: Theme.of(dialogContext)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6),
-                      fontSize: 14,
+                if (syncWarning == null)
+                  TextButton(
+                    onPressed: isSyncing
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(60, 36),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                    child: Text(
+                      'Ləğv et',
+                      style: TextStyle(
+                        color: Theme.of(dialogContext)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-                TextButton(
-                  onPressed: isSyncing
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop();
-                          _performLogout(context);
-                        },
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(60, 36),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: const Text(
-                    'Hər halda çıx',
-                    style: TextStyle(color: Colors.red, fontSize: 14),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: isSyncing
-                      ? null
-                      : () async {
-                          setState(() => isSyncing = true);
-                          await SyncService.instance.syncNow();
-                          if (dialogContext.mounted) {
-                            Navigator.of(dialogContext).pop();
-                          }
-                          if (context.mounted) {
-                            _performLogout(context);
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(60, 36),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                if (syncWarning != null)
+                  ElevatedButton(
+                    onPressed: () {
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                      if (context.mounted) {
+                        _performLogout(context);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(60, 36),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
+                    child: const Text('Başa düşdüm, çıx',
+                        style: TextStyle(fontSize: 14)),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: isSyncing
+                        ? null
+                        : () async {
+                            setState(() {
+                              isSyncing = true;
+                              syncError = null;
+                            });
+                            await SyncService.instance.syncNow();
+                            final remaining = SyncService.instance.pendingTotal;
+                            final skipped =
+                                SyncService.instance.lastSkippedCount;
+                            if (remaining == 0) {
+                              if (skipped > 0) {
+                                // Sync succeeded but server deleted some records
+                                setState(() {
+                                  isSyncing = false;
+                                  syncWarning =
+                                      'Sizdə sinxronlaşdırılmamış məlumatlar var idi. '
+                                      'Onlar sistemdən silindi.';
+                                });
+                              } else {
+                                // All data sent cleanly — safe to logout
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop();
+                                }
+                                if (context.mounted) {
+                                  _performLogout(context);
+                                }
+                              }
+                            } else {
+                              // Sync failed (network) — keep dialog open
+                              setState(() {
+                                isSyncing = false;
+                                syncError =
+                                    'Sinxronizasiya uğursuz oldu. İnternet bağlantısını yoxlayın.\n'
+                                    '$remaining qeydiyyat hələ göndərilməyib — çıxış mümkün deyil.';
+                              });
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(60, 36),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: isSyncing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Sinxronlaşdır və çıx',
+                            style: TextStyle(fontSize: 14)),
                   ),
-                  child: isSyncing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Sinxronlaşdır və çıx',
-                          style: TextStyle(fontSize: 14)),
-                ),
               ],
             );
           },

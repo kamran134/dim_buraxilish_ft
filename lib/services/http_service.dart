@@ -412,16 +412,11 @@ class HttpService {
   }
 
   Future<void> registerParticipantOffline(int workNumber) async {
-    try {
-      print('Registering participant offline: $workNumber');
-      final participant =
-          await DatabaseService.getParticipantByWorkNumber(workNumber);
-      if (participant != null) {
-        final now = DateTime.now().toIso8601String();
-        await DatabaseService.registerParticipant(participant, now);
-      }
-    } catch (e) {
-      print('Error registering participant offline: $e');
+    final participant =
+        await DatabaseService.getParticipantByWorkNumber(workNumber);
+    if (participant != null) {
+      final now = DateTime.now().toIso8601String();
+      await DatabaseService.registerParticipant(participant, now);
     }
   }
 
@@ -569,16 +564,11 @@ class HttpService {
 
   /// Register supervisor offline
   Future<void> registerSupervisorOffline(String cardNumber) async {
-    try {
-      print('Registering supervisor offline: $cardNumber');
-      final supervisor =
-          await DatabaseService.getSupervisorByCardNumber(cardNumber);
-      if (supervisor != null) {
-        final now = DateTime.now().toIso8601String();
-        await DatabaseService.registerSupervisor(supervisor, now);
-      }
-    } catch (e) {
-      print('Error registering supervisor offline: $e');
+    final supervisor =
+        await DatabaseService.getSupervisorByCardNumber(cardNumber);
+    if (supervisor != null) {
+      final now = DateTime.now().toIso8601String();
+      await DatabaseService.registerSupervisor(supervisor, now);
     }
   }
 
@@ -890,7 +880,7 @@ class HttpService {
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
           success: true,
-          message: 'İştirakçılar uğurla sinxronizasiya edildi',
+          message: response.data['message'] as String? ?? '',
         );
       } else {
         return ResponseModel(
@@ -948,7 +938,7 @@ class HttpService {
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
           success: true,
-          message: 'Nəzarətçilər uğurla sinxronizasiya edildi',
+          message: response.data['message'] as String? ?? '',
         );
       } else {
         return ResponseModel(

@@ -153,24 +153,25 @@ class UnsentDataProvider extends ChangeNotifier {
   // Clear synced participants from local database
   Future<void> _clearSyncedParticipants() async {
     try {
-      // For now, clear all registered participants since we synced them all
-      // TODO: Implement individual clearing when needed
-      await DatabaseService.clearAllRegisteredParticipants();
+      final ids = _registeredParticipants.map((p) => p.isN).toList();
+      await DatabaseService.clearSyncedParticipantsByIds(ids);
       _registeredParticipants.clear();
     } catch (e) {
-      print('Error clearing synced participants: $e');
+      if (kDebugMode)
+        debugPrint('[UnsentData] Error clearing synced participants: $e');
     }
   }
 
   // Clear synced supervisors from local database
   Future<void> _clearSyncedSupervisors() async {
     try {
-      // For now, clear all registered supervisors since we synced them all
-      // TODO: Implement individual clearing when needed
-      await DatabaseService.clearAllRegisteredSupervisors();
+      final cardNumbers =
+          _registeredSupervisors.map((s) => s.cardNumber).toList();
+      await DatabaseService.clearSyncedSupervisorsByCardNumbers(cardNumbers);
       _registeredSupervisors.clear();
     } catch (e) {
-      print('Error clearing synced supervisors: $e');
+      if (kDebugMode)
+        debugPrint('[UnsentData] Error clearing synced supervisors: $e');
     }
   }
 

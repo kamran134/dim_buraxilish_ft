@@ -1170,6 +1170,31 @@ class DatabaseService {
     );
   }
 
+  /// Delete only the specific participants (by is_N) that were successfully synced.
+  /// Safe against race conditions: newly-scanned records with the same online=0
+  /// state but different IDs are NOT touched.
+  static Future<void> clearSyncedParticipantsByIds(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final placeholders = ids.map((_) => '?').join(',');
+    await db.rawDelete(
+      'DELETE FROM $_registeredParticipantsTable WHERE is_N IN ($placeholders) AND online = 0',
+      ids,
+    );
+  }
+
+  /// Delete only the specific supervisors (by cardNumber) that were successfully synced.
+  static Future<void> clearSyncedSupervisorsByCardNumbers(
+      List<String> cardNumbers) async {
+    if (cardNumbers.isEmpty) return;
+    final db = await database;
+    final placeholders = cardNumbers.map((_) => '?').join(',');
+    await db.rawDelete(
+      'DELETE FROM $_registeredSupervisorsTable WHERE cardNumber IN ($placeholders) AND online = 0',
+      cardNumbers,
+    );
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // LOCAL STATISTICS METHODS (read from offline tables — no network needed)
   // ──────────────────────────────────────────────────────────────────────────

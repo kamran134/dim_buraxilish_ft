@@ -26,6 +26,7 @@ class SyncService extends ChangeNotifier {
   int _pendingParticipants = 0;
   int _pendingSupervisors = 0;
   bool? _lastSyncSuccess;
+  int _lastSkippedCount = 0; // records not found on server during last sync
 
   final HttpService _httpService = HttpService();
 
@@ -36,6 +37,10 @@ class SyncService extends ChangeNotifier {
   int get pendingTotal => _pendingParticipants + _pendingSupervisors;
   bool? get lastSyncSuccess => _lastSyncSuccess;
   bool get isTimerRunning => _syncTimer?.isActive ?? false;
+
+  /// Number of records silently skipped by the server during the last sync
+  /// because they were deleted from the server DB.
+  int get lastSkippedCount => _lastSkippedCount;
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
@@ -61,6 +66,7 @@ class SyncService extends ChangeNotifier {
     _pendingParticipants = 0;
     _pendingSupervisors = 0;
     _lastSyncSuccess = null;
+    _lastSkippedCount = 0;
     _isSyncing = false;
     notifyListeners();
     if (kDebugMode) debugPrint('[SyncService] Timers stopped (logout)');
@@ -105,6 +111,7 @@ class SyncService extends ChangeNotifier {
 
     bool anySuccess = false;
     bool anyFailure = false;
+    _lastSkippedCount = 0; // reset before each sync attempt
 
     try {
       // ── Participants ──────────────────────────────────────────────────────
@@ -121,8 +128,13 @@ class SyncService extends ChangeNotifier {
             await _httpService.syncParticipants(unsyncedParticipants);
 
         if (result.success) {
-          await DatabaseService.clearUnSyncedParticipants();
+          // Delete only the specific IDs that were sent, not all online=0 records.
+          // This prevents a race condition where a scan that arrived during the
+          // in-flight HTTP request gets wrongly deleted from the queue.
+          final ids = unsyncedParticipants.map((p) => p.isN).toList();
+          await DatabaseService.clearSyncedParticipantsByIds(ids);
           anySuccess = true;
+          _lastSkippedCount += _parseSkippedCount(result.message);
           if (kDebugMode) {
             debugPrint(
                 '[SyncService] Participants synced: ${unsyncedParticipants.length}');
@@ -149,8 +161,12 @@ class SyncService extends ChangeNotifier {
         final result = await _httpService.syncSupervisors(unsyncedSupervisors);
 
         if (result.success) {
-          await DatabaseService.clearUnSyncedSupervisors();
+          final cardNumbers =
+              unsyncedSupervisors.map((s) => s.cardNumber).toList();
+          await DatabaseService.clearSyncedSupervisorsByCardNumbers(
+              cardNumbers);
           anySuccess = true;
+          _lastSkippedCount += _parseSkippedCount(result.message);
           if (kDebugMode) {
             debugPrint(
                 '[SyncService] Supervisors synced: ${unsyncedSupervisors.length}');
@@ -193,5 +209,15 @@ class SyncService extends ChangeNotifier {
       _pendingSupervisors = 0;
     }
     notifyListeners();
+  }
+
+  /// Parses the PARTIAL_SYNC:{count} marker returned by the server
+  /// when some records were not found in the DB (deleted between scan and sync).
+  static int _parseSkippedCount(String message) {
+    const prefix = 'PARTIAL_SYNC:';
+    if (message.startsWith(prefix)) {
+      return int.tryParse(message.substring(prefix.length)) ?? 0;
+    }
+    return 0;
   }
 }
