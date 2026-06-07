@@ -134,6 +134,16 @@ class _ManualInputDialogState extends State<ManualInputDialog>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = theme.colorScheme.surface;
+    final onSurface = theme.colorScheme.onSurface;
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
+    final fillColor = isDark ? Colors.grey[850]! : Colors.grey[50]!;
+    final hintColor = isDark ? Colors.grey[500]! : Colors.grey[400]!;
+    final iconColor = isDark ? Colors.grey[400]! : Colors.grey[500]!;
+    final cancelFgColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+
     return Material(
       color: Colors.black54,
       child: Center(
@@ -146,11 +156,11 @@ class _ManualInputDialogState extends State<ManualInputDialog>
               padding: const EdgeInsets.all(24),
               constraints: const BoxConstraints(maxWidth: 400),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: surfaceColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -165,7 +175,7 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -180,10 +190,10 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                       Expanded(
                         child: Text(
                           widget.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: onSurface,
                           ),
                         ),
                       ),
@@ -200,18 +210,17 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                         : TextInputType.text,
                     autofocus: true,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
+                      color: onSurface,
                     ),
                     decoration: InputDecoration(
                       hintText: widget.hintText,
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
-                      ),
+                      hintStyle: TextStyle(color: hintColor),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.grey),
+                        borderSide: BorderSide(color: borderColor),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -220,16 +229,16 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderSide: BorderSide(color: borderColor),
                       ),
                       prefixIcon: Icon(
                         widget.inputType == 'number'
                             ? Icons.numbers
                             : Icons.badge,
-                        color: Colors.grey[500],
+                        color: iconColor,
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: fillColor,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -255,8 +264,8 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                             ),
                           ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.grey[600],
-                            side: BorderSide(color: Colors.grey[300]!),
+                            foregroundColor: cancelFgColor,
+                            side: BorderSide(color: borderColor),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -297,7 +306,7 @@ class _ManualInputDialogState extends State<ManualInputDialog>
                     'Enter məlumatları daxil edib "Yoxla" düyməsini basın',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: hintColor,
                     ),
                     textAlign: TextAlign.center,
                   ),

@@ -60,7 +60,8 @@
       "Bash(grep -E \"\\\\.dart$\")",
       "Bash(dotnet build *)",
       "Bash(findstr \"error\")",
-      "Bash(Select-String \"error CS\")"
+      "Bash(Select-String \"error CS\")",
+      "Bash(flutter --version)"
     ]
   }
 }

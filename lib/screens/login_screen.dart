@@ -264,13 +264,15 @@ class _LoginScreenState extends State<LoginScreen>
         return _overlayError(
           icon: Icons.warning_amber_rounded,
           title: 'Məlumat tapılmadı',
-          subtitle: 'Server bu bina üçün məlumat qaytarmadı.\nTarix düzgün seçildi?',
+          subtitle:
+              'Server bu bina üçün məlumat qaytarmadı.\nTarixin düzgünlüyünü və internet bağlantısını yoxlayın.',
         );
       case _DownloadState.networkError:
         return _overlayError(
           icon: Icons.wifi_off_rounded,
           title: 'İnternet bağlantısı kəsildi',
-          subtitle: 'Məlumatlar yüklənmədi.\nBağlantını yoxlayıb yenidən cəhd edin.',
+          subtitle:
+              'Məlumatlar yüklənmədi.\nBağlantını yoxlayıb yenidən cəhd edin.',
         );
       case _DownloadState.idle:
         return const SizedBox.shrink();
@@ -287,7 +289,8 @@ class _LoginScreenState extends State<LoginScreen>
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.12),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
           ),
           child: const Padding(
             padding: EdgeInsets.all(16),
