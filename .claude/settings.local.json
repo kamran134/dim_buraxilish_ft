@@ -61,7 +61,9 @@
       "Bash(dotnet build *)",
       "Bash(findstr \"error\")",
       "Bash(Select-String \"error CS\")",
-      "Bash(flutter --version)"
+      "Bash(flutter --version)",
+      "PowerShell(& \"C:\\\\Users\\\\kamran.kz\\\\Documents\\\\Bats\\\\dimburaxilish\\\\deploy_frontend.bat\")",
+      "PowerShell(Get-Process | Where-Object { $_.Name -match \"node|ng\" } | Select-Object Id, Name, CPU, WorkingSet)"
     ]
   }
 }
