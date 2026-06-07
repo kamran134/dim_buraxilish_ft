@@ -12,6 +12,8 @@ import '../widgets/common/common_widgets.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
 
+enum _DownloadState { idle, downloading, success, emptyData, networkError }
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -40,7 +42,9 @@ class _LoginScreenState extends State<LoginScreen>
   String? _selectedExamDate;
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _isDownloadingOffline = false;
+  _DownloadState _downloadState = _DownloadState.idle;
+  int _downloadedParticipants = 0;
+  int _downloadedSupervisors = 0;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -101,8 +105,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final offlineProvider =
-        Provider.of<OfflineDatabaseProvider>(context, listen: false);
 
     if (authProvider.isLockedOut) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -142,31 +144,57 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (!success) {
       setState(() => _isLoading = false);
-      // Error will be shown via Consumer
       return;
     }
 
-    // Login succeeded — now download offline database
     setState(() {
       _isLoading = false;
-      _isDownloadingOffline = true;
+      _downloadState = _DownloadState.downloading;
     });
 
     if (authProvider.canAccessDashboard) {
-      // Admin: download monitors list (non-blocking — errors don't prevent login)
+      // Admin: download monitors — errors don't block navigation
+      final offlineProvider =
+          Provider.of<OfflineDatabaseProvider>(context, listen: false);
       await offlineProvider.downloadAdminOfflineDatabase();
-    } else {
-      // Monitor: download participants + supervisors (blocking — must succeed)
-      await offlineProvider.downloadOfflineDatabase();
-
       if (!mounted) return;
-      setState(() => _isDownloadingOffline = false);
+      _navigateToMain(authProvider);
+    } else {
+      await _performDownload();
     }
+  }
 
+  Future<void> _performDownload() async {
+    final offlineProvider =
+        Provider.of<OfflineDatabaseProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final result = await offlineProvider.downloadOfflineDatabase();
     if (!mounted) return;
-    setState(() => _isDownloadingOffline = false);
 
-    // Navigate
+    switch (result) {
+      case OfflineDownloadResult.success:
+        setState(() {
+          _downloadState = _DownloadState.success;
+          _downloadedParticipants = offlineProvider.participantCount;
+          _downloadedSupervisors = offlineProvider.supervisorCount;
+        });
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+        _navigateToMain(authProvider);
+      case OfflineDownloadResult.emptyData:
+        setState(() => _downloadState = _DownloadState.emptyData);
+      case OfflineDownloadResult.networkError:
+        setState(() => _downloadState = _DownloadState.networkError);
+    }
+  }
+
+  Future<void> _retryDownload() async {
+    setState(() => _downloadState = _DownloadState.downloading);
+    await _performDownload();
+  }
+
+  void _navigateToMain(AuthProvider authProvider) {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -218,55 +246,155 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  const Text(
-                    'Məlumatlar yüklənir',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Zəhmət olmasa gözləyin...',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildOverlayContent(),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOverlayContent() {
+    switch (_downloadState) {
+      case _DownloadState.downloading:
+        return _overlayDownloading();
+      case _DownloadState.success:
+        return _overlaySuccess();
+      case _DownloadState.emptyData:
+        return _overlayError(
+          icon: Icons.warning_amber_rounded,
+          title: 'Məlumat tapılmadı',
+          subtitle: 'Server bu bina üçün məlumat qaytarmadı.\nTarix düzgün seçildi?',
+        );
+      case _DownloadState.networkError:
+        return _overlayError(
+          icon: Icons.wifi_off_rounded,
+          title: 'İnternet bağlantısı kəsildi',
+          subtitle: 'Məlumatlar yüklənmədi.\nBağlantını yoxlayıb yenidən cəhd edin.',
+        );
+      case _DownloadState.idle:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _overlayDownloading() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        const Text(
+          'Məlumatlar yüklənir',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Zəhmət olmasa gözləyin...',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 13,
+            decoration: TextDecoration.none,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _overlaySuccess() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.check_circle_rounded, color: Colors.white, size: 64),
+        const SizedBox(height: 24),
+        const Text(
+          'Baza yükləndi!',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$_downloadedParticipants iştirakçı · $_downloadedSupervisors nəzarətçi',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.85),
+            fontSize: 14,
+            decoration: TextDecoration.none,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _overlayError({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white, size: 56),
+        const SizedBox(height: 20),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.none,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.75),
+            fontSize: 13,
+            decoration: TextDecoration.none,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 28),
+        ElevatedButton.icon(
+          onPressed: _retryDownload,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Yenidən cəhd et'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+        ),
+      ],
     );
   }
 
@@ -348,7 +476,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-        if (_isDownloadingOffline) _buildDownloadOverlay(),
+        if (_downloadState != _DownloadState.idle) _buildDownloadOverlay(),
       ],
     );
   }

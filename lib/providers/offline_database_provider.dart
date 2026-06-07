@@ -5,6 +5,8 @@ import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/violator_models.dart';
 
+enum OfflineDownloadResult { success, emptyData, networkError }
+
 /// Provider for managing offline database operations
 /// Handles downloading and deleting offline data for participants and supervisors
 class OfflineDatabaseProvider extends ChangeNotifier {
@@ -131,34 +133,28 @@ class OfflineDatabaseProvider extends ChangeNotifier {
     }
   }
 
-  /// Download offline database (participants and supervisors)
-  /// Follows the same pattern as React Native: participants -> supervisors -> save
-  Future<void> downloadOfflineDatabase() async {
+  /// Download offline database (participants and supervisors).
+  /// Returns [OfflineDownloadResult] so the caller can react without relying
+  /// on the provider's error/success message state.
+  Future<OfflineDownloadResult> downloadOfflineDatabase() async {
     _setLoading(true);
     _clearMessages();
 
     try {
-      // Get exam details from storage first
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails == null) {
         _setError('İmtahan məlumatları tapılmadı. Əvvəlcə giriş edin.');
-        return;
+        return OfflineDownloadResult.networkError;
       }
 
       final buildingCode = examDetails.kodBina ?? '0';
       final examDate = examDetails.imtTarix ?? '';
 
-      print('=== OFFLINE DATABASE DOWNLOAD DEBUG ===');
-      print('Exam Details: $examDetails');
-      print('Building Code: "$buildingCode"');
-      print('Exam Date: "$examDate"');
-      print('Building Code == "0": ${buildingCode == '0'}');
-      print('Exam Date isEmpty: ${examDate.isEmpty}');
-      print(
-          'Starting offline database download for building: $buildingCode, date: $examDate');
+      print('Offline DB download — building: $buildingCode, date: $examDate');
 
-      // Step 1: Download participants (like getEnrolleesByBuilding in React Native)
-      print('Step 1: Downloading participants...');
+      bool hadNetworkError = false;
+
+      // Step 1: participants
       List<Participant> participants = [];
       try {
         final result = await _httpService.getParticipantsByBuilding(
@@ -168,11 +164,11 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         participants = result.cast<Participant>();
         print('Downloaded ${participants.length} participants');
       } catch (e) {
-        print('Could not download participants, skipping: $e');
+        print('Could not download participants: $e');
+        hadNetworkError = true;
       }
 
-      // Step 2: Download supervisors (like getSupervisorsByBuilding in React Native)
-      print('Step 2: Downloading supervisors...');
+      // Step 2: supervisors
       List<Supervisor> supervisors = [];
       try {
         final result = await _httpService.getSupervisorsByBuilding(
@@ -182,11 +178,11 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         supervisors = result.cast<Supervisor>();
         print('Downloaded ${supervisors.length} supervisors');
       } catch (e) {
-        print('Could not download supervisors, skipping: $e');
+        print('Could not download supervisors: $e');
+        hadNetworkError = true;
       }
 
-      // Step 3: Download violators (new app versions only — gracefully skipped on error)
-      print('Step 3: Downloading violators...');
+      // Step 3: violators (always optional — never blocks)
       List<ViolatorInfo> violators = [];
       try {
         violators = await _httpService.getViolatorsInBuilding(
@@ -198,18 +194,27 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         print('Could not download violators, skipping: $e');
       }
 
-      // Step 4: Save to database (only non-empty results)
-      print('Step 4: Saving to offline database...');
-      await _saveOfflineData(participants, supervisors, violators);
+      // Network failed and nothing came through
+      if (hadNetworkError && participants.isEmpty && supervisors.isEmpty) {
+        return OfflineDownloadResult.networkError;
+      }
 
-      // Step 5: Update status and show success
+      // Step 4: save
+      await _saveOfflineData(participants, supervisors, violators);
       await _checkOfflineData();
+
+      if (participants.isEmpty && supervisors.isEmpty) {
+        return OfflineDownloadResult.emptyData;
+      }
 
       _setSuccess(
         'Baza uğurla telefonunuza yükləndi! ${participants.length} iştirakçı və ${supervisors.length} nəzarətçi.',
       );
+      return OfflineDownloadResult.success;
     } catch (e) {
       print('Error downloading offline database: $e');
+      _setError('Yükləmə zamanı xəta baş verdi');
+      return OfflineDownloadResult.networkError;
     } finally {
       _setLoading(false);
     }

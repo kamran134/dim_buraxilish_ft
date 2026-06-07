@@ -45,7 +45,22 @@
       "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\bpyjjxtat.output' | Select-Object -Last 15\")",
       "Bash(ping -n 20 127.0.0.1)",
       "Bash(powershell -command \"Get-Content 'C:\\\\Users\\\\kamran.kz\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Work-DIMBuraxilishFlutter-dim-buraxilish-ft\\\\2ce85f35-b801-461f-98aa-c748275a4295\\\\tasks\\\\bpyjjxtat.output' | Select-Object -Last 20\")",
-      "Bash(not exist *)"
+      "Bash(not exist *)",
+      "Bash(git -C \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\" log --oneline -15)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\BuraxilishBackend\" log --oneline -15)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\Buraxilish_Front\" log --oneline -15)",
+      "Bash(git -C \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\" show --stat 3a23827)",
+      "Bash(git -C \"d:\\\\Work\\\\DIMBuraxilishFlutter\\\\dim_buraxilish_ft\" show 3a23827 -- \"*.dart\")",
+      "Bash(git -C \"d:\\\\Others Programs\\\\BuraxilishBackend\" show --stat 78e0599)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\BuraxilishBackend\" show --stat 04c819a)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\Buraxilish_Front\" show --stat c9e7265)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\Buraxilish_Front\" show --stat c52493a)",
+      "Bash(git -C \"d:\\\\Others Programs\\\\BuraxilishBackend\" show 04c819a -- \"*.cs\")",
+      "Bash(git -C \"d:\\\\Others Programs\\\\Buraxilish_Front\" show c9e7265 -- \"*.ts\" \"*.html\")",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(dotnet build *)",
+      "Bash(findstr \"error\")",
+      "Bash(Select-String \"error CS\")"
     ]
   }
 }
