@@ -12,7 +12,7 @@ import '../widgets/common/common_widgets.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
 
-enum _DownloadState { idle, downloading, success, emptyData, networkError }
+enum _DownloadState { idle, downloading, success, partialData, emptyData, networkError }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -30,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
 
   bool _isAdmin = false;
+  String _partialErrorMessage = '';
 
   String get _resolvedUsername {
     if (_isAdmin) {
@@ -183,6 +184,15 @@ class _LoginScreenState extends State<LoginScreen>
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
         _navigateToMain(authProvider);
+      case OfflineDownloadResult.partialSuccess:
+        final missingParticipants = offlineProvider.participantCount == 0;
+        final msg = missingParticipants
+            ? 'İmtahan iştirakçıları yüklənmədi.'
+            : 'Nəzarətçilər yüklənmədi.';
+        setState(() {
+          _partialErrorMessage = msg;
+          _downloadState = _DownloadState.partialData;
+        });
       case OfflineDownloadResult.emptyData:
         setState(() => _downloadState = _DownloadState.emptyData);
       case OfflineDownloadResult.networkError:
@@ -261,6 +271,8 @@ class _LoginScreenState extends State<LoginScreen>
         return _overlayDownloading();
       case _DownloadState.success:
         return _overlaySuccess();
+      case _DownloadState.partialData:
+        return _overlayPartialData();
       case _DownloadState.emptyData:
         return _overlayError(
           icon: Icons.warning_amber_rounded,
@@ -349,6 +361,50 @@ class _LoginScreenState extends State<LoginScreen>
             decoration: TextDecoration.none,
           ),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _overlayPartialData() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 56),
+        const SizedBox(height: 20),
+        const Text(
+          'Natamam yükləndi',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.none,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$_partialErrorMessage\nZəhmət olmasa bir daha cəhd edin\nvə ya qərargahdan məlumatları dəqiqləşdirin.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.85),
+            fontSize: 13,
+            decoration: TextDecoration.none,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 28),
+        ElevatedButton.icon(
+          onPressed: _retryDownload,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Yenidən cəhd et'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
         ),
       ],
     );

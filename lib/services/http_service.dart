@@ -678,6 +678,7 @@ class HttpService {
           'bina': buildingCode,
           'examDate': examDate, // Use original date format like React Native
         },
+        options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
       print(
@@ -721,6 +722,7 @@ class HttpService {
           'buildingCode': buildingCode,
           'examDate': formattedDate, // Use formatted date like React Native
         },
+        options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -1306,6 +1308,7 @@ class HttpService {
         data: {
           'buildingCode': buildingCode,
           'examDate': _formatExamDateForApi(examDate),
+          'examDateRaw': examDate,
           'participantCount': participantCount,
           'supervisorCount': supervisorCount,
         },

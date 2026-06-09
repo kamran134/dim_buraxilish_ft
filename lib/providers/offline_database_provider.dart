@@ -5,7 +5,7 @@ import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/violator_models.dart';
 
-enum OfflineDownloadResult { success, emptyData, networkError }
+enum OfflineDownloadResult { success, partialSuccess, emptyData, networkError }
 
 /// Provider for managing offline database operations
 /// Handles downloading and deleting offline data for participants and supervisors
@@ -205,6 +205,11 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
       if (participants.isEmpty && supervisors.isEmpty) {
         return OfflineDownloadResult.emptyData;
+      }
+
+      // One of them is missing — warn the user
+      if (participants.isEmpty || supervisors.isEmpty) {
+        return OfflineDownloadResult.partialSuccess;
       }
 
       _setSuccess(
