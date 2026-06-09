@@ -249,6 +249,21 @@ class OfflineDatabaseProvider extends ChangeNotifier {
     }
   }
 
+  /// Called by login screen after the download overlay shows success.
+  /// Fires a server-side log entry — errors are swallowed silently.
+  Future<void> reportDownloadComplete() async {
+    try {
+      final examDetails = await _httpService.getExamDetailsFromStorage();
+      if (examDetails == null) return;
+      await _httpService.reportDownloadComplete(
+        buildingCode: examDetails.kodBina ?? '0',
+        examDate: examDetails.imtTarix ?? '',
+        participantCount: _participantCount,
+        supervisorCount: _supervisorCount,
+      );
+    } catch (_) {}
+  }
+
   /// Delete offline database (like deleteAllEnrollees + deleteAllSupervisors in React Native)
   Future<void> deleteOfflineDatabase() async {
     _setLoading(true);

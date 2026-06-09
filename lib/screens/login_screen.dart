@@ -174,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     switch (result) {
       case OfflineDownloadResult.success:
+        offlineProvider.reportDownloadComplete();
         setState(() {
           _downloadState = _DownloadState.success;
           _downloadedParticipants = offlineProvider.participantCount;

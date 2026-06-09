@@ -1291,4 +1291,27 @@ class HttpService {
       return [];
     }
   }
+
+  /// Notifies the server that the offline database was fully downloaded.
+  /// Fire-and-forget — errors are swallowed so they never block the user.
+  Future<void> reportDownloadComplete({
+    required String buildingCode,
+    required String examDate,
+    required int participantCount,
+    required int supervisorCount,
+  }) async {
+    try {
+      await _dio.post(
+        '/admin/downloadcomplete',
+        data: {
+          'buildingCode': buildingCode,
+          'examDate': _formatExamDateForApi(examDate),
+          'participantCount': participantCount,
+          'supervisorCount': supervisorCount,
+        },
+      );
+    } catch (e) {
+      print('reportDownloadComplete error (ignored): $e');
+    }
+  }
 }
