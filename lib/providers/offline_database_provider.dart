@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/http_service.dart';
+import '../utils/app_version.dart';
 import '../services/database_service.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
@@ -260,11 +261,13 @@ class OfflineDatabaseProvider extends ChangeNotifier {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails == null) return;
+      final version = await getAppVersion();
       await _httpService.reportDownloadComplete(
         buildingCode: examDetails.kodBina ?? '0',
         examDate: examDetails.imtTarix ?? '',
         participantCount: _participantCount,
         supervisorCount: _supervisorCount,
+        appVersion: version,
       );
     } catch (_) {}
   }

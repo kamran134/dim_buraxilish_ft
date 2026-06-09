@@ -1301,6 +1301,7 @@ class HttpService {
     required String examDate,
     required int participantCount,
     required int supervisorCount,
+    required String appVersion,
   }) async {
     try {
       await _dio.post(
@@ -1311,10 +1312,26 @@ class HttpService {
           'examDateRaw': examDate,
           'participantCount': participantCount,
           'supervisorCount': supervisorCount,
+          'appVersion': appVersion,
         },
       );
     } catch (e) {
       print('reportDownloadComplete error (ignored): $e');
+    }
+  }
+
+  /// Returns the minimum required app version from server.
+  /// Returns null on network error — caller should treat null as "no update needed".
+  Future<String?> getMinimumAppVersion() async {
+    try {
+      final response = await _dio.get('/admin/appversion');
+      if (response.statusCode == 200) {
+        return response.data['minimumVersion'] as String?;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('getMinimumAppVersion error (ignored): $e');
+      return null;
     }
   }
 }

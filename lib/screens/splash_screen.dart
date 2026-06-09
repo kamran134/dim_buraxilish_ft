@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/emergency_message_service.dart';
+import '../services/http_service.dart';
+import '../utils/app_version.dart';
 import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
@@ -91,6 +94,16 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // Version check — show blocking dialog if update required
+    final currentVersion = await getAppVersion();
+    final minimumVersion = await HttpService().getMinimumAppVersion();
+    if (mounted && minimumVersion != null && isVersionOutdated(currentVersion, minimumVersion)) {
+      await _showUpdateDialog();
+      return; // do not navigate — dialog is not dismissible
+    }
+
+    if (!mounted) return;
+
     // Check authentication status
     await authProvider.checkAuthStatus();
 
@@ -125,6 +138,54 @@ class _SplashScreenState extends State<SplashScreen>
         ),
       );
     }
+  }
+
+  Future<void> _showUpdateDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.system_update_rounded, color: Color(0xFF1565C0), size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Yeniləmə tələb olunur',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Proqramın yeni versiyası mövcuddur. Tətbiqdən istifadə etmək üçün zəhmət olmasa yeniləyin.',
+            style: TextStyle(fontSize: 15, height: 1.4),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => launchUrl(
+                  Uri.parse('https://play.google.com/store/apps/details?id=com.dim.dim_buraxilish'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('Yeniləyin', style: TextStyle(fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1565C0),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
