@@ -1,0 +1,54 @@
+workflows:
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      # Code signing — настроить в Codemagic UI:
+      # App Store Connect → Teams → выбрать команду
+      # Signing → iOS certificates → загрузить .p12 + provisioning profile
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.dimBuraxilishFt
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID: Encrypted(...)     # заменить
+        APP_STORE_CONNECT_KEY_IDENTIFIER: Encrypted(...) # заменить
+        APP_STORE_CONNECT_PRIVATE_KEY: Encrypted(...)    # заменить
+
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      # GoogleService-Info.plist для Firebase
+      # Загрузи файл в Codemagic: Environment → File variables → GOOGLE_SERVICE_INFO_PLIST
+      - name: Install Firebase config
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=$CM_EXPORT_OPTIONS_PATH
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - kazimi.msu@gmail.com
+        notify:
+          success: true
+          failure: true
