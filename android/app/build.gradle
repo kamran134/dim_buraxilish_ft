@@ -44,6 +44,10 @@ android {
     }
 
     packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        exclude 'lib/armeabi-v7a/**'
         pickFirst '**/libc++_shared.so'
         pickFirst '**/libjsc.so'
         exclude 'META-INF/DEPENDENCIES'
@@ -67,6 +71,9 @@ android {
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
     }
 
     signingConfigs {
@@ -98,4 +105,7 @@ configurations {
     }
 }
 
-dependencies {}
+dependencies {
+    // Force newer MLKit with 16KB page size aligned .so files
+    implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+}

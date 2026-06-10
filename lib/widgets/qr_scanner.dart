@@ -80,7 +80,6 @@ class _QRScannerWidgetState extends State<QRScannerWidget>
       controller = MobileScannerController(
         detectionSpeed: DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
-        torchEnabled: false,
       );
 
       if (mounted) {
