@@ -4,20 +4,16 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
 
+    integrations:
+      app_store_connect: DIM Buraxılış  # имя интеграции из Codemagic UI
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
-      # Code signing — настроить в Codemagic UI:
-      # App Store Connect → Teams → выбрать команду
-      # Signing → iOS certificates → загрузить .p12 + provisioning profile
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.example.dimBuraxilishFt
-      vars:
-        APP_STORE_CONNECT_ISSUER_ID: Encrypted(...)     # заменить
-        APP_STORE_CONNECT_KEY_IDENTIFIER: Encrypted(...) # заменить
-        APP_STORE_CONNECT_PRIVATE_KEY: Encrypted(...)    # заменить
+        bundle_identifier: az.dim.buraxilish
 
     scripts:
       - name: Get Flutter packages
