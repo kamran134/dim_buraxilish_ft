@@ -343,6 +343,12 @@ class LogoutButton extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Diqqət: məcburi çıxış seçsəniz, göndərilməmiş qeydiyyatlar itə bilər. Yalnız zəruri hallarda istifadə edin.',
+                      style: TextStyle(
+                          color: Colors.orange.shade800, fontSize: 12),
+                    ),
                   ],
                   if (syncWarning != null)
                     Container(
@@ -371,6 +377,23 @@ class LogoutButton extends StatelessWidget {
                 ],
               ),
               actions: [
+                if (syncError != null)
+                  TextButton(
+                    onPressed: isSyncing
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop();
+                            if (context.mounted) _performLogout(context);
+                          },
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(60, 36),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      foregroundColor: Colors.red.shade700,
+                    ),
+                    child: const Text('Məcburi çıxış',
+                        style: TextStyle(fontSize: 14)),
+                  ),
                 if (syncWarning == null)
                   TextButton(
                     onPressed: isSyncing
@@ -447,12 +470,13 @@ class LogoutButton extends StatelessWidget {
                                 }
                               }
                             } else {
-                              // Sync failed (network) — keep dialog open
                               setState(() {
                                 isSyncing = false;
-                                syncError =
-                                    'Sinxronizasiya uğursuz oldu. İnternet bağlantısını yoxlayın.\n'
-                                    '$remaining qeydiyyat hələ göndərilməyib — çıxış mümkün deyil.';
+                                final reason =
+                                    SyncService.instance.lastSyncError;
+                                syncError = reason != null
+                                    ? '$reason\n($remaining qeydiyyat göndərilməyib)'
+                                    : 'Sinxronizasiya uğursuz oldu. $remaining qeydiyyat göndərilməyib.';
                               });
                             }
                           },

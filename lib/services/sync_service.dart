@@ -26,7 +26,8 @@ class SyncService extends ChangeNotifier {
   int _pendingParticipants = 0;
   int _pendingSupervisors = 0;
   bool? _lastSyncSuccess;
-  int _lastSkippedCount = 0; // records not found on server during last sync
+  int _lastSkippedCount = 0;
+  String? _lastSyncError;
 
   final HttpService _httpService = HttpService();
 
@@ -37,10 +38,8 @@ class SyncService extends ChangeNotifier {
   int get pendingTotal => _pendingParticipants + _pendingSupervisors;
   bool? get lastSyncSuccess => _lastSyncSuccess;
   bool get isTimerRunning => _syncTimer?.isActive ?? false;
-
-  /// Number of records silently skipped by the server during the last sync
-  /// because they were deleted from the server DB.
   int get lastSkippedCount => _lastSkippedCount;
+  String? get lastSyncError => _lastSyncError;
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
@@ -111,7 +110,8 @@ class SyncService extends ChangeNotifier {
 
     bool anySuccess = false;
     bool anyFailure = false;
-    _lastSkippedCount = 0; // reset before each sync attempt
+    _lastSkippedCount = 0;
+    _lastSyncError = null;
 
     try {
       // ── Participants ──────────────────────────────────────────────────────
@@ -141,6 +141,7 @@ class SyncService extends ChangeNotifier {
           }
         } else {
           anyFailure = true;
+          _lastSyncError = result.message;
           if (kDebugMode) {
             debugPrint(
                 '[SyncService] Participants sync failed: ${result.message}');
@@ -173,6 +174,7 @@ class SyncService extends ChangeNotifier {
           }
         } else {
           anyFailure = true;
+          _lastSyncError ??= result.message;
           if (kDebugMode) {
             debugPrint(
                 '[SyncService] Supervisors sync failed: ${result.message}');

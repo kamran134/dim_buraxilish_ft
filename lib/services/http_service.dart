@@ -23,7 +23,7 @@ class HttpService {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -864,7 +864,7 @@ class HttpService {
                 'is_N': p.isN,
                 'bina': p.bina,
                 'imt_Tarix': p.imtTarix,
-                'qeydiyyat': p.qeydiyyat ?? '',
+                'qeydiyyat': p.qeydiyyat,
               })
           .toList();
 
@@ -893,22 +893,12 @@ class HttpService {
       }
     } on DioException catch (e) {
       print('Error syncing participants: $e');
-      if (e.response?.statusCode == 401) {
-        return ResponseModel(
-          success: false,
-          message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
-        );
-      } else {
-        return ResponseModel(
-          success: false,
-          message: 'Sinxronizasiyada xəta. İnternetə qoşulmanı yoxlayın',
-        );
-      }
+      return ResponseModel(success: false, message: _syncErrorMessage(e));
     } catch (e) {
       print('General error syncing participants: $e');
       return ResponseModel(
         success: false,
-        message: 'İştirakçıları sinxronizasiya etməkdə xəta baş verdi',
+        message: 'Naməlum xəta: $e',
       );
     }
   }
@@ -951,22 +941,12 @@ class HttpService {
       }
     } on DioException catch (e) {
       print('Error syncing supervisors: $e');
-      if (e.response?.statusCode == 401) {
-        return ResponseModel(
-          success: false,
-          message: 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!',
-        );
-      } else {
-        return ResponseModel(
-          success: false,
-          message: 'Nəzarətçilərdə sinxronizasiya getmədi. Məlumatlarda xəta',
-        );
-      }
+      return ResponseModel(success: false, message: _syncErrorMessage(e));
     } catch (e) {
       print('General error syncing supervisors: $e');
       return ResponseModel(
         success: false,
-        message: 'Nəzarətçiləri sinxronizasiya etməkdə xəta baş verdi',
+        message: 'Naməlum xəta: $e',
       );
     }
   }
@@ -1332,6 +1312,27 @@ class HttpService {
     } catch (e) {
       if (kDebugMode) print('getMinimumAppVersion error (ignored): $e');
       return null;
+    }
+  }
+
+  String _syncErrorMessage(DioException e) {
+    final status = e.response?.statusCode;
+    if (status == 401) return 'Avtorizasiya vaxtı bitib. Yenidən daxil olun!';
+    if (status == 429) return 'Həddən artıq çox sorğu (429). Bir neçə dəqiqə gözləyin';
+    if (status == 400) return 'Məlumatlarda format xətası (400). Administratora məlumat verin';
+    if (status == 500) return 'Server xətası (500). Administratora müraciət edin';
+    if (status != null) return 'Server cavabı: $status';
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'Server ilə əlaqə qurulmadı (timeout). İnternet bağlantısını yoxlayın';
+      case DioExceptionType.receiveTimeout:
+        return 'Server vaxtında cavab vermədi (timeout). Yenidən cəhd edin';
+      case DioExceptionType.connectionError:
+        return 'İnternet bağlantısı yoxdur';
+      default:
+        return 'Şəbəkə xətası: ${e.message ?? e.type.name}';
     }
   }
 }
