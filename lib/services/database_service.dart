@@ -357,16 +357,6 @@ class DatabaseService {
     return getRegisteredParticipants(onlineOnly: false);
   }
 
-  /// Mark participants as synced
-  static Future<void> markParticipantsAsSynced() async {
-    final db = await database;
-    await db.update(
-      _registeredParticipantsTable,
-      {'online': 1},
-      where: 'online = 0',
-    );
-  }
-
   /// Delete all participants
   static Future<void> deleteAllParticipants() async {
     final db = await database;
@@ -521,38 +511,44 @@ class DatabaseService {
   }
 
   /// Register supervisor (save to registered table and update offline table)
+  ///
+  /// Both writes run inside a single transaction so the local statistics table
+  /// (`supervisors.registerDate`) and the sync queue (`registered_supervisors`)
+  /// can never diverge if the app is killed mid-registration.
   static Future<void> registerSupervisor(
       Supervisor supervisor, String registrationDate) async {
     final db = await database;
 
-    // Update registration date in offline table
-    await db.update(
-      _supervisorsTable,
-      {'registerDate': registrationDate},
-      where: 'cardNumber = ?',
-      whereArgs: [supervisor.cardNumber],
-    );
+    await db.transaction((txn) async {
+      // Update registration date in offline table
+      await txn.update(
+        _supervisorsTable,
+        {'registerDate': registrationDate},
+        where: 'cardNumber = ?',
+        whereArgs: [supervisor.cardNumber],
+      );
 
-    // Insert/update in registered supervisors table
-    await db.insert(
-      _registeredSupervisorsTable,
-      {
-        'cardNumber': supervisor.cardNumber,
-        'lastName': supervisor.lastName,
-        'firstName': supervisor.firstName,
-        'fatherName': supervisor.fatherName,
-        'buildingCode': supervisor.buildingCode,
-        'buildingName': supervisor.buildingName,
-        'districtCode': supervisor.districtCode,
-        'examDate': supervisor.examDate,
-        'image': supervisor.image,
-        'pinCode': supervisor.pinCode,
-        'registerDate': registrationDate,
-        'supervisorAction': supervisor.supervisorAction,
-        'online': 0, // Offline registration
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+      // Insert/update in registered supervisors table
+      await txn.insert(
+        _registeredSupervisorsTable,
+        {
+          'cardNumber': supervisor.cardNumber,
+          'lastName': supervisor.lastName,
+          'firstName': supervisor.firstName,
+          'fatherName': supervisor.fatherName,
+          'buildingCode': supervisor.buildingCode,
+          'buildingName': supervisor.buildingName,
+          'districtCode': supervisor.districtCode,
+          'examDate': supervisor.examDate,
+          'image': supervisor.image,
+          'pinCode': supervisor.pinCode,
+          'registerDate': registrationDate,
+          'supervisorAction': supervisor.supervisorAction,
+          'online': 0, // Offline registration
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
   }
 
   /// Get all registered supervisors
@@ -576,16 +572,6 @@ class DatabaseService {
   /// Get offline registered supervisors (not synced)
   static Future<List<Supervisor>> getOfflineRegisteredSupervisors() async {
     return getRegisteredSupervisors(onlineOnly: false);
-  }
-
-  /// Mark supervisors as synced
-  static Future<void> markSupervisorsAsSynced() async {
-    final db = await database;
-    await db.update(
-      _registeredSupervisorsTable,
-      {'online': 1},
-      where: 'online = 0',
-    );
   }
 
   /// Delete all supervisors
@@ -678,7 +664,7 @@ class DatabaseService {
 
   static Map<String, dynamic> _participantToMap(Participant participant) {
     return {
-      'external_id': participant.hashCode, // Use hashCode as external_id
+      'external_id': participant.isN, // is_N is unique per participant
       'is_N': participant.isN,
       'soy': participant.soy,
       'adi': participant.adi,
@@ -883,15 +869,24 @@ class DatabaseService {
     await db.delete(_registeredSupervisorsTable);
   }
 
-  /// Clear entire database (all tables)
+  /// Clear entire database EXCEPT the sync queue.
+  ///
+  /// Called on login/logout to start with a clean slate for the master/offline
+  /// download tables. The registered_* tables hold unsynced registrations
+  /// (online = 0) and are intentionally PRESERVED so a re-login or token
+  /// refresh can never wipe data that has not yet reached the server — the
+  /// startup/login flush ([SyncService.kickstartIfPending]) sends them, and
+  /// the server-side "skip" cleanup drains records whose master row is gone,
+  /// so the queue cannot grow unbounded.
   static Future<void> clearAllDatabase() async {
     final db = await database;
     await db.delete(_participantsTable);
-    await db.delete(_registeredParticipantsTable);
     await db.delete(_registeredMonitorsTable);
     await db.delete(_supervisorsTable);
-    await db.delete(_registeredSupervisorsTable);
     await db.delete(_allMonitorsTable);
+    // NOTE: _registeredParticipantsTable / _registeredSupervisorsTable are NOT
+    // cleared here — see doc comment above. Use clearUnSynced* / clearSynced*
+    // only after a confirmed server sync.
   }
 
   /// Get all participants (for offline database management)
@@ -1137,6 +1132,32 @@ class DatabaseService {
       ORDER BY qeydiyyat ASC
     ''');
     return results.map((map) => _registeredParticipantFromMap(map)).toList();
+  }
+
+  /// Whether this participant still sits in the sync queue (registered offline
+  /// and not yet sent to the server). Used so an offline cancel can drop the
+  /// record locally without a server round-trip.
+  static Future<bool> isParticipantQueued(int isN) async {
+    final db = await database;
+    final results = await db.query(
+      _registeredParticipantsTable,
+      where: 'is_N = ? AND online = 0',
+      whereArgs: [isN],
+      limit: 1,
+    );
+    return results.isNotEmpty;
+  }
+
+  /// Whether this supervisor still sits in the sync queue (not yet synced).
+  static Future<bool> isSupervisorQueued(String cardNumber) async {
+    final db = await database;
+    final results = await db.query(
+      _registeredSupervisorsTable,
+      where: 'cardNumber = ? AND online = 0',
+      whereArgs: [cardNumber],
+      limit: 1,
+    );
+    return results.isNotEmpty;
   }
 
   /// Get supervisors that have not yet been synced to the server (online = 0).

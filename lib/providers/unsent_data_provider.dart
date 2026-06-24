@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/database_service.dart';
 import '../services/http_service.dart';
+import '../services/sync_service.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 
@@ -72,6 +73,12 @@ class UnsentDataProvider extends ChangeNotifier {
   // Sync all unsent data to server
   Future<void> syncUnsentData() async {
     if (_isSyncing) return; // Prevent multiple sync operations
+    // Respect the global lock so the background SyncService timer and this
+    // manual sync never POST the same queue at the same time.
+    if (!SyncService.acquireSyncLock()) {
+      _setError('Sinxronizasiya artıq gedir, bir az gözləyin');
+      return;
+    }
 
     _isSyncing = true;
     _setLoading(true);
@@ -146,6 +153,9 @@ class UnsentDataProvider extends ChangeNotifier {
       _setError('Sinxronizasiya zamanı gözlənilməz xəta baş verdi');
     } finally {
       _isSyncing = false;
+      SyncService.releaseSyncLock();
+      // Keep the shared pending counter (used by the logout dialog) in sync.
+      await SyncService.instance.refreshPending();
       _setLoading(false);
     }
   }

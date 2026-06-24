@@ -398,6 +398,23 @@ class SupervisorProvider with ChangeNotifier {
     clearMessages();
 
     try {
+      // If still in the local sync queue (never reached the server), cancel
+      // locally without a server round-trip — otherwise the queued record would
+      // sync later as a "ghost" registration the user tried to cancel.
+      final isQueued = await DatabaseService.isSupervisorQueued(
+          _currentSupervisor!.cardNumber);
+      if (isQueued) {
+        await DatabaseService.unregisterSupervisor(
+            _currentSupervisor!.cardNumber);
+        await SyncService.instance.refreshPending();
+        _setSuccess('Qeydiyyat ləğv edildi');
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('SupervisorProvider.cancelRegistration');
+        resetToInitial();
+        setScreenState(SupervisorScreenState.scanning);
+        return;
+      }
+
       final response = await _httpService.cancelSupervisorRegistration(
         cardNumber: _currentSupervisor!.cardNumber,
         buildingCode: _currentSupervisor!.buildingCode,

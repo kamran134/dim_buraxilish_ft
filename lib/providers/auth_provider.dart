@@ -203,6 +203,10 @@ class AuthProvider extends ChangeNotifier {
 
         _clearError();
         notifyListeners();
+
+        // Flush any unsynced registrations preserved from a previous session
+        // (clearAllDatabase keeps the queue). Fire-and-forget — never blocks login.
+        SyncService.instance.kickstartIfPending();
         return true;
       } else {
         _failedAttempts++;

@@ -23,6 +23,23 @@ class SyncService extends ChangeNotifier {
   Timer? _syncTimer;
   Timer? _idleTimer;
   bool _isSyncing = false;
+
+  /// Process-wide lock shared with any other sync path (e.g. the manual
+  /// "unsent data" screen) so the same queue is never POSTed twice at once.
+  static bool _syncLock = false;
+
+  /// Try to acquire the global sync lock. Returns false if a sync is running.
+  static bool acquireSyncLock() {
+    if (_syncLock) return false;
+    _syncLock = true;
+    return true;
+  }
+
+  /// Release the global sync lock.
+  static void releaseSyncLock() => _syncLock = false;
+
+  /// Whether any sync path currently holds the global lock.
+  static bool get isSyncLocked => _syncLock;
   int _pendingParticipants = 0;
   int _pendingSupervisors = 0;
   bool? _lastSyncSuccess;
@@ -57,6 +74,25 @@ class SyncService extends ChangeNotifier {
   /// Force an immediate sync (e.g. manual sync button press).
   Future<void> syncNow() async {
     await _performSync();
+  }
+
+  /// Refresh the pending counters from the DB without syncing.
+  /// Safe to call on app startup so [pendingTotal] reflects the persisted
+  /// queue before the user does anything (otherwise it stays 0 in memory and
+  /// the logout dialog could wipe unsynced data silently).
+  Future<void> refreshPending() => _refreshPendingCount();
+
+  /// Called on app startup / right after login. Restores the pending counters
+  /// from the persisted queue and, if anything is waiting, starts the periodic
+  /// timer and fires an immediate sync. This guarantees offline registrations
+  /// from a previous session are flushed even if the user never scans again.
+  Future<void> kickstartIfPending() async {
+    await _refreshPendingCount();
+    if (pendingTotal > 0) {
+      _resetIdleTimer();
+      if (!isTimerRunning) _startSyncTimer();
+      await _performSync();
+    }
   }
 
   /// Stop the sync timer (call on logout).
@@ -105,6 +141,8 @@ class SyncService extends ChangeNotifier {
 
   Future<void> _performSync() async {
     if (_isSyncing) return;
+    // Respect the process-wide lock shared with the manual "unsent data" sync.
+    if (!acquireSyncLock()) return;
     _isSyncing = true;
     notifyListeners();
 
@@ -196,6 +234,7 @@ class SyncService extends ChangeNotifier {
       if (kDebugMode) debugPrint('[SyncService] Sync error: $e');
     } finally {
       _isSyncing = false;
+      releaseSyncLock();
       await _refreshPendingCount();
     }
   }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/emergency_message_service.dart';
 import '../services/http_service.dart';
+import '../services/sync_service.dart';
 import '../utils/app_version.dart';
 import '../widgets/common/common_widgets.dart';
 import 'login_screen.dart';
@@ -111,6 +112,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate to appropriate screen
     if (authProvider.isAuthenticated) {
+      // Flush any unsynced registrations persisted from a previous session and
+      // restore the pending counter (otherwise it stays 0 in memory and the
+      // logout dialog could wipe unsynced data silently). Fire-and-forget.
+      SyncService.instance.kickstartIfPending();
+
       // Определяем куда перенаправить пользователя на основе роли
       final targetScreen = authProvider.canAccessDashboard
           ? const RealDashboardScreen()

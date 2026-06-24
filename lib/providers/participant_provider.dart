@@ -396,6 +396,23 @@ class ParticipantProvider with ChangeNotifier {
     clearMessages();
 
     try {
+      // If this registration is still in the local sync queue (never reached
+      // the server), cancel it locally without a server round-trip. Calling the
+      // server would otherwise fail/no-op while the queued record would still
+      // sync later → a "ghost" registration the user tried to cancel.
+      final isQueued =
+          await DatabaseService.isParticipantQueued(_currentParticipant!.isN);
+      if (isQueued) {
+        await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
+        // Refresh the pending counter after dropping a queued record.
+        await SyncService.instance.refreshPending();
+        _setSuccess('Qeydiyyat ləğv edildi');
+        StatisticsEventBus()
+            .notifyStatisticsUpdate('ParticipantProvider.cancelRegistration');
+        nextParticipant();
+        return;
+      }
+
       final response = await _httpService.cancelParticipantRegistration(
         isN: _currentParticipant!.isN,
         bina: _currentParticipant!.bina,
