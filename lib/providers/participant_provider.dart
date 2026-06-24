@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/participant_models.dart';
@@ -10,6 +11,25 @@ import 'offline_database_provider.dart';
 
 class ParticipantProvider with ChangeNotifier {
   final HttpService _httpService = HttpService();
+
+  ParticipantProvider() {
+    // After a successful sync, pull the server-side aggregate (sum across all
+    // scanners in the building). Scan events are ignored here — they recompute
+    // locally inline without a network call.
+    _statsBusSub = StatisticsEventBus().onStatisticsUpdate.listen((source) {
+      if (source.startsWith('SyncService')) {
+        refreshServerStatistics();
+      }
+    });
+  }
+
+  StreamSubscription<String>? _statsBusSub;
+
+  // Server aggregate cache (null = not fetched yet this session → use local).
+  int? _serverRegMen;
+  int? _serverRegWomen;
+  int? _serverAllMen;
+  int? _serverAllWomen;
 
   // Current state
   ParticipantScreenState _screenState = ParticipantScreenState.initial;
@@ -170,7 +190,10 @@ class ParticipantProvider with ChangeNotifier {
         if (examDetails.kodBina != null && examDetails.imtTarix != null) {
           final binaInt = int.tryParse(examDetails.kodBina!);
           if (binaInt != null) {
+            // Show local numbers instantly, then overlay the server aggregate
+            // (sum across all scanners) — best-effort, silent when offline.
             await _loadStatistics(binaInt, examDetails.imtTarix!);
+            await refreshServerStatistics();
           }
         }
 
@@ -197,36 +220,55 @@ class ParticipantProvider with ChangeNotifier {
     }
   }
 
-  // Load statistics from local SQLite database (no network needed)
+  // Recompute the displayed statistics. When a server aggregate has been
+  // fetched this session, show server-count (all scanners) + this device's
+  // own not-yet-synced scans on top — so the number reflects the whole
+  // building and never drops below reality between syncs. When offline / no
+  // server data yet, fall back to local-only counts (this device's scans).
   Future<void> _loadStatistics(int bina, String examDate) async {
     try {
       final binaStr = bina.toString();
       final stats =
           await DatabaseService.getLocalParticipantStats(binaStr, examDate);
 
-      if (_examDetails != null) {
-        final storedAllMen = _examDetails!.allManCount ?? 0;
-        final storedAllWomen = _examDetails!.allWomanCount ?? 0;
-        _examDetails = ExamDetails(
-          adBina: _examDetails!.adBina,
-          kodBina: _examDetails!.kodBina,
-          imtTarix: _examDetails!.imtTarix,
-          // Prefer totals from the downloaded data; fall back to local count
-          allManCount: storedAllMen > 0 ? storedAllMen : (stats['allMen'] ?? 0),
-          allWomanCount:
-              storedAllWomen > 0 ? storedAllWomen : (stats['allWomen'] ?? 0),
-          // Always use local registered counts (updated after every scan)
-          regManCount: stats['regMen'] ?? 0,
-          regWomanCount: stats['regWomen'] ?? 0,
-        );
-        if (kDebugMode) {
-          debugPrint(
-              '[Participant] Local stats — reg: ${_examDetails!.totalRegisteredCount}, not reg: ${_examDetails!.notRegisteredCount}');
-        }
-        notifyListeners();
+      if (_examDetails == null) return;
+
+      final storedAllMen = _examDetails!.allManCount ?? 0;
+      final storedAllWomen = _examDetails!.allWomanCount ?? 0;
+      final localAllMen =
+          storedAllMen > 0 ? storedAllMen : (stats['allMen'] ?? 0);
+      final localAllWomen =
+          storedAllWomen > 0 ? storedAllWomen : (stats['allWomen'] ?? 0);
+
+      int regMen, regWomen, allMen, allWomen;
+      if (_serverRegMen != null) {
+        // Server aggregate + this device's pending (unsynced) scans.
+        final unsynced =
+            await DatabaseService.getUnsyncedParticipantGenderCounts();
+        regMen = _serverRegMen! + (unsynced['men'] ?? 0);
+        regWomen = _serverRegWomen! + (unsynced['women'] ?? 0);
+        allMen = (_serverAllMen ?? 0) > 0 ? _serverAllMen! : localAllMen;
+        allWomen = (_serverAllWomen ?? 0) > 0 ? _serverAllWomen! : localAllWomen;
+      } else {
+        // Offline / no server data yet — local only.
+        regMen = stats['regMen'] ?? 0;
+        regWomen = stats['regWomen'] ?? 0;
+        allMen = localAllMen;
+        allWomen = localAllWomen;
       }
+
+      _examDetails = ExamDetails(
+        adBina: _examDetails!.adBina,
+        kodBina: _examDetails!.kodBina,
+        imtTarix: _examDetails!.imtTarix,
+        allManCount: allMen,
+        allWomanCount: allWomen,
+        regManCount: regMen,
+        regWomanCount: regWomen,
+      );
+      notifyListeners();
     } catch (e) {
-      if (kDebugMode) debugPrint('[Participant] Error loading local stats: $e');
+      if (kDebugMode) debugPrint('[Participant] Error loading stats: $e');
     }
   }
 
@@ -244,6 +286,43 @@ class ParticipantProvider with ChangeNotifier {
       print('Error updating participant statistics: $e');
       // Don't show error to user, statistics are not critical for functionality
     }
+  }
+
+  /// Pull the server-side aggregate (sum across all scanners in the building)
+  /// and refresh the displayed stats. No-op (keeps current numbers) when
+  /// offline or the building has no server record yet.
+  Future<void> refreshServerStatistics() async {
+    try {
+      if (_examDetails?.kodBina == null || _examDetails?.imtTarix == null) {
+        return;
+      }
+      final bina = int.tryParse(_examDetails!.kodBina!);
+      if (bina == null) return;
+
+      final server = await _httpService.getExamDetails(
+        bina: bina,
+        examDate: _examDetails!.imtTarix!,
+        persist: false,
+      );
+      if (server == null) return; // offline / not found → keep current numbers
+
+      _serverRegMen = server.regManCount ?? 0;
+      _serverRegWomen = server.regWomanCount ?? 0;
+      _serverAllMen = server.allManCount ?? 0;
+      _serverAllWomen = server.allWomanCount ?? 0;
+
+      await _loadStatistics(bina, _examDetails!.imtTarix!);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Participant] refreshServerStatistics error: $e');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _statsBusSub?.cancel();
+    super.dispose();
   }
 
   // Scan participant by QR code
@@ -406,6 +485,8 @@ class ParticipantProvider with ChangeNotifier {
         await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
         // Refresh the pending counter after dropping a queued record.
         await SyncService.instance.refreshPending();
+        // Recompute the displayed stats (drops the unsynced overlay).
+        await _updateParticipantStatistics();
         _setSuccess('Qeydiyyat ləğv edildi');
         StatisticsEventBus()
             .notifyStatisticsUpdate('ParticipantProvider.cancelRegistration');
@@ -427,6 +508,10 @@ class ParticipantProvider with ChangeNotifier {
 
         // Remove from local statistics cache
         await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
+
+        // Server count changed → pull fresh aggregate; also recompute display.
+        await refreshServerStatistics();
+        await _updateParticipantStatistics();
 
         // Notify statistics listeners
         StatisticsEventBus()

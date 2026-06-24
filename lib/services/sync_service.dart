@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'database_service.dart';
 import 'http_service.dart';
+import 'statistics_event_bus.dart';
 
 /// Background sync service.
 ///
@@ -227,6 +228,13 @@ class SyncService extends ChangeNotifier {
         _lastSyncSuccess = true;
       } else {
         _lastSyncSuccess = false;
+      }
+
+      // Sync cycle completed without failure → tell the stats providers to pull
+      // the fresh server-side aggregate (sum across all scanners in the
+      // building). No-op on the provider side when offline.
+      if (!anyFailure) {
+        StatisticsEventBus().notifyStatisticsUpdate('SyncService.synced');
       }
     } catch (e) {
       anyFailure = true;

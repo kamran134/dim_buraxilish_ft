@@ -1134,6 +1134,32 @@ class DatabaseService {
     return results.map((map) => _registeredParticipantFromMap(map)).toList();
   }
 
+  /// Count of THIS device's not-yet-synced participant registrations, split by
+  /// gender (gins=1 male, gins=2 female). Used to overlay the device's own
+  /// pending scans on top of the server aggregate so the displayed count never
+  /// drops below reality between syncs.
+  static Future<Map<String, int>> getUnsyncedParticipantGenderCounts() async {
+    final db = await database;
+    final men = Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gins = 1',
+        )) ??
+        0;
+    final women = Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gins = 2',
+        )) ??
+        0;
+    return {'men': men, 'women': women};
+  }
+
+  /// Count of THIS device's not-yet-synced supervisor registrations.
+  static Future<int> getUnsyncedSupervisorCount() async {
+    final db = await database;
+    return Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT COUNT(*) FROM $_registeredSupervisorsTable WHERE online = 0',
+        )) ??
+        0;
+  }
+
   /// Whether this participant still sits in the sync queue (registered offline
   /// and not yet sent to the server). Used so an offline cancel can drop the
   /// record locally without a server round-trip.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/supervisor_models.dart';
@@ -17,6 +18,21 @@ enum SupervisorScreenState {
 
 class SupervisorProvider with ChangeNotifier {
   final HttpService _httpService = HttpService();
+
+  SupervisorProvider() {
+    // After a successful sync, pull the server-side aggregate (all scanners).
+    _statsBusSub = StatisticsEventBus().onStatisticsUpdate.listen((source) {
+      if (source.startsWith('SyncService')) {
+        refreshServerStatistics();
+      }
+    });
+  }
+
+  StreamSubscription<String>? _statsBusSub;
+
+  // Server aggregate cache (null = not fetched yet this session → use local).
+  int? _serverReg;
+  int? _serverAll;
 
   // Current state
   SupervisorScreenState _screenState = SupervisorScreenState.initial;
@@ -170,24 +186,10 @@ class SupervisorProvider with ChangeNotifier {
         final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
         final examDate = examDetails.imtTarix ?? '';
 
-        if (kDebugMode) {
-          debugPrint(
-              '[Supervisor] Loading local stats: buildingCode=$buildingCode');
-        }
-
-        final stats = await DatabaseService.getLocalSupervisorStats(
-            buildingCode, examDate);
-        _supervisorDetails = SupervisorDetails(
-          allPersonCount: stats['allCount'] ?? 0,
-          regPersonCount: stats['regCount'] ?? 0,
-          buildingCode: buildingCode,
-          examDate: examDate,
-        );
-
-        if (kDebugMode) {
-          debugPrint(
-              '[Supervisor] Local stats — total=${_supervisorDetails!.allPersonCount}, reg=${_supervisorDetails!.regPersonCount}');
-        }
+        // Show local numbers instantly, then overlay the server aggregate
+        // (sum across all scanners) — best-effort, silent when offline.
+        await _recomputeStats(buildingCode, examDate);
+        await refreshServerStatistics();
       } else {
         _supervisorDetails = const SupervisorDetails(
           allPersonCount: 0,
@@ -204,6 +206,61 @@ class SupervisorProvider with ChangeNotifier {
       );
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Recompute the displayed supervisor stats. When a server aggregate has been
+  /// fetched this session, show server-count (all scanners) + this device's own
+  /// not-yet-synced registrations on top. Otherwise fall back to local-only.
+  Future<void> _recomputeStats(int buildingCode, String examDate) async {
+    try {
+      final stats =
+          await DatabaseService.getLocalSupervisorStats(buildingCode, examDate);
+      int reg, all;
+      if (_serverReg != null) {
+        final unsynced = await DatabaseService.getUnsyncedSupervisorCount();
+        reg = _serverReg! + unsynced;
+        all = (_serverAll ?? 0) > 0 ? _serverAll! : (stats['allCount'] ?? 0);
+      } else {
+        reg = stats['regCount'] ?? 0;
+        all = stats['allCount'] ?? 0;
+      }
+      _supervisorDetails = SupervisorDetails(
+        allPersonCount: all,
+        regPersonCount: reg,
+        buildingCode: buildingCode,
+        examDate: examDate,
+      );
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Supervisor] recompute stats error: $e');
+    }
+  }
+
+  /// Pull the server-side aggregate (sum across all scanners) and refresh the
+  /// displayed stats. No-op (keeps current numbers) when offline.
+  Future<void> refreshServerStatistics() async {
+    try {
+      final examDetails = await _httpService.getExamDetailsFromStorage();
+      if (examDetails == null) return;
+      final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+      final examDate = examDetails.imtTarix ?? '';
+      if (buildingCode == 0 || examDate.isEmpty) return;
+
+      final server = await _httpService.getSupervisorDetails(
+        buildingCode: buildingCode,
+        examDate: examDate,
+        persist: false,
+      );
+      if (server == null) return; // offline / not found → keep current numbers
+
+      _serverReg = server.regPersonCount;
+      _serverAll = server.allPersonCount;
+      await _recomputeStats(buildingCode, examDate);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Supervisor] refreshServerStatistics error: $e');
+      }
     }
   }
 
@@ -320,7 +377,7 @@ class SupervisorProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Update supervisor statistics from local DB after registration
+  // Update supervisor statistics after registration (server overlay + local).
   Future<void> _updateSupervisorStatistics() async {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
@@ -329,19 +386,7 @@ class SupervisorProvider with ChangeNotifier {
           examDetails.imtTarix != null) {
         final buildingCode = int.tryParse(examDetails.kodBina!);
         if (buildingCode != null) {
-          final stats = await DatabaseService.getLocalSupervisorStats(
-              buildingCode, examDetails.imtTarix!);
-          _supervisorDetails = SupervisorDetails(
-            allPersonCount: stats['allCount'] ?? 0,
-            regPersonCount: stats['regCount'] ?? 0,
-            buildingCode: buildingCode,
-            examDate: examDetails.imtTarix,
-          );
-          if (kDebugMode) {
-            debugPrint(
-                '[Supervisor] Stats updated — reg=${_supervisorDetails!.regPersonCount}');
-          }
-          notifyListeners();
+          await _recomputeStats(buildingCode, examDetails.imtTarix!);
         }
       }
     } catch (e) {
@@ -407,6 +452,7 @@ class SupervisorProvider with ChangeNotifier {
         await DatabaseService.unregisterSupervisor(
             _currentSupervisor!.cardNumber);
         await SyncService.instance.refreshPending();
+        await _updateSupervisorStatistics();
         _setSuccess('Qeydiyyat ləğv edildi');
         StatisticsEventBus()
             .notifyStatisticsUpdate('SupervisorProvider.cancelRegistration');
@@ -431,6 +477,10 @@ class SupervisorProvider with ChangeNotifier {
         await DatabaseService.unregisterSupervisor(
             _currentSupervisor!.cardNumber);
 
+        // Server count changed → pull fresh aggregate; also recompute display.
+        await refreshServerStatistics();
+        await _updateSupervisorStatistics();
+
         // Notify statistics listeners
         StatisticsEventBus()
             .notifyStatisticsUpdate('SupervisorProvider.cancelRegistration');
@@ -452,6 +502,7 @@ class SupervisorProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _statsBusSub?.cancel();
     super.dispose();
   }
 }

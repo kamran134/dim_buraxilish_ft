@@ -337,10 +337,13 @@ class HttpService {
     }
   }
 
-  /// Get exam details/statistics from API
+  /// Get exam details/statistics from API.
+  /// [persist] controls whether the result is written to secure storage.
+  /// Pass false for periodic stats polling to avoid unnecessary storage writes.
   Future<ExamDetails?> getExamDetails({
     required int bina,
     required String examDate,
+    bool persist = true,
   }) async {
     try {
       print('Getting exam details: bina=$bina, examDate=$examDate');
@@ -360,8 +363,8 @@ class HttpService {
         final data = response.data['data'];
         if (data != null) {
           final details = ExamDetails.fromJson(data);
-          // Store in local storage
-          await storeExamDetails(details);
+          // Store in local storage (skipped for periodic stats polling)
+          if (persist) await storeExamDetails(details);
           return details;
         }
       }
@@ -592,10 +595,12 @@ class HttpService {
     }
   }
 
-  /// Get supervisor details/statistics from API
+  /// Get supervisor details/statistics from API.
+  /// [persist] controls whether the result is written to secure storage.
   Future<SupervisorDetails?> getSupervisorDetails({
     required int buildingCode,
     required String examDate,
+    bool persist = true,
   }) async {
     try {
       // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
@@ -619,8 +624,8 @@ class HttpService {
         final data = response.data['data'];
         if (data != null) {
           final details = SupervisorDetails.fromJson(data);
-          // Store in local storage
-          await storeSupervisorDetails(details);
+          // Store in local storage (skipped for periodic stats polling)
+          if (persist) await storeSupervisorDetails(details);
           return details;
         }
       }
