@@ -31,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isAdmin = false;
   String _partialErrorMessage = '';
+  bool _partialMissingParticipants = false;
 
   String get _resolvedUsername {
     if (_isAdmin) {
@@ -191,6 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
             : 'Nəzarətçilər yüklənmədi.';
         setState(() {
           _partialErrorMessage = msg;
+          _partialMissingParticipants = missingParticipants;
           _downloadState = _DownloadState.partialData;
         });
       case OfflineDownloadResult.emptyData:
@@ -404,6 +406,27 @@ class _LoginScreenState extends State<LoginScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () {
+            final authProvider =
+                Provider.of<AuthProvider>(context, listen: false);
+            _navigateToMain(authProvider);
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+          child: Text(
+            _partialMissingParticipants
+                ? 'Bu imtahanda iştirakçı yoxdur'
+                : 'Bu imtahanda nəzarətçi yoxdur',
           ),
         ),
       ],
