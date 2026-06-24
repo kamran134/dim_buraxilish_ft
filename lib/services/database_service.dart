@@ -302,35 +302,35 @@ class DatabaseService {
       Participant participant, String registrationDate) async {
     final db = await database;
 
-    // Update registration date in offline table
-    await db.update(
-      _participantsTable,
-      {'qeydiyyat': registrationDate},
-      where: 'is_N = ?',
-      whereArgs: [participant.isN],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        _participantsTable,
+        {'qeydiyyat': registrationDate},
+        where: 'is_N = ?',
+        whereArgs: [participant.isN],
+      );
 
-    // Insert/update in registered participants table
-    await db.insert(
-      _registeredParticipantsTable,
-      {
-        'is_N': participant.isN,
-        'soy': participant.soy,
-        'adi': participant.adi,
-        'baba': participant.baba,
-        'bina': participant.bina,
-        'imt_Tarix': participant.imtTarix,
-        'qeydiyyat': registrationDate,
-        'online': 0, // Offline registration
-        'gins': participant.gins,
-        'photo': participant.photo,
-        'zal': participant.zal,
-        'mertebe': participant.mertebe,
-        'sira': participant.sira,
-        'yer': participant.yer,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+      await txn.insert(
+        _registeredParticipantsTable,
+        {
+          'is_N': participant.isN,
+          'soy': participant.soy,
+          'adi': participant.adi,
+          'baba': participant.baba,
+          'bina': participant.bina,
+          'imt_Tarix': participant.imtTarix,
+          'qeydiyyat': registrationDate,
+          'online': 0,
+          'gins': participant.gins,
+          'photo': participant.photo,
+          'zal': participant.zal,
+          'mertebe': participant.mertebe,
+          'sira': participant.sira,
+          'yer': participant.yer,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
   }
 
   /// Get all registered participants
