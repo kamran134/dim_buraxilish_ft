@@ -149,6 +149,36 @@ class AppTheme {
         onError: AppColors.textOnDark,
       ),
       scaffoldBackgroundColor: AppColors.backgroundDark,
+      cardTheme: CardThemeData(
+        color: AppColors.surfaceDark,
+        elevation: AppSpacing.cardElevation,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusMD),
+        ),
+        margin: AppSpacing.paddingSM,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surfaceDark,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusSM),
+          borderSide: const BorderSide(color: AppColors.darkGradient3),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusSM),
+          borderSide: const BorderSide(color: AppColors.darkGradient3),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusSM),
+          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusSM),
+          borderSide: const BorderSide(color: AppColors.error),
+        ),
+        contentPadding: AppSpacing.paddingMD,
+        hintStyle: TextStyle(color: AppColors.textOnDark.withValues(alpha: 0.4)),
+      ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.2),
         headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textOnDark, height: 1.3),

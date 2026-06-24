@@ -13,6 +13,8 @@ import 'providers/notifications_provider.dart';
 import 'services/sync_service.dart';
 import 'services/emergency_message_service.dart';
 import 'services/push_notification_service.dart';
+import 'constants/app_version.dart';
+import 'utils/app_version.dart';
 import 'design/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -20,6 +22,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Single source of truth for the app version: load it from pubspec (via
+  // PackageInfo) once, so the UI, the version sent to the server, and the
+  // update check all show the same value.
+  AppVersion.version = await getAppVersion();
   await Firebase.initializeApp();
   EmergencyMessageService.instance.init(navigatorKey);
   PushNotificationService.instance.init();

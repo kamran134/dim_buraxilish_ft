@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../constants/app_version.dart';
 import '../widgets/common/logout_button.dart';
+import '../design/app_colors.dart';
 import 'offline_database_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -11,7 +12,11 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.lightBackground,
       appBar: AppBar(
         title: Consumer<FontProvider>(
           builder: (context, fontProvider, child) {
@@ -30,38 +35,39 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Theme Settings Section
             _buildSectionCard(
               context: context,
+              isDark: isDark,
               title: 'Görünüş',
               icon: Icons.palette_outlined,
               children: [
-                _buildThemeSelector(context),
+                _buildThemeSelector(context, isDark),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Font Settings Section
             _buildSectionCard(
               context: context,
+              isDark: isDark,
               title: 'Şrift ölçüsü',
               icon: Icons.text_fields_outlined,
               children: [
-                _buildFontSizeSelector(context),
+                _buildFontSizeSelector(context, isDark),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Offline Database Section
             _buildSectionCard(
               context: context,
+              isDark: isDark,
               title: 'Oflayn baza',
               icon: Icons.storage_outlined,
               children: [
                 _buildNavigationTile(
                   context: context,
+                  isDark: isDark,
                   icon: Icons.storage_outlined,
                   label: 'Oflayn bazanı idarə et',
                   onTap: () => Navigator.of(context).push(
@@ -73,11 +79,11 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // Logout Section
             _buildSectionCard(
               context: context,
+              isDark: isDark,
               title: 'Hesab',
               icon: Icons.account_circle_outlined,
               children: [
@@ -87,8 +93,7 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // About Section
-            _buildAboutSection(context),
+            _buildAboutSection(context, isDark),
           ],
         ),
       ),
@@ -97,6 +102,7 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildSectionCard({
     required BuildContext context,
+    required bool isDark,
     required String title,
     required IconData icon,
     required List<Widget> children,
@@ -105,6 +111,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, fontProvider, child) {
         return Card(
           elevation: 2,
+          color: isDark ? AppColors.surfaceDark : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -141,6 +148,7 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildNavigationTile({
     required BuildContext context,
+    required bool isDark,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -154,13 +162,20 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             child: Row(
               children: [
-                Icon(icon, size: fontProvider.getTextSize(20),
+                Icon(icon,
+                    size: fontProvider.getTextSize(20),
                     color: const Color(0xFF1976D2)),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Text(label, style: fontProvider.bodyLarge),
+                  child: Text(
+                    label,
+                    style: fontProvider.bodyLarge.copyWith(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey),
+                Icon(Icons.chevron_right,
+                    color: isDark ? Colors.white38 : Colors.grey),
               ],
             ),
           ),
@@ -169,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildThemeSelector(BuildContext context) {
+  Widget _buildThemeSelector(BuildContext context, bool isDark) {
     return Consumer2<ThemeProvider, FontProvider>(
       builder: (context, themeProvider, fontProvider, child) {
         return Column(
@@ -187,12 +202,14 @@ class SettingsScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected
-                        ? const Color(0xFF1976D2).withOpacity(0.1)
+                        ? const Color(0xFF1976D2).withValues(alpha: 0.15)
                         : null,
                     border: Border.all(
                       color: isSelected
                           ? const Color(0xFF1976D2)
-                          : Colors.grey.withOpacity(0.3),
+                          : isDark
+                              ? Colors.white24
+                              : Colors.grey.withValues(alpha: 0.3),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -203,14 +220,20 @@ class SettingsScreen extends StatelessWidget {
                         size: fontProvider.getTextSize(20),
                         color: isSelected
                             ? const Color(0xFF1976D2)
-                            : Theme.of(context).iconTheme.color,
+                            : isDark
+                                ? Colors.white70
+                                : Theme.of(context).iconTheme.color,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
                           themeProvider.getThemeDisplayName(themeMode),
                           style: fontProvider.bodyLarge.copyWith(
-                            color: isSelected ? const Color(0xFF1976D2) : null,
+                            color: isSelected
+                                ? const Color(0xFF1976D2)
+                                : isDark
+                                    ? Colors.white
+                                    : Colors.black87,
                             fontWeight: isSelected
                                 ? FontWeight.w500
                                 : FontWeight.normal,
@@ -234,7 +257,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFontSizeSelector(BuildContext context) {
+  Widget _buildFontSizeSelector(BuildContext context, bool isDark) {
     return Consumer<FontProvider>(
       builder: (context, fontProvider, child) {
         return Column(
@@ -252,12 +275,14 @@ class SettingsScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: isSelected
-                        ? const Color(0xFF1976D2).withOpacity(0.1)
+                        ? const Color(0xFF1976D2).withValues(alpha: 0.15)
                         : null,
                     border: Border.all(
                       color: isSelected
                           ? const Color(0xFF1976D2)
-                          : Colors.grey.withOpacity(0.3),
+                          : isDark
+                              ? Colors.white24
+                              : Colors.grey.withValues(alpha: 0.3),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -268,7 +293,9 @@ class SettingsScreen extends StatelessWidget {
                         size: fontProvider.getFontSizeMultiplier(fontSize) * 20,
                         color: isSelected
                             ? const Color(0xFF1976D2)
-                            : Theme.of(context).iconTheme.color,
+                            : isDark
+                                ? Colors.white70
+                                : Theme.of(context).iconTheme.color,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -278,7 +305,11 @@ class SettingsScreen extends StatelessWidget {
                             fontSize:
                                 fontProvider.getFontSizeMultiplier(fontSize) *
                                     16,
-                            color: isSelected ? const Color(0xFF1976D2) : null,
+                            color: isSelected
+                                ? const Color(0xFF1976D2)
+                                : isDark
+                                    ? Colors.white
+                                    : Colors.black87,
                             fontWeight: isSelected
                                 ? FontWeight.w500
                                 : FontWeight.normal,
@@ -302,17 +333,19 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAboutSection(BuildContext context) {
+  Widget _buildAboutSection(BuildContext context, bool isDark) {
     return Consumer<FontProvider>(
       builder: (context, fontProvider, child) {
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.grey.withOpacity(0.2),
+              color: isDark
+                  ? Colors.white12
+                  : Colors.grey.withValues(alpha: 0.2),
             ),
           ),
           child: Column(
@@ -325,22 +358,29 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Haqqında',
-                style: fontProvider.titleMedium,
+                style: fontProvider.titleMedium.copyWith(
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Buraxılış Skan Sistemi',
-                style: fontProvider.bodyMedium,
+                style: fontProvider.bodyMedium.copyWith(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Versiya ${AppVersion.version}',
-                style: fontProvider.labelSmall,
+                style: fontProvider.labelSmall.copyWith(
+                  color: isDark ? Colors.white38 : Colors.grey[600],
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Dövlət İmtahan Mərkəzi © 2025',
                 style: fontProvider.labelSmall.copyWith(
+                  color: isDark ? Colors.white54 : Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
