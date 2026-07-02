@@ -65,7 +65,13 @@
       "PowerShell(& \"C:\\\\Users\\\\kamran.kz\\\\Documents\\\\Bats\\\\dimburaxilish\\\\deploy_frontend.bat\")",
       "PowerShell(Get-Process | Where-Object { $_.Name -match \"node|ng\" } | Select-Object Id, Name, CPU, WorkingSet)",
       "Bash(xargs head -30)",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "Bash(xargs grep -l \"class DeviceToken\")",
+      "Bash(dotnet --version)",
+      "Bash(cat src/environments/environment.ts)",
+      "Bash(cat src/app/models/Dtos/deviceLoginDto.ts)",
+      "Bash(npx tsc *)",
+      "Bash(npx ng *)"
     ]
   }
 }

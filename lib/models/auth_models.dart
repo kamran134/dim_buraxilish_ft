@@ -84,11 +84,15 @@ class LoginModel {
   final String userName;
   final String password;
   final String examDate;
+  final String? deviceId;
+  final String? deviceName;
 
   LoginModel({
     required this.userName,
     required this.password,
     required this.examDate,
+    this.deviceId,
+    this.deviceName,
   });
 
   factory LoginModel.fromJson(Map<String, dynamic> json) {
@@ -96,6 +100,8 @@ class LoginModel {
       userName: json['userName'] as String,
       password: json['password'] as String,
       examDate: json['examDate'] as String,
+      deviceId: json['deviceId'] as String?,
+      deviceName: json['deviceName'] as String?,
     );
   }
 
@@ -104,6 +110,8 @@ class LoginModel {
       'userName': userName,
       'password': password,
       'examDate': examDate,
+      if (deviceId != null) 'deviceId': deviceId,
+      if (deviceName != null) 'deviceName': deviceName,
     };
   }
 }
@@ -112,11 +120,13 @@ class AccessTokenModel {
   final String token;
   final String expiration;
   final String? role;
+  final String? refreshToken;
 
   AccessTokenModel({
     required this.token,
     required this.expiration,
     this.role,
+    this.refreshToken,
   });
 
   factory AccessTokenModel.fromJson(Map<String, dynamic> json) {
@@ -124,6 +134,7 @@ class AccessTokenModel {
       token: json['token'] as String,
       expiration: json['expiration'] as String,
       role: json['role'] as String?,
+      refreshToken: json['refreshToken'] as String?,
     );
   }
 
@@ -132,6 +143,7 @@ class AccessTokenModel {
       'token': token,
       'expiration': expiration,
       if (role != null) 'role': role,
+      if (refreshToken != null) 'refreshToken': refreshToken,
     };
   }
 

@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'device_identity_service.dart';
 import 'emergency_message_service.dart';
+import 'http_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _onBackgroundMessage(RemoteMessage message) async {
@@ -20,7 +22,6 @@ class PushNotificationService {
       'https://eservices.dim.gov.az/buraxilishScan/api/api/devicetokens';
 
   String? _buildingCode;
-  String? _authToken;
   String? _fcmToken;
 
   // ─── Init (call once in main) ──────────────────────────────────────────────
@@ -46,10 +47,8 @@ class PushNotificationService {
 
   Future<void> activate({
     required String buildingCode,
-    required String authToken,
   }) async {
     _buildingCode = buildingCode;
-    _authToken = authToken;
 
     final settings = await FirebaseMessaging.instance.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
@@ -70,14 +69,20 @@ class PushNotificationService {
   // ─── Call on logout ────────────────────────────────────────────────────────
 
   Future<void> deactivate() async {
-    if (_fcmToken == null || _authToken == null) return;
+    if (_fcmToken == null) return;
+    final authToken = await HttpService().getToken();
+    if (authToken == null) {
+      _buildingCode = null;
+      _fcmToken = null;
+      return;
+    }
     try {
       await http
           .delete(
             Uri.parse(_tokenUrl),
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_authToken',
+              'Authorization': 'Bearer $authToken',
             },
             body: jsonEncode({'fcmToken': _fcmToken}),
           )
@@ -87,7 +92,6 @@ class PushNotificationService {
       debugPrint('[Push] deactivate error: $e');
     } finally {
       _buildingCode = null;
-      _authToken = null;
       _fcmToken = null;
     }
   }
@@ -95,18 +99,31 @@ class PushNotificationService {
   // ─── Internal ──────────────────────────────────────────────────────────────
 
   Future<void> _uploadToken(String fcmToken) async {
-    if (_buildingCode == null || _authToken == null) return;
+    if (_buildingCode == null) return;
+    // Always fetch a fresh token instead of relying on a cached one — the JWT
+    // captured at login can expire while the app stays logged in across an
+    // exam period, and Firebase can rotate the FCM token long after that.
+    // getToken() transparently refreshes an expired JWT via the refresh token.
+    final authToken = await HttpService().getToken();
+    if (authToken == null) {
+      debugPrint('[Push] No valid session token, skipping upload.');
+      return;
+    }
     try {
+      final deviceId = await DeviceIdentityService.instance.getDeviceId();
+      final deviceName = await DeviceIdentityService.instance.getDeviceName();
       await http
           .post(
             Uri.parse(_tokenUrl),
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_authToken',
+              'Authorization': 'Bearer $authToken',
             },
             body: jsonEncode({
               'buildingCode': _buildingCode,
               'fcmToken': fcmToken,
+              'deviceId': deviceId,
+              if (deviceName != null) 'deviceName': deviceName,
             }),
           )
           .timeout(const Duration(seconds: 5));

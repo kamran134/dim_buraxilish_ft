@@ -92,7 +92,6 @@ class AuthProvider extends ChangeNotifier {
             );
             PushNotificationService.instance.activate(
               buildingCode: bina.toString(),
-              authToken: storedToken,
             );
           }
         }
@@ -198,7 +197,6 @@ class AuthProvider extends ChangeNotifier {
         );
         PushNotificationService.instance.activate(
           buildingCode: bina.toString(),
-          authToken: response.data.token,
         );
 
         _clearError();

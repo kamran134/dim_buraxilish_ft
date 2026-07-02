@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/auth_models.dart';
+import 'device_identity_service.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/monitor_models.dart';
@@ -18,6 +19,22 @@ class HttpService {
 
   late final Dio _dio;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  // Separate client (no auth interceptor) used only for /auth/refresh calls,
+  // so refreshing the token never recurses back into getToken().
+  static final Dio _plainDio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+  ));
+
+  // Shared across all HttpService instances so concurrent 401s don't each
+  // burn the single-use refresh token racing one another.
+  static Future<AccessTokenModel?>? _refreshInFlight;
 
   HttpService() {
     _dio = Dio(BaseOptions(
@@ -48,7 +65,10 @@ class HttpService {
     ));
   }
 
-  // Get stored JWT token
+  // Get stored JWT token. If it has expired, transparently try to renew it
+  // via the refresh token before giving up — otherwise a phone left logged
+  // in past the access-token lifetime silently stops working (including FCM
+  // token uploads, which is what caused emergency notifications to go dead).
   Future<String?> getToken() async {
     try {
       final tokenData = await _secureStorage.read(key: jwtTokenKey);
@@ -59,17 +79,50 @@ class HttpService {
 
         if (!token.isExpired) {
           return token.token;
-        } else {
-          // Token expired, remove it
-          await removeToken();
-          return null;
         }
+
+        final refreshed = await _refreshAccessToken(token.refreshToken);
+        if (refreshed != null) return refreshed.token;
+
+        await removeToken();
+        return null;
       }
       return null;
     } catch (error) {
       if (kDebugMode) print('Error getting token: $error');
       return null;
     }
+  }
+
+  Future<AccessTokenModel?> _refreshAccessToken(String? refreshToken) {
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return Future.value(null);
+    }
+    return _refreshInFlight ??=
+        _performRefresh(refreshToken).whenComplete(() {
+      _refreshInFlight = null;
+    });
+  }
+
+  Future<AccessTokenModel?> _performRefresh(String refreshToken) async {
+    try {
+      final deviceId = await DeviceIdentityService.instance.getDeviceId();
+      final response = await _plainDio.post('/auth/refresh', data: {
+        'refreshToken': refreshToken,
+        'deviceId': deviceId,
+      });
+
+      final body = response.data;
+      if (body is Map && body['success'] == true && body['data'] != null) {
+        final newToken =
+            AccessTokenModel.fromJson(body['data'] as Map<String, dynamic>);
+        await storeToken(newToken);
+        return newToken;
+      }
+    } catch (error) {
+      if (kDebugMode) print('Token refresh failed: $error');
+    }
+    return null;
   }
 
   // Get full stored AccessToken model
@@ -135,6 +188,8 @@ class HttpService {
         userName: userName,
         password: password,
         examDate: examDate,
+        deviceId: await DeviceIdentityService.instance.getDeviceId(),
+        deviceName: await DeviceIdentityService.instance.getDeviceName(),
       );
 
       final response = await _dio.post(
