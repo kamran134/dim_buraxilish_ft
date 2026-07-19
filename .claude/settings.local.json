@@ -71,7 +71,14 @@
       "Bash(cat src/environments/environment.ts)",
       "Bash(cat src/app/models/Dtos/deviceLoginDto.ts)",
       "Bash(npx tsc *)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "PowerShell(Get-Command sqlcmd -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue)",
+      "PowerShell(sqlcmd -S dimsqlcluster -U Userzahidm -P 'dkf@ghd9n_j2j' -Q \"SET NOCOUNT ON; SELECT name, database_id, create_date FROM sys.databases ORDER BY name\" -C)",
+      "PowerShell(sqlcmd -S dimsqlcluster -U Userzahidm -P 'dkf@ghd9n_j2j' -d QRScaner -Q \"SET NOCOUNT ON; SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ORDER BY TABLE_NAME\" -C)",
+      "PowerShell(sqlcmd -S dimsqlcluster -U Userzahidm -P 'dkf@ghd9n_j2j' -d QRScaner -Q \"SET NOCOUNT ON; SELECT DISTINCT IMT_TARIX FROM Buraxilish ORDER BY IMT_TARIX DESC\" -C -w 100 -h -1)",
+      "PowerShell(dotnet build \"d:\\\\Others Programs\\\\BuraxilishBackend\\\\Buraxilis.sln\" -v q 2>&1)",
+      "PowerShell(sqlcmd -S dimsqlcluster -d QRScaner -U Userzahidm -P 'dkf@ghd9n_j2j' -Q \"SELECT 'Buraxilish' t, COUNT\\(DISTINCT CONCAT\\(IMT_TARIX,'|',IMT_BEGIN,'|',erize,'|',BINA\\)\\) dgroups FROM Buraxilish UNION ALL SELECT 'Temp_ForBuraxilish', COUNT\\(DISTINCT CONCAT\\(IMT_TARIX,'|',IMT_BEGIN,'|',erize,'|',BINA\\)\\) FROM Temp_ForBuraxilish UNION ALL SELECT 'Temp_ForBuraxilish_qab', COUNT\\(DISTINCT CONCAT\\(IMT_TARIX,'|',IMT_BEGIN,'|',erize,'|',ISNULL\\(BINA,''\\)\\)\\) FROM Temp_ForBuraxilish_qab\" -W -s\"|\")"
     ]
   }
 }

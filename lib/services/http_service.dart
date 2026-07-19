@@ -1344,6 +1344,7 @@ class HttpService {
     required String appVersion,
   }) async {
     try {
+      final deviceId = await DeviceIdentityService.instance.getDeviceId();
       await _dio.post(
         '/admin/downloadcomplete',
         data: {
@@ -1353,6 +1354,7 @@ class HttpService {
           'participantCount': participantCount,
           'supervisorCount': supervisorCount,
           'appVersion': appVersion,
+          'deviceId': deviceId,
         },
       );
     } catch (e) {
