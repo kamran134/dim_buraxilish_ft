@@ -169,8 +169,13 @@ class AuthProvider extends ChangeNotifier {
         final adBinaFromToken =
             RoleHelper.getAdBinaFromToken(response.data.token);
 
-        // Extract bina from userName (following the original logic)
-        final bina = int.tryParse(userName.substring(4)) ?? 0;
+        // Extract bina from the JWT claim; fall back to userName parsing
+        // (the original logic) only when the claim is missing.
+        final binaFromToken = RoleHelper.getBinaFromToken(response.data.token);
+        final bina = int.tryParse(binaFromToken ?? '') ??
+            (userName.length > 4
+                ? int.tryParse(userName.substring(4)) ?? 0
+                : 0);
 
         // Store exam details for participant scanning
         final examDetails = ExamDetails(

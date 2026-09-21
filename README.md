@@ -1,16 +1,32 @@
-# dim_buraxilish_ft
+# dim_buraxilish_ft — Mobile
 
-A new Flutter project.
+Приложение сканирования для системы контроля допуска на экзамен "Buraxılış" (DİM, Азербайджан): скан imtahan rəhbərləri/nəzarətçilər/участников на входе в здание, офлайн-очередь, push/emergency-уведомления. Общесистемное описание — `D:/Others Programs/BuraxilishBackend/docs/SYSTEM_OVERVIEW.md`.
 
-## Getting Started
+## Стек
 
-This project is a starting point for a Flutter application.
+Flutter (Dart SDK `>=3.1.3 <4.0.0`) · `dio` (HTTP) + `http` (точечно) · `provider` (state) · `sqflite` (офлайн-БД) · `flutter_secure_storage` (токены) · `mobile_scanner` (QR/Barcode) · `signalr_netcore` (emergency) · `firebase_messaging` (push).
 
-A few resources to get you started if this is your first Flutter project:
+## Сборка и запуск на реальном устройстве
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Эмулятор не используется — приложение работает с камерой и требует реальное устройство.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+flutter pub get
+flutter run --release
+```
+
+## Base URL
+
+Захардкожен в коде: `HttpService.baseUrl` в `lib/services/http_service.dart` (сейчас `https://eservices.dim.gov.az/buraxilishScan/api/api`). Отдельной dev/staging конфигурации и флейворов сборки нет — при необходимости смены окружения нужно менять константу в нескольких местах (см. `docs/ARCHITECTURE.md`, раздел 13).
+
+## Сборка релиза
+
+- **iOS**: через `codemagic.yaml` (workflow `ios-release`) — `flutter build ipa --release`, публикация в TestFlight. Релиза для iOS на данный момент нет (инфраструктура готова, причина — организационная).
+- **Android**: публикуется в Google Play. Сборка — `C:\Users\kamran.kz\Documents\bats\dimburaxilish\build_release.bat` (apk + aab → `D:\FlutterBuilds\dim_buraxilish_ft\<timestamp>\`). Требует `android/key.properties` (keyAlias/keyPassword/storeFile/storePassword) — не в git. Перед сборкой поднять `version` в `pubspec.yaml`.
+
+## Документация
+
+- `docs/ARCHITECTURE.md` — стек, версия/сборка, провайдеры, сервисы, экраны, auth, офлайн-режим (SQLite/sync), сканирование, push/emergency, статистика, карта API-вызовов, мёртвый код
+- `D:/Others Programs/BuraxilishBackend/docs/SYSTEM_OVERVIEW.md` — общесистемный контекст, роли, глоссарий, сквозные контракты
+
+Связанный документ: `../SUPERVISOR_ENDPOINTS_ANALYSIS.md` (анализ эндпоинтов супервайзеров).
