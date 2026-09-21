@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 class Participant {
   final int isN; // İş nömrəsi
   final String adi; // Ad
@@ -7,7 +10,8 @@ class Participant {
   final String zal; // Zal
   final String sira; // Sıra
   final String yer; // Yer
-  final String? photo; // Şəkil
+  final String? photo; // Şəkil (base64, onlayn skan və s.)
+  final Uint8List? photoBytes; // Şəkil (BLOB, oflayn baza)
   final String? qeydiyyat; // Qeydiyyat tarixi
   final String bina; // Bina
   final String imtTarix; // İmtahan tarixi
@@ -23,11 +27,20 @@ class Participant {
     required this.sira,
     required this.yer,
     this.photo,
+    this.photoBytes,
     this.qeydiyyat,
     required this.bina,
     required this.imtTarix,
     this.gins = 0,
   });
+
+  /// Фото как base64 (для мест, где нужна строка): из photo, либо из photoBytes.
+  String? get photoBase64 =>
+      photo ?? (photoBytes != null ? base64Encode(photoBytes!) : null);
+
+  bool get hasPhoto =>
+      (photo != null && photo!.isNotEmpty) ||
+      (photoBytes != null && photoBytes!.isNotEmpty);
 
   factory Participant.fromJson(Map<String, dynamic> json) {
     return Participant(

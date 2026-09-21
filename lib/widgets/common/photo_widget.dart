@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 /// Переиспользуемый виджет для отображения фото из base64 строки
 class PhotoWidget extends StatelessWidget {
   final String? photoData;
+  final Uint8List? photoBytes;
   final IconData placeholderIcon;
   final double? width;
   final double? height;
@@ -16,6 +17,7 @@ class PhotoWidget extends StatelessWidget {
   const PhotoWidget({
     super.key,
     this.photoData,
+    this.photoBytes,
     this.placeholderIcon = Icons.person,
     this.width,
     this.height,
@@ -27,11 +29,13 @@ class PhotoWidget extends StatelessWidget {
   /// Фабричный метод для фото участника
   factory PhotoWidget.participant({
     String? photoData,
+    Uint8List? photoBytes,
     double? width,
     double? height,
   }) {
     return PhotoWidget(
       photoData: photoData,
+      photoBytes: photoBytes,
       placeholderIcon: Icons.person,
       width: width,
       height: height,
@@ -54,6 +58,18 @@ class PhotoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (photoBytes != null && photoBytes!.isNotEmpty) {
+      return Image.memory(
+        photoBytes!,
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholder();
+        },
+      );
+    }
+
     if (photoData == null || photoData!.isEmpty) {
       return _buildPlaceholder();
     }

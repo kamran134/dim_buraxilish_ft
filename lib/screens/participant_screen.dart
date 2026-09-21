@@ -243,6 +243,7 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                       subtitle: 'İş nömrəsi: ${participant.isN}',
                       photoWidget: PhotoWidget.participant(
                         photoData: participant.photo,
+                        photoBytes: participant.photoBytes,
                       ),
                       isRepeatEntry: provider.isRepeatEntry,
                       borderColor: provider.currentViolation != null &&

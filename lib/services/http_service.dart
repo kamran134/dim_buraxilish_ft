@@ -743,7 +743,6 @@ class HttpService {
 
       print(
           'getParticipantsByBuilding - Response status: ${response.statusCode}');
-      print('getParticipantsByBuilding - Response data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -760,6 +759,189 @@ class HttpService {
       print('Error getting participants by building: $e');
       return [];
     }
+  }
+
+  /// Get all participants by building and exam date, WITHOUT photos (for
+  /// offline download). Same response fields as [getParticipantsByBuilding],
+  /// just lighter — photos are downloaded separately in bulk via
+  /// [downloadParticipantPhotos] and merged into SQLite afterwards.
+  ///
+  /// Unlike [getParticipantsByBuilding], errors are NOT swallowed here — they
+  /// propagate to the caller (OfflineDatabaseProvider already wraps this call
+  /// in its own try/catch that logs and flags the network error).
+  Future<List<Participant>> getParticipantsLightByBuilding({
+    required String buildingCode,
+    required String examDate,
+  }) async {
+    // DON'T FORMAT DATE - same as getParticipantsByBuilding
+    final response = await _dio.get(
+      '/buraxilishes/getallparticipantlightinbuildingandexamdate',
+      queryParameters: {
+        'bina': buildingCode,
+        'examDate': examDate, // Use original date format like React Native
+      },
+      options: Options(receiveTimeout: const Duration(minutes: 5)),
+    );
+
+    if (response.statusCode == 200 && response.data['success'] == true) {
+      final List<dynamic> data = response.data['data'] ?? [];
+      return data.map((json) => Participant.fromJson(json)).toList();
+    }
+
+    return [];
+  }
+
+  /// Download participant photos as a binary stream (BXP1 protocol) and hand
+  /// them to [onBatch] in batches, instead of loading everything into memory.
+  ///
+  /// Wire format (little-endian):
+  /// ```
+  /// magic  : 4 bytes ASCII "BXP1"
+  /// count  : int32
+  /// record x count:
+  ///   isN  : int64
+  ///   len  : int32  (> 0)
+  ///   data : len bytes
+  /// ```
+  /// Returns the number of photos actually received. If the stream ends
+  /// early (server-side race), that's not an error — whatever was read is
+  /// returned. An EOF in the middle of a record is a [FormatException].
+  Future<int> downloadParticipantPhotos({
+    required String buildingCode,
+    required String examDate,
+    required Future<void> Function(List<MapEntry<int, Uint8List>> batch)
+        onBatch,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final response = await _dio.get(
+      '/buraxilishes/getparticipantphotosstream',
+      queryParameters: {
+        'bina': buildingCode,
+        'examDate': examDate,
+      },
+      options: Options(
+        responseType: ResponseType.stream,
+        receiveTimeout: const Duration(minutes: 10),
+      ),
+    );
+
+    final stream = (response.data as ResponseBody).stream;
+
+    // Accumulator: a queue of not-yet-consumed chunks plus an offset into
+    // the first one. take(n) only consumes bytes once at least n are
+    // available, so a short read never corrupts the parse state.
+    final chunks = <Uint8List>[];
+    int chunkOffset = 0;
+    int available = 0;
+
+    void addChunk(Uint8List chunk) {
+      if (chunk.isEmpty) return;
+      chunks.add(chunk);
+      available += chunk.length;
+    }
+
+    Uint8List? take(int n) {
+      if (available < n) return null;
+      final result = Uint8List(n);
+      var written = 0;
+      while (written < n) {
+        final chunk = chunks.first;
+        final remainingInChunk = chunk.length - chunkOffset;
+        final needed = n - written;
+        final toCopy = remainingInChunk < needed ? remainingInChunk : needed;
+        result.setRange(written, written + toCopy, chunk, chunkOffset);
+        written += toCopy;
+        chunkOffset += toCopy;
+        if (chunkOffset >= chunk.length) {
+          chunks.removeAt(0);
+          chunkOffset = 0;
+        }
+      }
+      available -= n;
+      return result;
+    }
+
+    bool magicChecked = false;
+    int? count;
+    int? pendingIsN;
+    int? pendingLen;
+    int received = 0;
+    var batch = <MapEntry<int, Uint8List>>[];
+
+    await for (final rawChunk in stream) {
+      addChunk(rawChunk);
+
+      while (true) {
+        if (!magicChecked) {
+          final magic = take(4);
+          if (magic == null) break;
+          if (String.fromCharCodes(magic) != 'BXP1') {
+            throw const FormatException(
+                'Invalid photo stream magic (expected BXP1)');
+          }
+          magicChecked = true;
+        }
+
+        if (count == null) {
+          final countBytes = take(4);
+          if (countBytes == null) break;
+          count = ByteData.sublistView(countBytes).getInt32(0, Endian.little);
+        }
+
+        if (received >= count) break;
+
+        if (pendingLen == null) {
+          final header = take(12);
+          if (header == null) break;
+          final bd = ByteData.sublistView(header);
+          pendingIsN = bd.getInt64(0, Endian.little);
+          pendingLen = bd.getInt32(8, Endian.little);
+          if (pendingLen <= 0) {
+            throw FormatException('Invalid photo record length: $pendingLen');
+          }
+        }
+
+        final data = take(pendingLen);
+        if (data == null) break; // wait for more chunks
+
+        batch.add(MapEntry(pendingIsN!, data));
+        pendingIsN = null;
+        pendingLen = null;
+        received++;
+
+        if (batch.length >= 100) {
+          await onBatch(batch);
+          batch = <MapEntry<int, Uint8List>>[];
+          onProgress?.call(received, count);
+        }
+      }
+
+      if (count != null && received >= count) break;
+    }
+
+    if (batch.isNotEmpty) {
+      await onBatch(batch);
+      batch = <MapEntry<int, Uint8List>>[];
+    }
+    if (count != null) onProgress?.call(received, count);
+
+    if (!magicChecked) {
+      throw const FormatException('Photo stream ended before magic header');
+    }
+    if (count == null) {
+      throw const FormatException('Photo stream ended before count header');
+    }
+    if (pendingLen != null) {
+      // EOF in the middle of a record's data — genuinely corrupt.
+      throw const FormatException('Photo stream ended mid-record');
+    }
+    if (received < count && available > 0) {
+      // Leftover bytes that never formed a complete record header — cut
+      // mid-header, not a clean boundary between records.
+      throw const FormatException('Photo stream ended mid-record header');
+    }
+
+    return received;
   }
 
   /// Get all supervisors by building and exam date (for offline download)

@@ -21,6 +21,8 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   int _allMonitorCount = 0;
   String? _successMessage;
   String? _errorMessage;
+  int? _photosDone;
+  int? _photosTotal;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -30,6 +32,9 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   int get allMonitorCount => _allMonitorCount;
   String? get successMessage => _successMessage;
   String? get errorMessage => _errorMessage;
+  // Progress of the background photo download (step 1b) — null until it starts.
+  int? get photosDone => _photosDone;
+  int? get photosTotal => _photosTotal;
 
   OfflineDatabaseProvider({HttpService? httpService})
       : _httpService = httpService ?? HttpService() {
@@ -140,6 +145,8 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   Future<OfflineDownloadResult> downloadOfflineDatabase() async {
     _setLoading(true);
     _clearMessages();
+    _photosDone = null;
+    _photosTotal = null;
 
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
@@ -155,14 +162,13 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
       bool hadNetworkError = false;
 
-      // Step 1: participants
+      // Step 1: participants (light — no photos; those come in step 1b below)
       List<Participant> participants = [];
       try {
-        final result = await _httpService.getParticipantsByBuilding(
+        participants = await _httpService.getParticipantsLightByBuilding(
           buildingCode: buildingCode,
           examDate: examDate,
         );
-        participants = result.cast<Participant>();
         print('Downloaded ${participants.length} participants');
       } catch (e) {
         print('Could not download participants: $e');
@@ -200,8 +206,35 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         return OfflineDownloadResult.networkError;
       }
 
-      // Step 4: save
+      // Step 4: save (participants land in SQLite first, without photos — the
+      // photo UPDATE below needs existing is_N rows to match against)
       await _saveOfflineData(participants, supervisors, violators);
+
+      // Step 5 (1b): photos — best-effort. Participants are already usable
+      // for registration without them, so a failure here never blocks login.
+      bool photosFailed = false;
+      if (participants.isNotEmpty) {
+        try {
+          final got = await _httpService.downloadParticipantPhotos(
+            buildingCode: buildingCode,
+            examDate: examDate,
+            onBatch: DatabaseService.updateParticipantPhotos,
+            onProgress: (done, total) {
+              _photosDone = done;
+              _photosTotal = total;
+              notifyListeners();
+            },
+          );
+          // Сравниваем с count сервера (у части участников фото может не быть — это не сбой)
+          if (got < (_photosTotal ?? got)) {
+            photosFailed = true; // поток оборвался раньше заявленного count
+          }
+        } catch (e) {
+          print('Could not download photos: $e');
+          photosFailed = true;
+        }
+      }
+
       await _checkOfflineData();
 
       if (participants.isEmpty && supervisors.isEmpty) {
@@ -210,6 +243,11 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
       // One of them is missing — warn the user
       if (participants.isEmpty || supervisors.isEmpty) {
+        return OfflineDownloadResult.partialSuccess;
+      }
+
+      if (photosFailed) {
+        _setError('İştirakçılar yükləndi, şəkillər yüklənmədi');
         return OfflineDownloadResult.partialSuccess;
       }
 

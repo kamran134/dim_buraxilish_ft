@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/participant_models.dart';
@@ -9,7 +11,7 @@ import '../models/notification_message.dart';
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 7;
+  static const int _databaseVersion = 8;
 
   // Table names
   static const String _participantsTable = 'participants';
@@ -39,10 +41,9 @@ class DatabaseService {
     );
   }
 
-  // Create database tables
-  static Future<void> _onCreate(Database db, int version) async {
-    // Create participants table (offline download)
-    await db.execute('''
+  // DDL for the participants table (offline download). Kept in one place so
+  // _onCreate and _onUpgrade (v8: photo TEXT -> BLOB) never drift apart.
+  static String get _participantsTableDdl => '''
       CREATE TABLE $_participantsTable (
         external_id INTEGER PRIMARY KEY,
         is_N INTEGER UNIQUE,
@@ -60,12 +61,17 @@ class DatabaseService {
         yer TEXT,
         imt_Tarix TEXT,
         imt_Begin TEXT,
-        photo TEXT,
+        photo BLOB,
         ad_Bina TEXT,
         qeydiyyat TEXT,
         s_Nomer INTEGER
       )
-    ''');
+    ''';
+
+  // Create database tables
+  static Future<void> _onCreate(Database db, int version) async {
+    // Create participants table (offline download)
+    await db.execute(_participantsTableDdl);
 
     // Create registered participants table
     await db.execute('''
@@ -261,6 +267,13 @@ class DatabaseService {
             'ALTER TABLE $_notificationsTable ADD COLUMN read_at TEXT');
       } catch (_) {}
     }
+    if (oldVersion < 8) {
+      // photo TEXT (base64) -> photo BLOB. The participants table is fully
+      // repopulated on every offline download, so dropping it here loses
+      // nothing — SQLite can't ALTER a column's type in place.
+      await db.execute('DROP TABLE IF EXISTS $_participantsTable');
+      await db.execute(_participantsTableDdl);
+    }
   }
 
   // PARTICIPANTS METHODS
@@ -322,7 +335,7 @@ class DatabaseService {
           'qeydiyyat': registrationDate,
           'online': 0,
           'gins': participant.gins,
-          'photo': participant.photo,
+          'photo': participant.photoBase64,
           'zal': participant.zal,
           'mertebe': participant.mertebe,
           'sira': participant.sira,
@@ -680,7 +693,7 @@ class DatabaseService {
       'yer': participant.yer,
       'imt_Tarix': participant.imtTarix,
       'imt_Begin': '', // Not used in current model
-      'photo': participant.photo,
+      'photo': participant.photoBytes,
       'ad_Bina': '', // Not used in current model
       'qeydiyyat': participant.qeydiyyat,
       's_Nomer': 0, // Not used in current model
@@ -697,11 +710,45 @@ class DatabaseService {
       zal: map['zal'] as String,
       sira: map['sira'] as String,
       yer: map['yer'] as String,
-      photo: map['photo'] as String?,
+      photoBytes: _photoBytesFromDb(map['photo']),
       qeydiyyat: map['qeydiyyat'] as String?,
       bina: map['bina'] as String,
       imtTarix: map['imt_Tarix'] as String,
     );
+  }
+
+  /// participants.photo is a BLOB (Uint8List) since v8. Tolerates a leftover
+  /// base64 String too, in case a row somehow survived without going through
+  /// the v8 migration's DROP TABLE.
+  static Uint8List? _photoBytesFromDb(dynamic raw) {
+    if (raw is Uint8List) return raw.isEmpty ? null : raw;
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        return base64Decode(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /// Merge a batch of downloaded photos into the participants table by is_N.
+  /// One transaction per batch so a crash mid-download can't leave a partial
+  /// batch half-applied.
+  static Future<void> updateParticipantPhotos(
+      List<MapEntry<int, Uint8List>> batch) async {
+    if (batch.isEmpty) return;
+    final db = await database;
+    final dbBatch = db.batch();
+    for (final entry in batch) {
+      dbBatch.update(
+        _participantsTable,
+        {'photo': entry.value},
+        where: 'is_N = ?',
+        whereArgs: [entry.key],
+      );
+    }
+    await dbBatch.commit(noResult: true);
   }
 
   static Participant _registeredParticipantFromMap(Map<String, dynamic> map) {
