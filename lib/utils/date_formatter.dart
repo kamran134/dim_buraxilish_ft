@@ -64,6 +64,22 @@ class DateFormatter {
     }
   }
 
+  /// Same as [dateToAzToDate], but keeps the session time when the string carries one:
+  /// "29 sentyabr 2025-ci il 10:00" -> "09/29/2025 10:00".
+  /// Only for nezaretchi (Supervisor) requests — participants and monitors have no session time.
+  static String dateToAzToDateWithSession(String azDate) {
+    final converted = dateToAzToDate(azDate);
+    if (converted == azDate) {
+      return converted;
+    }
+    final parts = azDate.split(' ');
+    final lastToken = parts.last;
+    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lastToken)) {
+      return '$converted $lastToken';
+    }
+    return converted;
+  }
+
   /// Convert MM/dd/yyyy back to Azerbaijani format
   /// Example: "09/29/2025" -> "29 sentyabr 2025-ci il"
   static String dateFromAzToDate(String usDate) {

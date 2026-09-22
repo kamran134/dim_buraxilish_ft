@@ -407,14 +407,19 @@ class StatisticsService {
       // Преобразуем buildingCode в число (Angular ожидает number)
       final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
 
-      // Преобразуем дату в формат MM/DD/yyyy как делает Angular
-      final formattedExamDate = _convertToMMDDYYYY(examDate);
+      // Преобразуем дату в формат MM/DD/yyyy [HH:mm] как делает Angular
+      final formattedExamDate = _convertToMMDDYYYYWithSession(examDate);
 
-      final url =
-          '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCodeNum&examDate=$formattedExamDate';
+      // examDate теперь может содержать время сеанса ("HH:mm") — пробел нужно кодировать.
+      final url = Uri.parse(
+              '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding')
+          .replace(queryParameters: {
+        'buildingCode': buildingCodeNum.toString(),
+        'examDate': formattedExamDate,
+      });
 
       final response = await http.get(
-        Uri.parse(url),
+        url,
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -675,6 +680,21 @@ class StatisticsService {
 
     // Возвращаем в формате MM/DD/yyyy
     return '$month/$day/$year';
+  }
+
+  /// То же, что _convertToMMDDYYYY, но сохраняет время сеанса ("HH:mm"), если оно есть.
+  /// Только для запросов по nəzarətçilər (Supervisor) — у участников и мониторов
+  /// времени сеанса нет.
+  String _convertToMMDDYYYYWithSession(String examDate) {
+    final converted = _convertToMMDDYYYY(examDate);
+    if (converted == examDate) {
+      return converted;
+    }
+    final lastToken = examDate.split(' ').last;
+    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lastToken)) {
+      return '$converted $lastToken';
+    }
+    return converted;
   }
 }
 

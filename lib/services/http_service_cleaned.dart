@@ -223,34 +223,6 @@ class HttpService {
         .get('/tparols/getallbuildinginexamdate?examDate=$examDate');
   }
 
-  // SupervisorBuilding endpoints (require authentication)
-  Future<Response> getAllSupervisorBuildings() async {
-    return await _dio.get('/supervisorbuildings/getall');
-  }
-
-  Future<Response> getSupervisorBuildingByCode(int buildingCode) async {
-    return await _dio.get(
-        '/supervisorbuildings/getbybuildingcode?buildingCode=$buildingCode');
-  }
-
-  Future<Response> addSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/add',
-        data: supervisorBuilding);
-  }
-
-  Future<Response> updateSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/update',
-        data: supervisorBuilding);
-  }
-
-  Future<Response> deleteSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/delete',
-        data: supervisorBuilding);
-  }
-
   // Participant scanning methods
 
   // Scan participant online (from React Native: checkjobnoatbinaandexamdate)

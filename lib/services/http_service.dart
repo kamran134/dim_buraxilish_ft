@@ -301,34 +301,6 @@ class HttpService {
         .get('/tparols/getallbuildinginexamdate?examDate=$examDate');
   }
 
-  // SupervisorBuilding endpoints (require authentication)
-  Future<Response> getAllSupervisorBuildings() async {
-    return await _dio.get('/supervisorbuildings/getall');
-  }
-
-  Future<Response> getSupervisorBuildingByCode(int buildingCode) async {
-    return await _dio.get(
-        '/supervisorbuildings/getbybuildingcode?buildingCode=$buildingCode');
-  }
-
-  Future<Response> addSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/add',
-        data: supervisorBuilding);
-  }
-
-  Future<Response> updateSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/update',
-        data: supervisorBuilding);
-  }
-
-  Future<Response> deleteSupervisorBuilding(
-      Map<String, dynamic> supervisorBuilding) async {
-    return await _dio.post('/supervisorbuildings/delete',
-        data: supervisorBuilding);
-  }
-
   // Participant scanning methods
 
   // Scan participant online (from React Native: checkjobnoatbinaandexamdate)
@@ -532,7 +504,7 @@ class HttpService {
   }) async {
     try {
       // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
 
       print(
           'Scanning supervisor: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
@@ -659,7 +631,7 @@ class HttpService {
   }) async {
     try {
       // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
 
       print(
           'Getting supervisor details: buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
@@ -951,7 +923,7 @@ class HttpService {
   }) async {
     try {
       // For supervisors, React Native FORMATS the date using dateToAzToDate
-      final formattedDate = _formatExamDateForApi(examDate);
+      final formattedDate = _formatExamDateWithSessionForApi(examDate);
       print('getSupervisorsByBuilding - Original date: $examDate');
       print('getSupervisorsByBuilding - Formatted date: $formattedDate');
       print('getSupervisorsByBuilding - Building code: $buildingCode');
@@ -1093,6 +1065,21 @@ class HttpService {
       print('Error formatting exam date: $e');
       return examDate;
     }
+  }
+
+  /// Same as [_formatExamDateForApi], but keeps the session time ("HH:mm") when the
+  /// Azerbaijani string carries one. Only for nezaretchi (Supervisor) requests —
+  /// participants and monitors have no session time.
+  String _formatExamDateWithSessionForApi(String examDate) {
+    final converted = _formatExamDateForApi(examDate);
+    if (converted == examDate) {
+      return converted;
+    }
+    final lastToken = examDate.split(' ').last;
+    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lastToken)) {
+      return '$converted $lastToken';
+    }
+    return converted;
   }
 
   // =========== SYNC METHODS ===========
@@ -1269,7 +1256,7 @@ class HttpService {
   }) async {
     try {
       // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
+      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
 
       print(
           'Canceling supervisor registration: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$formattedDate');
