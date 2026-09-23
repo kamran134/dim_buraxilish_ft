@@ -75,6 +75,15 @@ class HttpService {
     ));
   }
 
+  /// Plain authenticated GET through this service's dio, so callers outside
+  /// HttpService (StatisticsService) get the same interceptor: JWT, token
+  /// refresh and the `X-Exam-Slot` header. Don't create a second Dio for that.
+  /// Non-2xx responses throw [DioException] (dio default) — the caller reads
+  /// `e.response` for the status code and server message.
+  Future<Response<dynamic>> get(String path, {Map<String, dynamic>? query}) {
+    return _dio.get(path, queryParameters: query);
+  }
+
   // Get stored JWT token. If it has expired, transparently try to renew it
   // via the refresh token before giving up — otherwise a phone left logged
   // in past the access-token lifetime silently stops working (including FCM

@@ -120,8 +120,10 @@ class _SplashScreenState extends State<SplashScreen>
 
       // Token valid, but no exam selected yet (fresh login, or an app
       // restart before ExamSelectScreen ran) — send the user there first.
+      // Без слота — тоже на выбор: данные из версии до слотов (есть imtTarix, нет slotKey)
+      // иначе работали бы по старой строке даты без заголовка X-Exam-Slot.
       final examDate = authProvider.authData?.examDate ?? '';
-      final targetScreen = examDate.isEmpty
+      final targetScreen = (examDate.isEmpty || !authProvider.hasActiveExam)
           ? const ExamSelectScreen()
           : (authProvider.canAccessDashboard
               ? const RealDashboardScreen()

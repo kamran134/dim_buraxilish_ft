@@ -6,6 +6,7 @@ import '../providers/supervisor_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/statistics_component.dart';
 import '../widgets/statistics/statistics_widgets.dart';
+import '../widgets/statistics/active_slot_bar.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../services/statistics_service.dart';
@@ -28,9 +29,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   // Для админа - новые данные
   final StatisticsService _statisticsService = StatisticsService();
   List<ExamStatisticsDto> _adminStatistics = [];
-  List<String> _examDates = [];
-  String? _selectedExamDate;
   bool _isAdminLoading = false;
+  // Статистика всегда по выбранному слоту (imtTarix из ExamDetails); без
+  // слота показываем NoActiveSlotView вместо данных.
+  bool _noActiveSlot = false;
 
   @override
   void initState() {
@@ -52,17 +54,24 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     super.dispose();
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final participantProvider =
+        Provider.of<ParticipantProvider>(context, listen: false);
+    final supervisorProvider =
+        Provider.of<SupervisorProvider>(context, listen: false);
+
+    final examDate = await _statisticsService.getActiveSlotExamDate();
+    if (!mounted) return;
+    setState(() {
+      _noActiveSlot = examDate == null;
+    });
+    if (examDate == null) return;
 
     if (authProvider.isAdmin || authProvider.isSuperAdmin) {
-      _loadAdminData();
+      await _loadAdminStatistics(examDate);
     } else {
       // Для мониторов - загружаем данные как обычно
-      final participantProvider =
-          Provider.of<ParticipantProvider>(context, listen: false);
-      final supervisorProvider =
-          Provider.of<SupervisorProvider>(context, listen: false);
 
       // Only trigger network loads if the provider is not already loading
       // Prevents cross-contamination of isLoading with scanning screens
@@ -72,36 +81,27 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
   }
 
-  Future<void> _loadAdminData() async {
+  Future<void> _loadAdminStatistics(String examDate) async {
     setState(() {
       _isAdminLoading = true;
     });
 
     try {
-      // Загружаем даты экзаменов
-      final datesResult = await _statisticsService.getAllExamDates();
-      if (datesResult.success && datesResult.data != null) {
-        _examDates = datesResult.data!;
-        if (_examDates.isNotEmpty) {
-          _selectedExamDate = _examDates.first;
-          await _loadAdminStatistics(_selectedExamDate!);
-        }
+      final result = await _statisticsService.getExamStatisticsByDate(examDate);
+      if (!mounted) return;
+      if (result.success && result.data != null) {
+        setState(() {
+          _adminStatistics = result.data!;
+        });
       }
     } catch (e) {
       print('Ошибка загрузки админ данных: $e');
     } finally {
-      setState(() {
-        _isAdminLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadAdminStatistics(String examDate) async {
-    final result = await _statisticsService.getExamStatisticsByDate(examDate);
-    if (result.success && result.data != null) {
-      setState(() {
-        _adminStatistics = result.data!;
-      });
+      if (mounted) {
+        setState(() {
+          _isAdminLoading = false;
+        });
+      }
     }
   }
 
@@ -142,25 +142,32 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
       body: Column(
         children: [
-          // Табы
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              return StatisticsTabBar(
-                currentType: _currentType,
-                onTypeChanged: (type) {
-                  setState(() {
-                    _currentType = type;
-                  });
-                },
-                isAdmin: authProvider.isAdmin || authProvider.isSuperAdmin,
-              );
-            },
-          ),
+          // Выбранный слот + переключатель
+          ActiveSlotBar(onSwitched: _loadData),
 
-          // Контент
-          Expanded(
-            child: _buildContent(),
-          ),
+          if (_noActiveSlot)
+            const Expanded(child: NoActiveSlotView())
+          else ...[
+            // Табы
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                return StatisticsTabBar(
+                  currentType: _currentType,
+                  onTypeChanged: (type) {
+                    setState(() {
+                      _currentType = type;
+                    });
+                  },
+                  isAdmin: authProvider.isAdmin || authProvider.isSuperAdmin,
+                );
+              },
+            ),
+
+            // Контент
+            Expanded(
+              child: _buildContent(),
+            ),
+          ],
         ],
       ),
     );

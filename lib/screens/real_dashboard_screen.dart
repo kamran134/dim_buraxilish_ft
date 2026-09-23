@@ -12,6 +12,7 @@ import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
 import '../widgets/session_switcher_sheet.dart';
+import '../widgets/statistics/active_slot_bar.dart';
 import 'building_details_screen.dart';
 import 'exam_select_screen.dart';
 import 'buildings_statistics_screen.dart';
@@ -45,8 +46,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   DashboardStatistics? _dashboardStats;
   List<ExamStatisticsDto> _examStatistics = [];
   List<MonitorRoomStatistics> _roomStatistics = [];
-  List<String> _examDates = [];
-  String? _selectedExamDate;
+  // Статистика всегда по выбранному слоту (imtTarix из ExamDetails, сервер
+  // фильтрует по `X-Exam-Slot`); своего выбора даты у дашборда нет.
+  bool _noActiveSlot = false;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -86,7 +88,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     _slideController.forward();
 
     // Загружаем данные
-    _loadExamDates();
+    _loadForActiveSlot();
   }
 
   @override
@@ -99,45 +101,27 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     super.dispose();
   }
 
-  Future<void> _loadExamDates() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final result = await _statisticsService.getAllExamDates();
-      if (result.success && result.data != null) {
-        setState(() {
-          _examDates = result.data!;
-          if (_examDates.isNotEmpty) {
-            _selectedExamDate = _examDates.first;
-            _loadDashboardStatistics(_selectedExamDate!);
-          }
-        });
-      } else {
-        setState(() {
-          _errorMessage = result.message;
-        });
-      }
-    } catch (e) {
+  /// Loads the dashboard for the currently selected slot. Re-reads the slot
+  /// from storage each time, so it also picks up a slot switch.
+  Future<void> _loadForActiveSlot() async {
+    final examDate = await _statisticsService.getActiveSlotExamDate();
+    if (!mounted) return;
+    if (examDate == null) {
       setState(() {
-        _errorMessage = 'Xəta baş verdi: $e';
+        _noActiveSlot = true;
+        _errorMessage = null;
+        _dashboardStats = null;
+        _examStatistics = [];
+        _roomStatistics = [];
       });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      return;
     }
+    _noActiveSlot = false;
+    await _loadDashboardStatistics(examDate);
   }
 
   /// Публичный метод для обновления статистики (вызывается извне)
-  Future<void> refreshStatistics() async {
-    final examDateToRefresh = _selectedExamDate ?? _dashboardStats?.examDate;
-    if (examDateToRefresh != null) {
-      await _loadDashboardStatistics(examDateToRefresh);
-    }
-  }
+  Future<void> refreshStatistics() => _loadForActiveSlot();
 
   /// Opens the shared "switch session" bottom sheet for the currently
   /// selected exam and, on a completed switch, refreshes the dashboard's
@@ -224,11 +208,14 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_noActiveSlot)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 48),
+                            child: NoActiveSlotView(onPrimary: false),
+                          ),
                         if (_errorMessage != null) _buildErrorMessage(),
                         if (_isLoading) _buildLoadingIndicator(),
                         if (_dashboardStats != null) ...[
-                          _buildExamDateSelector(),
-                          const SizedBox(height: 24),
                           _buildStatsCards(),
                           const SizedBox(height: 24),
                           _buildExamStatistics(),
@@ -372,7 +359,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             ),
           ),
           IconButton(
-            onPressed: () => _loadExamDates(),
+            onPressed: () => _loadForActiveSlot(),
             icon: Icon(Icons.refresh, color: AppColors.errorRed),
           ),
         ],
@@ -394,69 +381,6 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildExamDateSelector() {
-    if (_examDates.isEmpty) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.date_range,
-              color:
-                  isDark ? AppColors.splashLightBlue : AppColors.primaryBlue),
-          const SizedBox(width: 12),
-          Text(
-            'İmtahan tarixi:',
-            style: AppTextStyles.bodyLarge.copyWith(
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: DropdownButton<String>(
-              value: _selectedExamDate,
-              isExpanded: true,
-              underline: Container(),
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 14,
-              ),
-              dropdownColor: isDark ? AppColors.surfaceDark : Colors.white,
-              iconEnabledColor: isDark ? Colors.white70 : Colors.black54,
-              items: _examDates.map((date) {
-                return DropdownMenuItem<String>(
-                  value: date,
-                  child: Text(date),
-                );
-              }).toList(),
-              onChanged: (newDate) {
-                if (newDate != null && newDate != _selectedExamDate) {
-                  setState(() {
-                    _selectedExamDate = newDate;
-                  });
-                  _loadDashboardStatistics(newDate);
-                }
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -834,9 +758,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => RoomsStatisticsScreen(
-                      initialExamDate: _selectedExamDate,
-                    ),
+                    builder: (context) => const RoomsStatisticsScreen(),
                   ),
                 );
               },
@@ -973,9 +895,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BuildingsStatisticsScreen(
-                      initialExamDate: _selectedExamDate,
-                    ),
+                    builder: (context) => const BuildingsStatisticsScreen(),
                   ),
                 );
               },
@@ -1362,7 +1282,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                   'Yenilə\n ',
                   Icons.refresh,
                   AppColors.greenGradient,
-                  () => _loadDashboardStatistics(_selectedExamDate ?? ''),
+                  () => _loadForActiveSlot(),
                 ),
               ),
             ],
@@ -1561,9 +1481,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BuildingsStatisticsScreen(
-          initialExamDate: _selectedExamDate,
-        ),
+        builder: (context) => const BuildingsStatisticsScreen(),
       ),
     );
   }
@@ -1585,7 +1503,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       MaterialPageRoute(
         builder: (context) => BuildingDetailsScreen(
           building: building,
-          examDate: _selectedExamDate!,
+          examDate: _dashboardStats?.examDate ?? '',
         ),
       ),
     );

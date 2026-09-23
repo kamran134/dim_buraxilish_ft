@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../models/participant_light_dto.dart';
@@ -10,27 +10,79 @@ import '../models/response_models.dart';
 import '../services/database_service.dart';
 import '../services/http_service.dart';
 
-/// Сервис для работы с статистикой экзаменов
+/// Status code + decoded JSON body of one statistics request.
+class _ApiResponse {
+  final int statusCode;
+  final Map<String, dynamic>? body;
+
+  const _ApiResponse(this.statusCode, this.body);
+}
+
+/// Сервис для работы с статистикой экзаменов.
+///
+/// Все запросы идут через dio из [HttpService] — тот же interceptor, что
+/// ставит JWT, обновляет токен и добавляет `X-Exam-Slot` (см. API_slots.md),
+/// поэтому сервер фильтрует статистику по выбранному слоту.
 class StatisticsService {
-  static const String _baseUrl =
-      'https://eservices.dim.gov.az/buraxilishScan/api/api';
   final HttpService _httpService = HttpService();
 
-  /// Получает все даты экзаменов
+  /// `imtTarix` (legacyDate) активного слота — дата, которую экраны
+  /// статистики передают как `examDate`. null, если слот не выбран.
+  Future<String?> getActiveSlotExamDate() async {
+    final details = await _httpService.getExamDetailsFromStorage();
+    final slotKey = details?.slotKey;
+    final examDate = details?.imtTarix;
+    if (slotKey == null ||
+        slotKey.isEmpty ||
+        examDate == null ||
+        examDate.isEmpty) {
+      return null;
+    }
+    return examDate;
+  }
+
+  /// GET через общий dio. Ответ с кодом ошибки (dio бросает DioException)
+  /// превращается в [_ApiResponse] с этим кодом; сетевые ошибки без ответа
+  /// пробрасываются дальше — их ловят вызывающие методы.
+  Future<_ApiResponse> _get(String path, Map<String, dynamic> query) async {
+    try {
+      final response = await _httpService.get(path, query: query);
+      return _ApiResponse(response.statusCode ?? 0, _asMap(response.data));
+    } on DioException catch (e) {
+      final response = e.response;
+      if (response == null) rethrow;
+      return _ApiResponse(response.statusCode ?? 0, _asMap(response.data));
+    }
+  }
+
+  Map<String, dynamic>? _asMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is String && data.isNotEmpty) {
+      try {
+        final decoded = json.decode(data);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// Сообщение для ответа не-200: текст сервера (например, 400 на неверный
+  /// `X-Exam-Slot`), иначе код.
+  String _serverError(_ApiResponse response) {
+    final message = response.body?['message'];
+    if (message is String && message.isNotEmpty) return message;
+    return 'Server xətası: ${response.statusCode}';
+  }
+
+  /// Получает все даты экзаменов (легаси-список; экраны статистики его больше
+  /// не используют — дата берётся из выбранного слота).
   Future<DataResult<List<String>>> getAllExamDates() async {
     try {
-      final token = await _httpService.getToken();
-
-      final response = await http.get(
-        Uri.parse('$_baseUrl/buraxilishes/getallexamdate'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _get('/buraxilishes/getallexamdate', {});
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
@@ -47,7 +99,7 @@ class StatisticsService {
         }
       } else {
         return DataResult<List<String>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {
@@ -61,19 +113,13 @@ class StatisticsService {
   Future<DataResult<List<ExamDetailsDto>>> getAllExamDetailsInExamDate(
       String examDate) async {
     try {
-      final token = await _httpService.getToken();
-
-      final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/buraxilishes/getallexamdetailsinexamdate?examDate=$examDate'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final response = await _get(
+        '/buraxilishes/getallexamdetailsinexamdate',
+        {'examDate': examDate},
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
@@ -93,7 +139,7 @@ class StatisticsService {
         }
       } else {
         return DataResult<List<ExamDetailsDto>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {
@@ -107,19 +153,13 @@ class StatisticsService {
   Future<DataResult<ExamDetailsDto>> getExamDetailsInExamDate(
       String bina, String examDate) async {
     try {
-      final token = await _httpService.getToken();
-
-      final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/buraxilishes/getexamdetailsinexamdate?bina=$bina&examDate=$examDate'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final response = await _get(
+        '/buraxilishes/getexamdetailsinexamdate',
+        {'bina': bina, 'examDate': examDate},
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final Map<String, dynamic> data = jsonResponse['data'] ?? {};
@@ -137,7 +177,7 @@ class StatisticsService {
         }
       } else {
         return DataResult<ExamDetailsDto>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {
@@ -152,42 +192,28 @@ class StatisticsService {
   Future<DataResult<List<ExamStatisticsDto>>> getExamStatisticsByDate(
       String examDate) async {
     try {
-      final token = await _httpService.getToken();
       final formattedExamDate = _convertToMMDDYYYY(examDate);
 
       // 1. Получаем данные участников (используем ФОРМАТИРОВАННУЮ дату!)
-      final participantsResponse = await http.get(
-        Uri.parse(
-            '$_baseUrl/buraxilishes/getallexamdetailsinexamdate?examDate=$formattedExamDate'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final participantsResponse = await _get(
+        '/buraxilishes/getallexamdetailsinexamdate',
+        {'examDate': formattedExamDate},
       );
 
       // 2. Получаем данные супервайзеров
-      final supervisorsResponse = await http.get(
-        Uri.parse('$_baseUrl/supervisors/GetAllExamDetailsInExamDate')
-            .replace(queryParameters: {'examDate': formattedExamDate}),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final supervisorsResponse = await _get(
+        '/supervisors/GetAllExamDetailsInExamDate',
+        {'examDate': formattedExamDate},
       );
 
       // 3. Получаем данные мониторов
-      final monitorsResponse = await http.get(
-        Uri.parse('$_baseUrl/monitors/GetAllExamDetailsInExamDate')
-            .replace(queryParameters: {'examDate': formattedExamDate}),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final monitorsResponse = await _get(
+        '/monitors/GetAllExamDetailsInExamDate',
+        {'examDate': formattedExamDate},
       );
 
       if (participantsResponse.statusCode == 200) {
-        final participantsJson =
-            json.decode(participantsResponse.body) as Map<String, dynamic>;
+        final participantsJson = participantsResponse.body ?? {};
         final List<dynamic> participantsData = participantsJson['data'] ?? [];
 
         // Создаем Map для быстрого поиска
@@ -203,8 +229,7 @@ class StatisticsService {
         }
 
         if (supervisorsResponse.statusCode == 200) {
-          final supervisorsJson =
-              json.decode(supervisorsResponse.body) as Map<String, dynamic>;
+          final supervisorsJson = supervisorsResponse.body ?? {};
           final List<dynamic> supervisorsData = supervisorsJson['data'] ?? [];
 
           // Индексируем супервайзеров по buildingCode
@@ -223,8 +248,7 @@ class StatisticsService {
         int totalRegMonitorCount = 0;
 
         if (monitorsResponse.statusCode == 200) {
-          final monitorsJson =
-              json.decode(monitorsResponse.body) as Map<String, dynamic>;
+          final monitorsJson = monitorsResponse.body ?? {};
           final List<dynamic> monitorsData = monitorsJson['data'] ?? [];
 
           // Суммируем всех мониторов со всех комнат
@@ -301,7 +325,7 @@ class StatisticsService {
         );
       } else {
         return DataResult<List<ExamStatisticsDto>>.error(
-          message: 'Server xətası: ${participantsResponse.statusCode}',
+          message: _serverError(participantsResponse),
         );
       }
     } catch (e) {
@@ -354,21 +378,13 @@ class StatisticsService {
   Future<DataResult<List<ParticipantLightDto>>> getAllParticipantsInBuilding(
       String bina, String examDate) async {
     try {
-      final token = await _httpService.getToken();
-
-      final url =
-          '$_baseUrl/buraxilishes/getallparticipantlightinbuildingandexamdate?bina=$bina&examDate=$examDate';
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final response = await _get(
+        '/buraxilishes/getallparticipantlightinbuildingandexamdate',
+        {'bina': bina, 'examDate': examDate},
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
@@ -388,7 +404,7 @@ class StatisticsService {
         }
       } else {
         return DataResult<List<ParticipantLightDto>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {
@@ -402,32 +418,22 @@ class StatisticsService {
   Future<DataResult<List<SupervisorDetailDto>>> getAllSupervisorsInBuilding(
       String buildingCode, String examDate) async {
     try {
-      final token = await _httpService.getToken();
-
       // Преобразуем buildingCode в число (Angular ожидает number)
       final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
 
       // Преобразуем дату в формат MM/DD/yyyy [HH:mm] как делает Angular
       final formattedExamDate = _convertToMMDDYYYYWithSession(examDate);
 
-      // examDate теперь может содержать время сеанса ("HH:mm") — пробел нужно кодировать.
-      final url = Uri.parse(
-              '$_baseUrl/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding')
-          .replace(queryParameters: {
-        'buildingCode': buildingCodeNum.toString(),
-        'examDate': formattedExamDate,
-      });
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+      final response = await _get(
+        '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
+        {
+          'buildingCode': buildingCodeNum.toString(),
+          'examDate': formattedExamDate,
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
@@ -447,7 +453,7 @@ class StatisticsService {
         }
       } else {
         return DataResult<List<SupervisorDetailDto>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {
@@ -464,22 +470,16 @@ class StatisticsService {
         await DatabaseService.getRegisteredMonitors(examDate: examDate);
 
     try {
-      final token = await _httpService.getToken();
-
       // Преобразуем дату в формат MM/DD/yyyy как делает Angular
       final formattedExamDate = _convertToMMDDYYYY(examDate);
 
-      final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/monitors/GetAllExamDetailsInExamDate?examDate=$formattedExamDate'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+      final response = await _get(
+        '/monitors/GetAllExamDetailsInExamDate',
+        {'examDate': formattedExamDate},
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final Map<String, dynamic> jsonResponse = response.body ?? {};
 
         if (jsonResponse['success'] == true) {
           final List<dynamic> data = jsonResponse['data'] ?? [];
@@ -511,7 +511,9 @@ class StatisticsService {
           );
         }
       } else {
-        if (localRegisteredMonitors.isNotEmpty) {
+        // 400 = rejected `X-Exam-Slot` — never paper over it with local
+        // data (API_slots.md: no silent fallback when the header is present).
+        if (response.statusCode != 400 && localRegisteredMonitors.isNotEmpty) {
           return DataResult<List<MonitorRoomStatistics>>.success(
             data: _buildRoomStatisticsFromLocal(localRegisteredMonitors),
             message: 'Lokal statistikalar göstərilir',
@@ -519,7 +521,7 @@ class StatisticsService {
         }
 
         return DataResult<List<MonitorRoomStatistics>>.error(
-          message: 'Server xətası: ${response.statusCode}',
+          message: _serverError(response),
         );
       }
     } catch (e) {

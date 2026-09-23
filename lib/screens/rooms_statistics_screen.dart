@@ -6,13 +6,13 @@ import '../services/statistics_event_bus.dart';
 import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../widgets/admin_drawer.dart';
+import '../widgets/statistics/active_slot_bar.dart';
 import 'room_monitors_screen.dart';
 
+/// Статистика по комнатам (imtahan rəhbərləri) выбранного слота — своего
+/// выбора даты у экрана нет, переключение слота через [ActiveSlotBar].
 class RoomsStatisticsScreen extends StatefulWidget {
-  final String? initialExamDate;
-
-  const RoomsStatisticsScreen({Key? key, this.initialExamDate})
-      : super(key: key);
+  const RoomsStatisticsScreen({Key? key}) : super(key: key);
 
   @override
   State<RoomsStatisticsScreen> createState() => _RoomsStatisticsScreenState();
@@ -22,9 +22,8 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
   final StatisticsService _statisticsService = StatisticsService();
   StreamSubscription<String>? _statisticsUpdateSubscription;
   List<MonitorRoomStatistics> _roomStatistics = [];
-  List<String> _examDates = [];
-  String? _selectedExamDate;
   bool _isLoading = false;
+  bool _noActiveSlot = false;
   String? _errorMessage;
 
   @override
@@ -32,13 +31,12 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
     super.initState();
     _statisticsUpdateSubscription =
         StatisticsEventBus().onStatisticsUpdate.listen((_) {
-      if (_selectedExamDate != null && mounted) {
-        _loadRoomStatistics(_selectedExamDate!);
+      if (mounted && !_noActiveSlot) {
+        _loadRoomStatistics();
       }
     });
 
-    _selectedExamDate = widget.initialExamDate;
-    _loadExamDates();
+    _loadRoomStatistics();
   }
 
   @override
@@ -47,48 +45,26 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadExamDates() async {
+  Future<void> _loadRoomStatistics() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final result = await _statisticsService.getAllExamDates();
-      if (result.success && result.data != null) {
+      final examDate = await _statisticsService.getActiveSlotExamDate();
+      if (!mounted) return;
+      if (examDate == null) {
         setState(() {
-          _examDates = result.data!;
-          if (_selectedExamDate == null && _examDates.isNotEmpty) {
-            _selectedExamDate = _examDates.first;
-          }
+          _noActiveSlot = true;
+          _roomStatistics = [];
         });
-        if (_selectedExamDate != null) {
-          await _loadRoomStatistics(_selectedExamDate!);
-        }
-      } else {
-        setState(() {
-          _errorMessage = result.message;
-        });
+        return;
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Tarixlər yüklənmədi: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+      _noActiveSlot = false;
 
-  Future<void> _loadRoomStatistics(String examDate) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
       final result = await _statisticsService.getAllRoomStatistics(examDate);
+      if (!mounted) return;
       if (result.success && result.data != null) {
         setState(() {
           _roomStatistics = result.data!;
@@ -99,13 +75,16 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Statistika yüklənmədi: $e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -132,109 +111,20 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Yenilə',
+            onPressed: _isLoading ? null : _loadRoomStatistics,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Header with date selector
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: isDark
-                ? AppColors.surfaceDark
-                : AppColors.primaryBlue.withOpacity(0.1),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedExamDate,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 14,
-                    ),
-                    dropdownColor:
-                        isDark ? AppColors.surfaceDark : Colors.white,
-                    decoration: InputDecoration(
-                      labelText: 'İmtahan tarixi',
-                      labelStyle: TextStyle(
-                        color: isDark ? Colors.white70 : AppColors.primaryBlue,
-                      ),
-                      filled: true,
-                      fillColor:
-                          isDark ? AppColors.backgroundDark : Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark
-                              ? Colors.white24
-                              : AppColors.primaryBlue.withOpacity(0.4),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark
-                              ? Colors.white24
-                              : AppColors.primaryBlue.withOpacity(0.4),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark
-                              ? AppColors.splashLightBlue
-                              : AppColors.primaryBlue,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    items: _examDates.map((date) {
-                      return DropdownMenuItem(
-                        value: date,
-                        child: Text(
-                          date,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedExamDate = value;
-                        });
-                        _loadRoomStatistics(value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 46,
-                  height: 46,
-                  child: IconButton.filled(
-                    onPressed: () {
-                      if (_selectedExamDate != null) {
-                        _loadRoomStatistics(_selectedExamDate!);
-                      }
-                    },
-                    icon: const Icon(Icons.refresh, size: 20),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark
-                          ? AppColors.splashLightBlue
-                          : AppColors.primaryBlue,
-                      foregroundColor:
-                          isDark ? AppColors.backgroundDark : Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          // Выбранный слот + переключатель
+          ActiveSlotBar(
+            onSwitched: _loadRoomStatistics,
+            onPrimary: false,
           ),
 
           // Content
@@ -247,6 +137,10 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
   }
 
   Widget _buildContent() {
+    if (_noActiveSlot && !_isLoading) {
+      return const NoActiveSlotView(onPrimary: false);
+    }
+
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -273,11 +167,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                if (_selectedExamDate != null) {
-                  _loadRoomStatistics(_selectedExamDate!);
-                }
-              },
+              onPressed: _loadRoomStatistics,
               child: const Text('Yenidən cəhd et'),
             ),
           ],
@@ -287,7 +177,7 @@ class _RoomsStatisticsScreenState extends State<RoomsStatisticsScreen> {
 
     if (_roomStatistics.isEmpty) {
       return const Center(
-        child: Text('Bu tarix üçün otaq statistikası tapılmadı'),
+        child: Text('Bu slot üçün otaq statistikası tapılmadı'),
       );
     }
 
