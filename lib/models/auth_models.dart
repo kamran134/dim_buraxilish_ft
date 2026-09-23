@@ -83,14 +83,19 @@ class ExamDates {
 class LoginModel {
   final String userName;
   final String password;
-  final String examDate;
+  // No longer required by the server (/auth/login accepts a login without an
+  // exam date — the exam is picked afterwards on a dedicated screen) and is
+  // intentionally never sent in [toJson]. Kept nullable, not removed, so the
+  // dead DI layer (auth_repository.dart / http_service_cleaned.dart) that
+  // still constructs this with an examDate keeps compiling unchanged.
+  final String? examDate;
   final String? deviceId;
   final String? deviceName;
 
   LoginModel({
     required this.userName,
     required this.password,
-    required this.examDate,
+    this.examDate,
     this.deviceId,
     this.deviceName,
   });
@@ -99,7 +104,7 @@ class LoginModel {
     return LoginModel(
       userName: json['userName'] as String,
       password: json['password'] as String,
-      examDate: json['examDate'] as String,
+      examDate: json['examDate'] as String?,
       deviceId: json['deviceId'] as String?,
       deviceName: json['deviceName'] as String?,
     );
@@ -109,7 +114,7 @@ class LoginModel {
     return {
       'userName': userName,
       'password': password,
-      'examDate': examDate,
+      // examDate intentionally omitted — server no longer requires it.
       if (deviceId != null) 'deviceId': deviceId,
       if (deviceName != null) 'deviceName': deviceName,
     };

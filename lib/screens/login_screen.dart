@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/offline_database_provider.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/custom_button.dart';
-import '../widgets/exam_date_dropdown.dart';
 import '../widgets/common/common_widgets.dart';
-import 'main_screen.dart';
-import 'real_dashboard_screen.dart';
-
-enum _DownloadState { idle, downloading, success, partialData, emptyData, networkError }
+import 'exam_select_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -30,8 +24,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
 
   bool _isAdmin = false;
-  String _partialErrorMessage = '';
-  bool _partialMissingParticipants = false;
 
   String get _resolvedUsername {
     if (_isAdmin) {
@@ -41,12 +33,8 @@ class _LoginScreenState extends State<LoginScreen>
     return 'bina$digits';
   }
 
-  String? _selectedExamDate;
   bool _obscurePassword = true;
   bool _isLoading = false;
-  _DownloadState _downloadState = _DownloadState.idle;
-  int _downloadedParticipants = 0;
-  int _downloadedSupervisors = 0;
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -58,10 +46,6 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
-    // Загружаем даты экзаменов после постройки виджета
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadExamDates();
-    });
   }
 
   void _initializeAnimations() {
@@ -94,15 +78,9 @@ class _LoginScreenState extends State<LoginScreen>
     _slideController.forward();
   }
 
-  Future<void> _loadExamDates() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.loadExamDates();
-  }
-
   Future<void> _refreshData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.clearError(); // Очищаем предыдущие ошибки
-    await authProvider.loadExamDates();
   }
 
   Future<void> _handleLogin() async {
@@ -122,9 +100,7 @@ class _LoginScreenState extends State<LoginScreen>
     final pinFilled = _isAdmin
         ? _adminUsernameController.text.trim().isNotEmpty
         : _pinControllers.every((c) => c.text.isNotEmpty);
-    if (!_formKey.currentState!.validate() ||
-        _selectedExamDate == null ||
-        !pinFilled) {
+    if (!_formKey.currentState!.validate() || !pinFilled) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Zəhmət olmasa bütün xanaları doldurun'),
@@ -139,81 +115,21 @@ class _LoginScreenState extends State<LoginScreen>
     final success = await authProvider.signInWithJWT(
       _resolvedUsername,
       _passwordController.text,
-      _selectedExamDate!,
     );
 
     if (!mounted) return;
 
+    setState(() => _isLoading = false);
+
     if (!success) {
-      setState(() => _isLoading = false);
       return;
     }
 
-    setState(() {
-      _isLoading = false;
-      _downloadState = _DownloadState.downloading;
-    });
-
-    if (authProvider.canAccessDashboard) {
-      // Admin: download monitors — errors don't block navigation
-      final offlineProvider =
-          Provider.of<OfflineDatabaseProvider>(context, listen: false);
-      await offlineProvider.downloadAdminOfflineDatabase();
-      if (!mounted) return;
-      _navigateToMain(authProvider);
-    } else {
-      await _performDownload();
-    }
-  }
-
-  Future<void> _performDownload() async {
-    final offlineProvider =
-        Provider.of<OfflineDatabaseProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    final result = await offlineProvider.downloadOfflineDatabase();
-    if (!mounted) return;
-
-    switch (result) {
-      case OfflineDownloadResult.success:
-        offlineProvider.reportDownloadComplete();
-        setState(() {
-          _downloadState = _DownloadState.success;
-          _downloadedParticipants = offlineProvider.participantCount;
-          _downloadedSupervisors = offlineProvider.supervisorCount;
-        });
-        await Future.delayed(const Duration(milliseconds: 1500));
-        if (!mounted) return;
-        _navigateToMain(authProvider);
-      case OfflineDownloadResult.partialSuccess:
-        final missingParticipants = offlineProvider.participantCount == 0;
-        final msg = missingParticipants
-            ? 'İmtahan iştirakçıları yüklənmədi.'
-            : 'Nəzarətçilər yüklənmədi.';
-        setState(() {
-          _partialErrorMessage = msg;
-          _partialMissingParticipants = missingParticipants;
-          _downloadState = _DownloadState.partialData;
-        });
-      case OfflineDownloadResult.emptyData:
-        setState(() => _downloadState = _DownloadState.emptyData);
-      case OfflineDownloadResult.networkError:
-        setState(() => _downloadState = _DownloadState.networkError);
-    }
-  }
-
-  Future<void> _retryDownload() async {
-    setState(() => _downloadState = _DownloadState.downloading);
-    await _performDownload();
-  }
-
-  void _navigateToMain(AuthProvider authProvider) {
+    // Exam is picked next, on its own screen — not at login anymore.
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            authProvider.canAccessDashboard
-                ? const RealDashboardScreen()
-                : const MainScreen(),
+            const ExamSelectScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -237,321 +153,73 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  Widget _buildDownloadOverlay() {
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-      child: Container(
-        color: Colors.black.withOpacity(0.45),
-        child: Center(
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 32),
-              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
-                    blurRadius: 40,
-                    offset: const Offset(0, 16),
-                  ),
-                ],
-              ),
-              child: _buildOverlayContent(),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOverlayContent() {
-    switch (_downloadState) {
-      case _DownloadState.downloading:
-        return _overlayDownloading();
-      case _DownloadState.success:
-        return _overlaySuccess();
-      case _DownloadState.partialData:
-        return _overlayPartialData();
-      case _DownloadState.emptyData:
-        return _overlayError(
-          icon: Icons.warning_amber_rounded,
-          title: 'Məlumat tapılmadı',
-          subtitle:
-              'Server bu bina üçün məlumat qaytarmadı.\nTarixin düzgünlüyünü və internet bağlantısını yoxlayın.',
-        );
-      case _DownloadState.networkError:
-        return _overlayError(
-          icon: Icons.wifi_off_rounded,
-          title: 'İnternet bağlantısı kəsildi',
-          subtitle:
-              'Məlumatlar yüklənmədi.\nBağlantını yoxlayıb yenidən cəhd edin.',
-        );
-      case _DownloadState.idle:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _overlayDownloading() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
-            shape: BoxShape.circle,
-            border:
-                Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'Məlumatlar yüklənir',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
-            decoration: TextDecoration.none,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Zəhmət olmasa gözləyin...',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 13,
-            decoration: TextDecoration.none,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _overlaySuccess() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.check_circle_rounded, color: Colors.white, size: 64),
-        const SizedBox(height: 24),
-        const Text(
-          'Baza yükləndi!',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.none,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '$_downloadedParticipants iştirakçı · $_downloadedSupervisors nəzarətçi',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
-            fontSize: 14,
-            decoration: TextDecoration.none,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _overlayPartialData() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 56),
-        const SizedBox(height: 20),
-        const Text(
-          'Natamam yükləndi',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.none,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '$_partialErrorMessage\nZəhmət olmasa bir daha cəhd edin\nvə ya qərargahdan məlumatları dəqiqləşdirin.',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
-            fontSize: 13,
-            decoration: TextDecoration.none,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 28),
-        ElevatedButton.icon(
-          onPressed: _retryDownload,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Yenidən cəhd et'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () {
-            final authProvider =
-                Provider.of<AuthProvider>(context, listen: false);
-            _navigateToMain(authProvider);
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-          child: Text(
-            _partialMissingParticipants
-                ? 'Bu imtahanda iştirakçı yoxdur'
-                : 'Bu imtahanda nəzarətçi yoxdur',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _overlayError({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white, size: 56),
-        const SizedBox(height: 20),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.none,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.75),
-            fontSize: 13,
-            decoration: TextDecoration.none,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 28),
-        ElevatedButton.icon(
-          onPressed: _retryDownload,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Yenidən cəhd et'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          body: GradientBackground(
-            gradientType: GradientType.default_,
-            child: SafeArea(
-              child: RefreshIndicator(
-                onRefresh: _refreshData,
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Logo and Title
-                            _buildHeader(),
+    return Scaffold(
+      body: GradientBackground(
+        gradientType: GradientType.default_,
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _refreshData,
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo and Title
+                        _buildHeader(),
 
-                            const SizedBox(height: 40),
+                        const SizedBox(height: 40),
 
-                            // Login Form
-                            _buildLoginForm(),
+                        // Login Form
+                        _buildLoginForm(),
 
-                            const SizedBox(height: 30),
+                        const SizedBox(height: 30),
 
-                            // Login Button
-                            _buildLoginButton(),
+                        // Login Button
+                        _buildLoginButton(),
 
-                            const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                            // Error and Lockout Display
-                            Consumer<AuthProvider>(
-                              builder: (context, authProvider, child) {
-                                if (authProvider.isLockedOut) {
-                                  return Container(
-                                    margin: const EdgeInsets.only(top: 20),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                          color: Colors.red.withOpacity(0.5)),
-                                    ),
-                                    child: Text(
-                                      'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə sonra yenidən cəhd edin.',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  );
-                                }
-                                if (authProvider.error != null) {
-                                  return MessageDisplay(
-                                    message: authProvider.error!,
-                                    type: MessageType.error,
-                                    margin: const EdgeInsets.only(top: 20),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
-                          ],
+                        // Error and Lockout Display
+                        Consumer<AuthProvider>(
+                          builder: (context, authProvider, child) {
+                            if (authProvider.isLockedOut) {
+                              return Container(
+                                margin: const EdgeInsets.only(top: 20),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.red.withOpacity(0.5)),
+                                ),
+                                child: Text(
+                                  'Hesab bloklanıb. ${authProvider.lockoutSecondsLeft} saniyə sonra yenidən cəhd edin.',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
+                            if (authProvider.error != null) {
+                              return MessageDisplay(
+                                message: authProvider.error!,
+                                type: MessageType.error,
+                                margin: const EdgeInsets.only(top: 20),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
@@ -559,8 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-        if (_downloadState != _DownloadState.idle) _buildDownloadOverlay(),
-      ],
+      ),
     );
   }
 
@@ -772,19 +439,6 @@ class _LoginScreenState extends State<LoginScreen>
                 }
                 return null;
               },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Exam Date Dropdown
-            ExamDateDropdown(
-              selectedDate: _selectedExamDate,
-              onChanged: (value) {
-                setState(() {
-                  _selectedExamDate = value;
-                });
-              },
-              forceLight: true, // Принудительно светлая тема
             ),
           ],
         ),

@@ -20,6 +20,8 @@ class AuthProvider extends ChangeNotifier {
   List<String> _examDates = [];
   Auth? _authData;
   String? _currentUserRole;
+  String? _examName;
+  String? _sessionLabel;
 
   // Brute-force lockout state
   int _failedAttempts = 0;
@@ -37,6 +39,24 @@ class AuthProvider extends ChangeNotifier {
   List<String> get examDates => _examDates;
   Auth? get authData => _authData;
   String? get currentUserRole => _currentUserRole;
+  // Display name of the currently selected exam (from ExamDetails.examName,
+  // set once an exam is picked on ExamSelectScreen). Null until then.
+  String? get examName => _examName;
+  // Display label of the currently selected session (from
+  // ExamDetails.sessionLabel, e.g. "I növbə · 10:00"). Null until a session
+  // has been picked.
+  String? get sessionLabel => _sessionLabel;
+  // "<examName> · <sessionLabel>" for headers, falling back gracefully when
+  // either half is missing.
+  String? get activeExamHeaderLabel {
+    if (_examName != null && _examName!.isNotEmpty) {
+      if (_sessionLabel != null && _sessionLabel!.isNotEmpty) {
+        return '$_examName · $_sessionLabel';
+      }
+      return _examName;
+    }
+    return null;
+  }
 
   // Role-based getters
   bool get isAdmin => RoleHelper.isAdministrativeRole(_currentUserRole);
@@ -82,6 +102,8 @@ class AuthProvider extends ChangeNotifier {
         if (examDetails != null) {
           final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
           _authData = Auth(bina: bina, examDate: examDetails.imtTarix ?? '');
+          _examName = examDetails.examName;
+          _sessionLabel = examDetails.sessionLabel;
 
           // Reconnect to emergency hub after app restart
           final storedToken = await _httpService.getToken();
@@ -105,6 +127,8 @@ class AuthProvider extends ChangeNotifier {
           _currentUserRole = null;
           _accessToken = null;
           _authData = null;
+          _examName = null;
+          _sessionLabel = null;
         }
       }
     } catch (e) {
@@ -113,6 +137,8 @@ class AuthProvider extends ChangeNotifier {
       _currentUserRole = null;
       _accessToken = null;
       _authData = null;
+      _examName = null;
+      _sessionLabel = null;
     } finally {
       _setLoading(false);
     }
@@ -136,9 +162,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Login with JWT
-  Future<bool> signInWithJWT(
-      String userName, String password, String examDate) async {
+  // Login with JWT. The exam is no longer chosen at login time — it's picked
+  // afterwards on ExamSelectScreen (see setActiveExam()). ExamDetails is
+  // stored here with an empty imtTarix; only the building (kodBina/adBina)
+  // is known at this point.
+  Future<bool> signInWithJWT(String userName, String password) async {
     // Check lockout before attempting login
     if (isLockedOut) {
       _setError(
@@ -156,7 +184,7 @@ class AuthProvider extends ChangeNotifier {
       // Clear all SQLite database on login
       await DatabaseService.clearAllDatabase();
 
-      final response = await _httpService.login(userName, password, examDate);
+      final response = await _httpService.login(userName, password);
 
       if (response.success && response.data.token.isNotEmpty) {
         // Store token
@@ -177,17 +205,19 @@ class AuthProvider extends ChangeNotifier {
                 ? int.tryParse(userName.substring(4)) ?? 0
                 : 0);
 
-        // Store exam details for participant scanning
+        // Store exam details — building only, no exam selected yet.
         final examDetails = ExamDetails(
           kodBina: bina.toString(),
-          imtTarix: examDate,
+          imtTarix: '',
           adBina: adBinaFromToken,
         );
         await _httpService.storeExamDetails(examDetails);
 
         // Update state
         _accessToken = response.data;
-        _authData = Auth(bina: bina, examDate: examDate);
+        _authData = Auth(bina: bina, examDate: '');
+        _examName = null;
+        _sessionLabel = null;
         _isAuthenticated = true;
 
         // Reset lockout on successful login
@@ -234,6 +264,24 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Called by ExamSelectScreen (and the dashboard's session switcher) right
+  /// after persisting the chosen exam/session via
+  /// HttpService.storeExamDetails(). Updates in-memory state (Auth.examDate +
+  /// examName + sessionLabel) so every provider that reads AuthProvider sees
+  /// the new exam/session immediately, without requiring a re-login.
+  void setActiveExam({
+    required String imtTarix,
+    String? examName,
+    String? sessionLabel,
+  }) {
+    if (_authData != null) {
+      _authData = Auth(bina: _authData!.bina, examDate: imtTarix);
+    }
+    _examName = examName;
+    _sessionLabel = sessionLabel;
+    notifyListeners();
   }
 
   // Change password
@@ -288,6 +336,8 @@ class AuthProvider extends ChangeNotifier {
       _accessToken = null;
       _authData = null;
       _currentUserRole = null;
+      _examName = null;
+      _sessionLabel = null;
       _examDates.clear();
       _clearError();
 

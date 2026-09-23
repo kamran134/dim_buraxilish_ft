@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/participant_provider.dart';
 import '../providers/notifications_provider.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/session_switcher_sheet.dart';
+import 'exam_select_screen.dart';
 import 'participant_screen.dart';
 import 'supervisor_screen.dart';
 import 'statistics_screen.dart';
@@ -23,6 +26,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late List<AnimationController> _animationControllers;
   late List<Animation<double>> _scaleAnimations;
   late List<Animation<double>> _fadeAnimations;
+
+  // Set while a session switch (sync + clear + re-download) is running, so
+  // the switcher sheet can't be reopened mid-flight.
+  bool _switchingSession = false;
 
   final List<MenuItemData> _menuItems = [
     MenuItemData(
@@ -99,6 +106,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Start animations with staggered delay
     _startAnimations();
+  }
+
+  /// Opens the shared "switch session" bottom sheet for the currently
+  /// selected exam and, on a completed switch, refreshes the exam details
+  /// (and derived stats) that the header/menu read from ParticipantProvider.
+  /// The actual sync/clear/persist/download flow lives in
+  /// ExamSessionSwitcher via showSessionSwitcherSheet — shared with
+  /// ExamSelectScreen and RealDashboardScreen instead of duplicated here.
+  Future<void> _showSessionSwitcher() async {
+    setState(() => _switchingSession = true);
+    try {
+      await showSessionSwitcherSheet(
+        context: context,
+        onSwitched: () => context.read<ParticipantProvider>().loadExamDetails(),
+      );
+    } finally {
+      if (mounted) setState(() => _switchingSession = false);
+    }
   }
 
   void _startAnimations() {
@@ -178,12 +203,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 child: SafeArea(
-                  child: Consumer<ParticipantProvider>(
-                    builder: (context, participantProvider, child) {
+                  child: Consumer2<ParticipantProvider, AuthProvider>(
+                    builder: (context, participantProvider, authProvider, child) {
                       final examDetails = participantProvider.examDetails;
                       final buildingCode = examDetails?.kodBina ?? '0000';
                       final buildingName = examDetails?.adBina ??
                           'Buraxılış sistemini idarə edin';
+                      final examSessionLabel =
+                          authProvider.activeExamHeaderLabel;
+                      final hasExam = authProvider.examName != null;
 
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -203,6 +231,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             textAlign: TextAlign.center,
                           ),
+                          if (examSessionLabel != null &&
+                              examSessionLabel.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    examSessionLabel,
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (hasExam)
+                                  GestureDetector(
+                                    onTap: _switchingSession
+                                        ? null
+                                        : () => _showSessionSwitcher(),
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Icon(
+                                        Icons.swap_horiz,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ExamSelectScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 8),
+                                    child: Text(
+                                      'Dəyiş',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: Colors.white,
+                                        decoration: TextDecoration.underline,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       );
                     },

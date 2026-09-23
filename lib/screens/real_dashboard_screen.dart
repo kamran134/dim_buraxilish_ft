@@ -11,7 +11,9 @@ import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 import '../utils/role_helper.dart';
 import '../widgets/admin_drawer.dart';
+import '../widgets/session_switcher_sheet.dart';
 import 'building_details_screen.dart';
+import 'exam_select_screen.dart';
 import 'buildings_statistics_screen.dart';
 import 'rooms_statistics_screen.dart';
 import 'room_monitors_screen.dart';
@@ -37,6 +39,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
   // Реальные данные
   final StatisticsService _statisticsService = StatisticsService();
+  // Set while a session switch (sync + clear + re-download) is running, so
+  // the switcher sheet can't be reopened mid-flight.
+  bool _switchingSession = false;
   DashboardStatistics? _dashboardStats;
   List<ExamStatisticsDto> _examStatistics = [];
   List<MonitorRoomStatistics> _roomStatistics = [];
@@ -131,6 +136,23 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     final examDateToRefresh = _selectedExamDate ?? _dashboardStats?.examDate;
     if (examDateToRefresh != null) {
       await _loadDashboardStatistics(examDateToRefresh);
+    }
+  }
+
+  /// Opens the shared "switch session" bottom sheet for the currently
+  /// selected exam and, on a completed switch, refreshes the dashboard's
+  /// statistics. The actual sync/clear/persist/download flow lives in
+  /// [ExamSessionSwitcher] via [showSessionSwitcherSheet] — shared with
+  /// ExamSelectScreen and HomeScreen instead of duplicated here.
+  Future<void> _showSessionSwitcher() async {
+    setState(() => _switchingSession = true);
+    try {
+      await showSessionSwitcherSheet(
+        context: context,
+        onSwitched: refreshStatistics,
+      );
+    } finally {
+      if (mounted) setState(() => _switchingSession = false);
     }
   }
 
@@ -248,6 +270,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
           titlePadding: const EdgeInsets.only(left: 72, bottom: 16),
           title: Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
+              final activeExamLabel = authProvider.activeExamHeaderLabel ??
+                  authProvider.authData?.examDate;
+              final hasExam = authProvider.examName != null;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,6 +290,59 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                       color: Colors.white70,
                     ),
                   ),
+                  if (activeExamLabel != null && activeExamLabel.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              activeExamLabel,
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (hasExam)
+                            GestureDetector(
+                              onTap: _switchingSession
+                                  ? null
+                                  : () => _showSessionSwitcher(),
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Icon(
+                                  Icons.swap_horiz,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ExamSelectScreen(),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text(
+                                'Dəyiş',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: Colors.white,
+                                  decoration: TextDecoration.underline,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               );
             },

@@ -8,6 +8,7 @@ import '../services/http_service.dart';
 import '../services/sync_service.dart';
 import '../utils/app_version.dart';
 import '../widgets/common/common_widgets.dart';
+import 'exam_select_screen.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
@@ -117,10 +118,14 @@ class _SplashScreenState extends State<SplashScreen>
       // logout dialog could wipe unsynced data silently). Fire-and-forget.
       SyncService.instance.kickstartIfPending();
 
-      // Определяем куда перенаправить пользователя на основе роли
-      final targetScreen = authProvider.canAccessDashboard
-          ? const RealDashboardScreen()
-          : const MainScreen();
+      // Token valid, but no exam selected yet (fresh login, or an app
+      // restart before ExamSelectScreen ran) — send the user there first.
+      final examDate = authProvider.authData?.examDate ?? '';
+      final targetScreen = examDate.isEmpty
+          ? const ExamSelectScreen()
+          : (authProvider.canAccessDashboard
+              ? const RealDashboardScreen()
+              : const MainScreen());
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(

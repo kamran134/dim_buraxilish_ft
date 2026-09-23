@@ -81,14 +81,56 @@ class Participant {
   String get fullName => '$soy $adi $baba';
 }
 
+/// Lightweight summary of one session (shift) of the currently selected
+/// exam, as stashed on [ExamDetails.sessions] so the dashboard's session
+/// switcher doesn't need a fresh `GET /exams/{id}` call just to list them.
+class ExamSessionSummary {
+  final int id;
+  final String label;
+  final String? legacyImtTarix;
+
+  ExamSessionSummary({
+    required this.id,
+    required this.label,
+    this.legacyImtTarix,
+  });
+
+  factory ExamSessionSummary.fromJson(Map<String, dynamic> json) {
+    return ExamSessionSummary(
+      id: json['id'] as int,
+      label: json['label'] as String? ?? '',
+      legacyImtTarix: json['legacyImtTarix'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        if (legacyImtTarix != null) 'legacyImtTarix': legacyImtTarix,
+      };
+}
+
 class ExamDetails {
   final String? adBina; // Ad Bina
   final String? kodBina; // Kod Bina
-  final String? imtTarix; // İmtahan tarixi
+  final String? imtTarix; // İmtahan tarixi (legacy string — kept for all existing endpoints)
   final int? regManCount; // Qeydiyyatlı kişi sayı
   final int? regWomanCount; // Qeydiyyatlı qadın sayı
   final int? allManCount; // Ümumi kişi sayı
   final int? allWomanCount; // Ümumi qadın sayı
+  // New optional fields for the /exams-based exam picker. Both are nullable
+  // so a JSON blob saved by an older app version (without these fields)
+  // still deserializes fine.
+  final int? examId;
+  final String? examName;
+  // Session (shift) fields — also optional/nullable for backward
+  // compatibility with JSON stored before sessions existed. [sessionId]/
+  // [sessionLabel] identify the selected session; [sessions] is the full
+  // list of sessions of the CURRENT exam, kept around so the dashboard's
+  // session switcher can list them without another network call.
+  final int? sessionId;
+  final String? sessionLabel;
+  final List<ExamSessionSummary> sessions;
 
   ExamDetails({
     this.adBina,
@@ -98,9 +140,15 @@ class ExamDetails {
     this.regWomanCount,
     this.allManCount,
     this.allWomanCount,
+    this.examId,
+    this.examName,
+    this.sessionId,
+    this.sessionLabel,
+    this.sessions = const [],
   });
 
   factory ExamDetails.fromJson(Map<String, dynamic> json) {
+    final sessionsJson = json['sessions'] as List<dynamic>? ?? const [];
     return ExamDetails(
       adBina: json['ad_Bina'] as String?,
       kodBina: json['kod_Bina'] as String?,
@@ -109,6 +157,13 @@ class ExamDetails {
       regWomanCount: json['regWomanCount'] as int?,
       allManCount: json['allManCount'] as int?,
       allWomanCount: json['allWomanCount'] as int?,
+      examId: json['examId'] as int?,
+      examName: json['examName'] as String?,
+      sessionId: json['sessionId'] as int?,
+      sessionLabel: json['sessionLabel'] as String?,
+      sessions: sessionsJson
+          .map((e) => ExamSessionSummary.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -121,6 +176,12 @@ class ExamDetails {
       'regWomanCount': regWomanCount,
       'allManCount': allManCount,
       'allWomanCount': allWomanCount,
+      if (examId != null) 'examId': examId,
+      if (examName != null) 'examName': examName,
+      if (sessionId != null) 'sessionId': sessionId,
+      if (sessionLabel != null) 'sessionLabel': sessionLabel,
+      if (sessions.isNotEmpty)
+        'sessions': sessions.map((s) => s.toJson()).toList(),
     };
   }
 

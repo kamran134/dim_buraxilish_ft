@@ -8,6 +8,7 @@ import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/monitor_models.dart';
 import '../models/violator_models.dart';
+import '../models/exam_models.dart';
 import '../utils/date_formatter.dart';
 import 'database_service.dart';
 
@@ -53,6 +54,16 @@ class HttpService {
         final token = await getToken();
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
+        }
+        // Tell the server which session (shift) the request is for, once
+        // one has been picked. The server currently ignores this header —
+        // see API_exams_sessions.md — but sending it now means legacy
+        // endpoints can start filtering by session later without another
+        // client release.
+        final examDetails = await getExamDetailsFromStorage();
+        if (examDetails?.sessionId != null) {
+          options.headers['X-Exam-Session-Id'] =
+              examDetails!.sessionId.toString();
         }
         handler.next(options);
       },
@@ -180,14 +191,13 @@ class HttpService {
     }
   }
 
-  // Login request (no token needed)
-  Future<LoginResponse> login(
-      String userName, String password, String examDate) async {
+  // Login request (no token needed). examDate is no longer part of login —
+  // the exam is picked afterwards on a dedicated screen (see getExams()).
+  Future<LoginResponse> login(String userName, String password) async {
     try {
       final loginData = LoginModel(
         userName: userName,
         password: password,
-        examDate: examDate,
         deviceId: await DeviceIdentityService.instance.getDeviceId(),
         deviceName: await DeviceIdentityService.instance.getDeviceName(),
       );
@@ -264,6 +274,56 @@ class HttpService {
         data: [],
         success: false,
         message: 'İmtahan tarixlərini əldə etmək mümkün olmadı!',
+      );
+    }
+  }
+
+  /// Get published exams for the exam-select screen. Requires JWT (attached
+  /// automatically by the request interceptor).
+  Future<ExamsResponse> getExams() async {
+    try {
+      final response = await _dio.get('/exams');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          final List<dynamic> list = data['data'] as List;
+          return ExamsResponse(
+            success: true,
+            message: data['message'] as String? ?? '',
+            data: list
+                .map((e) => ExamDto.fromJson(e as Map<String, dynamic>))
+                .toList(),
+          );
+        }
+        return ExamsResponse(
+          success: false,
+          message:
+              (data is Map ? data['message'] as String? : null) ??
+                  'İmtahanları əldə etmək mümkün olmadı!',
+          data: [],
+        );
+      }
+      return ExamsResponse(
+        success: false,
+        message: 'İmtahanları əldə etmək mümkün olmadı!',
+        data: [],
+      );
+    } on DioException catch (e) {
+      if (kDebugMode) print('getExams DioException: ${e.message}');
+      final responseData = e.response?.data;
+      return ExamsResponse(
+        success: false,
+        message: (responseData is Map ? responseData['message'] as String? : null) ??
+            'İnternet bağlantı yoxdur!',
+        data: [],
+      );
+    } catch (e) {
+      if (kDebugMode) print('getExams general error: $e');
+      return ExamsResponse(
+        success: false,
+        message: 'İmtahanları əldə etmək mümkün olmadı!',
+        data: [],
       );
     }
   }

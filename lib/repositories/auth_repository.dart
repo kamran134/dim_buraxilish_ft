@@ -29,8 +29,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<LoginResponse> login(
       String username, String password, String examDate) async {
     try {
-      final loginResponse =
-          await _httpService.login(username, password, examDate);
+      // NOTE: examDate is no longer accepted by HttpService.login() (server
+      // dropped the requirement) — dropped here too just to keep this dead
+      // DI-layer file compiling; it is not wired into the real app.
+      final loginResponse = await _httpService.login(username, password);
 
       // Store authentication data if successful
       if (loginResponse.success) {
