@@ -142,7 +142,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   /// Opens the shared "switch session" bottom sheet for the currently
   /// selected exam and, on a completed switch, refreshes the dashboard's
   /// statistics. The actual sync/clear/persist/download flow lives in
-  /// [ExamSessionSwitcher] via [showSessionSwitcherSheet] — shared with
+  /// [SlotSwitcher] via [showSessionSwitcherSheet] — shared with
   /// ExamSelectScreen and HomeScreen instead of duplicated here.
   Future<void> _showSessionSwitcher() async {
     setState(() => _switchingSession = true);
@@ -272,7 +272,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
             builder: (context, authProvider, child) {
               final activeExamLabel = authProvider.activeExamHeaderLabel ??
                   authProvider.authData?.examDate;
-              final hasExam = authProvider.examName != null;
+              final hasExam = authProvider.hasActiveExam;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

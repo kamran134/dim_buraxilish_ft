@@ -110,6 +110,35 @@ class ExamSessionSummary {
       };
 }
 
+/// Lightweight summary of one slot available at the time an exam/slot was
+/// picked, stashed on [ExamDetails.slots] so the switcher (home screen /
+/// admin dashboard) doesn't need a fresh `GET slots` call just to list them.
+class SlotSummary {
+  final String key;
+  final String label;
+  final String legacyDate;
+
+  SlotSummary({
+    required this.key,
+    required this.label,
+    required this.legacyDate,
+  });
+
+  factory SlotSummary.fromJson(Map<String, dynamic> json) {
+    return SlotSummary(
+      key: json['key'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      legacyDate: json['legacyDate'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'key': key,
+        'label': label,
+        'legacyDate': legacyDate,
+      };
+}
+
 class ExamDetails {
   final String? adBina; // Ad Bina
   final String? kodBina; // Kod Bina
@@ -118,19 +147,21 @@ class ExamDetails {
   final int? regWomanCount; // Qeydiyyatlı qadın sayı
   final int? allManCount; // Ümumi kişi sayı
   final int? allWomanCount; // Ümumi qadın sayı
-  // New optional fields for the /exams-based exam picker. Both are nullable
-  // so a JSON blob saved by an older app version (without these fields)
-  // still deserializes fine.
+  // Legacy /exams-based exam+session picker fields. No longer written by the
+  // current (slot-based) flow — kept ONLY so a JSON blob saved by an older
+  // app version still deserializes without loss.
   final int? examId;
   final String? examName;
-  // Session (shift) fields — also optional/nullable for backward
-  // compatibility with JSON stored before sessions existed. [sessionId]/
-  // [sessionLabel] identify the selected session; [sessions] is the full
-  // list of sessions of the CURRENT exam, kept around so the dashboard's
-  // session switcher can list them without another network call.
   final int? sessionId;
   final String? sessionLabel;
   final List<ExamSessionSummary> sessions;
+  // Slot fields (current flow — see API_slots.md). [slotKey] is what the dio
+  // interceptor sends as `X-Exam-Slot`; [slotLabel] is shown by the
+  // switcher; [slots] is the full slot list available at pick time so the
+  // switcher can list them without a fresh `GET slots` call.
+  final String? slotKey;
+  final String? slotLabel;
+  final List<SlotSummary> slots;
 
   ExamDetails({
     this.adBina,
@@ -145,10 +176,14 @@ class ExamDetails {
     this.sessionId,
     this.sessionLabel,
     this.sessions = const [],
+    this.slotKey,
+    this.slotLabel,
+    this.slots = const [],
   });
 
   factory ExamDetails.fromJson(Map<String, dynamic> json) {
     final sessionsJson = json['sessions'] as List<dynamic>? ?? const [];
+    final slotsJson = json['slots'] as List<dynamic>? ?? const [];
     return ExamDetails(
       adBina: json['ad_Bina'] as String?,
       kodBina: json['kod_Bina'] as String?,
@@ -163,6 +198,11 @@ class ExamDetails {
       sessionLabel: json['sessionLabel'] as String?,
       sessions: sessionsJson
           .map((e) => ExamSessionSummary.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      slotKey: json['slotKey'] as String?,
+      slotLabel: json['slotLabel'] as String?,
+      slots: slotsJson
+          .map((e) => SlotSummary.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -182,6 +222,9 @@ class ExamDetails {
       if (sessionLabel != null) 'sessionLabel': sessionLabel,
       if (sessions.isNotEmpty)
         'sessions': sessions.map((s) => s.toJson()).toList(),
+      if (slotKey != null) 'slotKey': slotKey,
+      if (slotLabel != null) 'slotLabel': slotLabel,
+      if (slots.isNotEmpty) 'slots': slots.map((s) => s.toJson()).toList(),
     };
   }
 

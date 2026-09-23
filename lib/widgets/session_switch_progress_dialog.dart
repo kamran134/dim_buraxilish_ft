@@ -4,16 +4,16 @@ import '../design/app_text_styles.dart';
 import '../models/participant_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/offline_database_provider.dart';
-import '../services/exam_session_switcher.dart';
+import '../services/slot_switcher.dart';
 import '../services/http_service.dart';
 
 enum _DialogPhase { syncing, downloading, success, partial, empty, error }
 
-/// Non-dismissible dialog that drives [ExamSessionSwitcher] end to end and
-/// shows its progress/result, with an explicit retry on failure — used by
-/// every screen that lets the user switch sessions outside of
-/// ExamSelectScreen (which has its own full-screen overlay for the same
-/// states). Errors are always shown, never swallowed.
+/// Non-dismissible dialog that drives [SlotSwitcher] end to end and shows
+/// its progress/result, with an explicit retry on failure — used by every
+/// screen that lets the user switch slots outside of ExamSelectScreen
+/// (which has its own full-screen overlay for the same states). Errors are
+/// always shown, never swallowed.
 ///
 /// Pops with `true` once the switch actually completed (success, or the user
 /// chose to continue despite partial/empty data), `false`/`null` otherwise.
@@ -21,20 +21,16 @@ class SessionSwitchProgressDialog extends StatefulWidget {
   final AuthProvider authProvider;
   final OfflineDatabaseProvider offlineProvider;
   final HttpService httpService;
-  final int examId;
-  final String examName;
-  final ExamSessionSummary session;
-  final List<ExamSessionSummary> sessions;
+  final SlotSummary slot;
+  final List<SlotSummary> slots;
 
   const SessionSwitchProgressDialog({
     super.key,
     required this.authProvider,
     required this.offlineProvider,
     required this.httpService,
-    required this.examId,
-    required this.examName,
-    required this.session,
-    required this.sessions,
+    required this.slot,
+    required this.slots,
   });
 
   @override
@@ -60,29 +56,27 @@ class _SessionSwitchProgressDialogState
   Future<void> _run() async {
     if (!_persisted) {
       if (mounted) setState(() => _phase = _DialogPhase.syncing);
-      await ExamSessionSwitcher.persistSelection(
+      await SlotSwitcher.persistSelection(
         authProvider: widget.authProvider,
         httpService: widget.httpService,
-        examId: widget.examId,
-        examName: widget.examName,
-        sessionId: widget.session.id,
-        sessionLabel: widget.session.label,
-        legacyImtTarix: widget.session.legacyImtTarix!,
-        sessions: widget.sessions,
+        slotKey: widget.slot.key,
+        slotLabel: widget.slot.label,
+        legacyDate: widget.slot.legacyDate,
+        slots: widget.slots,
       );
       _persisted = true;
     }
     if (!mounted) return;
 
     setState(() => _phase = _DialogPhase.downloading);
-    final outcome = await ExamSessionSwitcher.downloadForRole(
+    final outcome = await SlotSwitcher.downloadForRole(
       authProvider: widget.authProvider,
       offlineProvider: widget.offlineProvider,
     );
     if (!mounted) return;
 
     switch (outcome.result) {
-      case SessionSwitchResult.success:
+      case SlotSwitchResult.success:
         setState(() {
           _phase = _DialogPhase.success;
           _participants = outcome.participantCount;
@@ -90,19 +84,19 @@ class _SessionSwitchProgressDialogState
         });
         await Future.delayed(const Duration(milliseconds: 1200));
         if (mounted) Navigator.of(context).pop(true);
-      case SessionSwitchResult.partialSuccess:
+      case SlotSwitchResult.partialSuccess:
         setState(() {
           _phase = _DialogPhase.partial;
           _detail = outcome.message;
           _missingParticipants = outcome.missingParticipants;
         });
-      case SessionSwitchResult.emptyData:
+      case SlotSwitchResult.emptyData:
         setState(() {
           _phase = _DialogPhase.empty;
           _detail =
               'Server bu bina üçün məlumat qaytarmadı. Tarixin düzgünlüyünü və internet bağlantısını yoxlayın.';
         });
-      case SessionSwitchResult.networkError:
+      case SlotSwitchResult.networkError:
         setState(() {
           _phase = _DialogPhase.error;
           _detail = outcome.message ??

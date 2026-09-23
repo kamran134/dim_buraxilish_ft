@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// selected exam and, on a completed switch, refreshes the exam details
   /// (and derived stats) that the header/menu read from ParticipantProvider.
   /// The actual sync/clear/persist/download flow lives in
-  /// ExamSessionSwitcher via showSessionSwitcherSheet — shared with
+  /// SlotSwitcher via showSessionSwitcherSheet — shared with
   /// ExamSelectScreen and RealDashboardScreen instead of duplicated here.
   Future<void> _showSessionSwitcher() async {
     setState(() => _switchingSession = true);
@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           'Buraxılış sistemini idarə edin';
                       final examSessionLabel =
                           authProvider.activeExamHeaderLabel;
-                      final hasExam = authProvider.examName != null;
+                      final hasExam = authProvider.hasActiveExam;
 
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.center,

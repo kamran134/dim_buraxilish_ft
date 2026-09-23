@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../services/http_service.dart';
 import '../utils/app_version.dart';
@@ -5,6 +6,7 @@ import '../services/database_service.dart';
 import '../models/participant_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/violator_models.dart';
+import '../models/monitor_models.dart';
 
 enum OfflineDownloadResult { success, partialSuccess, emptyData, networkError }
 
@@ -108,7 +110,18 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       print('Admin offline download: examDate=$examDate');
 
       // Download ALL monitors for this exam date (admin has no building code)
-      final monitors = await _httpService.getAllMonitorsInExamDate(examDate);
+      List<Monitor> monitors;
+      try {
+        monitors = await _httpService.getAllMonitorsInExamDate(examDate);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 400) {
+          // Invalid `X-Exam-Slot` header — never fall through to saving
+          // anything for this stale/wrong slot.
+          _setError(_slotErrorMessage(e));
+          return;
+        }
+        rethrow;
+      }
 
       if (monitors.isEmpty) {
         _setError('Bu tarix üçün monitor məlumatları tapılmadı.');
@@ -170,6 +183,15 @@ class OfflineDatabaseProvider extends ChangeNotifier {
           examDate: examDate,
         );
         print('Downloaded ${participants.length} participants');
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 400) {
+          // Invalid `X-Exam-Slot` header — abort outright, never save a
+          // silently-partial database for the wrong slot.
+          _setError(_slotErrorMessage(e));
+          return OfflineDownloadResult.networkError;
+        }
+        print('Could not download participants: $e');
+        hadNetworkError = true;
       } catch (e) {
         print('Could not download participants: $e');
         hadNetworkError = true;
@@ -184,6 +206,13 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         );
         supervisors = result.cast<Supervisor>();
         print('Downloaded ${supervisors.length} supervisors');
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 400) {
+          _setError(_slotErrorMessage(e));
+          return OfflineDownloadResult.networkError;
+        }
+        print('Could not download supervisors: $e');
+        hadNetworkError = true;
       } catch (e) {
         print('Could not download supervisors: $e');
         hadNetworkError = true;
@@ -349,6 +378,16 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   /// Refresh offline data status
   Future<void> refreshStatus() async {
     await _checkOfflineData();
+  }
+
+  /// Message for a 400 response caused by an invalid/rejected `X-Exam-Slot`
+  /// header (see API_slots.md) — prefers the server's own text.
+  String _slotErrorMessage(DioException e) {
+    final data = e.response?.data;
+    final serverMessage = data is Map ? data['message'] as String? : null;
+    return (serverMessage != null && serverMessage.isNotEmpty)
+        ? serverMessage
+        : 'Seçilmiş slot üçün məlumat tapılmadı və ya slot düzgün deyil.';
   }
 
   // Private helper methods

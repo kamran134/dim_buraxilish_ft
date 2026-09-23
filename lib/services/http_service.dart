@@ -55,15 +55,14 @@ class HttpService {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        // Tell the server which session (shift) the request is for, once
-        // one has been picked. The server currently ignores this header —
-        // see API_exams_sessions.md — but sending it now means legacy
-        // endpoints can start filtering by session later without another
-        // client release.
+        // Tell the server which slot (date+time) the request is for, once
+        // one has been picked — see API_slots.md. The server filters legacy
+        // endpoints by this header when present; without it (old clients)
+        // they keep working off the `examDate` query parameter alone.
         final examDetails = await getExamDetailsFromStorage();
-        if (examDetails?.sessionId != null) {
-          options.headers['X-Exam-Session-Id'] =
-              examDetails!.sessionId.toString();
+        final slotKey = examDetails?.slotKey;
+        if (slotKey != null && slotKey.isNotEmpty) {
+          options.headers['X-Exam-Slot'] = slotKey;
         }
         handler.next(options);
       },
@@ -323,6 +322,64 @@ class HttpService {
       return ExamsResponse(
         success: false,
         message: 'İmtahanları əldə etmək mümkün olmadı!',
+        data: [],
+      );
+    }
+  }
+
+  /// Get slots for the exam-select screen. For role `monitor` the server
+  /// returns only slots where the caller's building (JWT `bina` claim) has
+  /// participants or supervisors. Requires JWT (attached automatically by
+  /// the request interceptor). See API_slots.md.
+  Future<SlotsResponse> getSlots() => _getSlots('/slots');
+
+  /// Get ALL slots across all buildings — superadmin/admin only ("Vaxt
+  /// üzrə" mode). See API_slots.md.
+  Future<SlotsResponse> getAllSlots() => _getSlots('/slots/all');
+
+  Future<SlotsResponse> _getSlots(String path) async {
+    try {
+      final response = await _dio.get(path);
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          final List<dynamic> list = data['data'] as List;
+          return SlotsResponse(
+            success: true,
+            message: data['message'] as String? ?? '',
+            data: list
+                .map((e) => SlotDto.fromJson(e as Map<String, dynamic>))
+                .toList(),
+          );
+        }
+        return SlotsResponse(
+          success: false,
+          message:
+              (data is Map ? data['message'] as String? : null) ??
+                  'Slotları əldə etmək mümkün olmadı!',
+          data: [],
+        );
+      }
+      return SlotsResponse(
+        success: false,
+        message: 'Slotları əldə etmək mümkün olmadı!',
+        data: [],
+      );
+    } on DioException catch (e) {
+      if (kDebugMode) print('getSlots DioException: ${e.message}');
+      final responseData = e.response?.data;
+      return SlotsResponse(
+        success: false,
+        message: (responseData is Map ? responseData['message'] as String? : null) ??
+            'İnternet bağlantı yoxdur!',
+        data: [],
+      );
+    } catch (e) {
+      if (kDebugMode) print('getSlots general error: $e');
+      return SlotsResponse(
+        success: false,
+        message: 'Slotları əldə etmək mümkün olmadı!',
         data: [],
       );
     }
@@ -1005,6 +1062,14 @@ class HttpService {
       }
 
       return [];
+    } on DioException catch (e) {
+      // A 400 here means the `X-Exam-Slot` header was rejected (invalid
+      // slot) — let it propagate so the caller can tell that apart from
+      // "no data" and refuse to save a silently-partial offline database
+      // (see API_slots.md and OfflineDatabaseProvider.downloadOfflineDatabase).
+      if (e.response?.statusCode == 400) rethrow;
+      print('Error getting supervisors by building: $e');
+      return [];
     } catch (e) {
       print('Error getting supervisors by building: $e');
       return [];
@@ -1056,6 +1121,13 @@ class HttpService {
         final List<dynamic> data = response.data['data'] ?? [];
         return data.map((json) => Monitor.fromJson(json)).toList();
       }
+      return [];
+    } on DioException catch (e) {
+      // A 400 means the `X-Exam-Slot` header was rejected — propagate so
+      // OfflineDatabaseProvider can show an explicit error instead of the
+      // generic "no data for this date" message.
+      if (e.response?.statusCode == 400) rethrow;
+      print('Error getting all monitors in exam date: $e');
       return [];
     } catch (e) {
       print('Error getting all monitors in exam date: $e');

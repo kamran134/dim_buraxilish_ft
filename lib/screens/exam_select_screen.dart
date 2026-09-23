@@ -7,19 +7,20 @@ import '../models/exam_models.dart';
 import '../models/participant_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/offline_database_provider.dart';
-import '../services/exam_session_switcher.dart';
+import '../services/slot_switcher.dart';
 import '../services/http_service.dart';
 import '../widgets/common/common_widgets.dart';
 import 'main_screen.dart';
 import 'real_dashboard_screen.dart';
 
-/// Loading state of the exam list itself (the `GET /exams` call).
+/// Loading state of the slot list itself (the `GET slots`/`GET slots/all`
+/// call).
 enum _ListState { loading, loaded, error, empty }
 
-/// Full-screen overlay phase shown while selecting an exam: flushing the
+/// Full-screen overlay phase shown while selecting a slot: flushing the
 /// unsynced queue, then downloading the offline database for the newly
-/// picked exam. Mirrors the overlay that used to live on the login screen —
-/// moved here because the download now happens after picking an exam, not
+/// picked slot. Mirrors the overlay that used to live on the login screen —
+/// moved here because the download now happens after picking a slot, not
 /// at login.
 enum _Phase {
   idle,
@@ -43,11 +44,10 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
 
   _ListState _listState = _ListState.loading;
   String _listError = '';
-  List<ExamDto> _exams = [];
+  List<SlotDto> _slots = [];
 
-  // Used to mark the currently active exam card / session chip.
-  int? _currentExamId;
-  int? _currentSessionId;
+  // Used to mark the currently active slot card.
+  String? _currentSlotKey;
   String? _currentImtTarix;
 
   _Phase _phase = _Phase.idle;
@@ -56,49 +56,32 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
   String _partialErrorMessage = '';
   bool _partialMissingParticipants = false;
 
-  static const _azMonths = [
-    '',
-    'yanvar',
-    'fevral',
-    'mart',
-    'aprel',
-    'may',
-    'iyun',
-    'iyul',
-    'avqust',
-    'sentyabr',
-    'oktyabr',
-    'noyabr',
-    'dekabr',
-  ];
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadExams());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSlots());
   }
 
-  String _formatExamDate(String iso) {
-    try {
-      final date = DateTime.parse(iso);
-      return '${date.day} ${_azMonths[date.month]} ${date.year}';
-    } catch (_) {
-      return iso;
-    }
-  }
-
-  Future<void> _loadExams() async {
+  Future<void> _loadSlots() async {
     setState(() {
       _listState = _ListState.loading;
       _listError = '';
     });
 
     final stored = await _httpService.getExamDetailsFromStorage();
-    _currentExamId = stored?.examId;
-    _currentSessionId = stored?.sessionId;
+    _currentSlotKey = stored?.slotKey;
     _currentImtTarix = stored?.imtTarix;
 
-    final result = await _httpService.getExams();
+    if (!mounted) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Monitor role: server returns only slots for the caller's building
+    // (JWT `bina` claim). Admin roles: all slots, all buildings — see
+    // API_slots.md.
+    // slots/all разрешён только admin/superadmin (как на сервере); остальные роли,
+    // включая moderator, получают опубликованные слоты (монитор — только своего здания).
+    final result = authProvider.isAdmin
+        ? await _httpService.getAllSlots()
+        : await _httpService.getSlots();
     if (!mounted) return;
 
     if (!result.success) {
@@ -106,27 +89,25 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
         _listState = _ListState.error;
         _listError = result.message.isNotEmpty
             ? result.message
-            : 'İmtahanları əldə etmək mümkün olmadı';
+            : 'Slotları əldə etmək mümkün olmadı';
       });
       return;
     }
 
     setState(() {
-      _exams = result.data;
-      _listState = _exams.isEmpty ? _ListState.empty : _ListState.loaded;
+      _slots = result.data;
+      _listState = _slots.isEmpty ? _ListState.empty : _ListState.loaded;
     });
   }
 
-  Future<void> _onSessionTap(ExamDto exam, ExamSessionDto session) async {
-    if (session.legacyImtTarix == null) return;
-
+  Future<void> _onSlotTap(SlotDto slot) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Təsdiq'),
         content: Text(
-            '${exam.name} · ${session.label} seçilsin? Offline baza yenidən yüklənəcək.'),
+            '${slot.label} seçilsin? Offline baza yenidən yüklənəcək.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -142,32 +123,30 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
 
     if (confirmed != true) return;
     if (!mounted) return;
-    await _selectSession(exam, session);
+    await _selectSlot(slot);
   }
 
-  Future<void> _selectSession(ExamDto exam, ExamSessionDto session) async {
+  Future<void> _selectSlot(SlotDto slot) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final offlineProvider =
         Provider.of<OfflineDatabaseProvider>(context, listen: false);
 
     // a)-c): flush the unsynced queue, wipe the offline tables, persist the
-    // newly picked exam+session and update AuthProvider — shared with
-    // RealDashboardScreen's and HomeScreen's session switchers via
-    // ExamSessionSwitcher so this logic only exists once.
+    // newly picked slot and update AuthProvider — shared with
+    // RealDashboardScreen's and HomeScreen's switchers via SlotSwitcher so
+    // this logic only exists once.
     setState(() => _phase = _Phase.syncingQueue);
-    await ExamSessionSwitcher.persistSelection(
+    await SlotSwitcher.persistSelection(
       authProvider: authProvider,
       httpService: _httpService,
-      examId: exam.id,
-      examName: exam.name,
-      sessionId: session.id,
-      sessionLabel: session.label,
-      legacyImtTarix: session.legacyImtTarix!,
-      sessions: exam.sessions
-          .map((s) => ExamSessionSummary(
-                id: s.id,
+      slotKey: slot.key,
+      slotLabel: slot.label,
+      legacyDate: slot.legacyDate,
+      slots: _slots
+          .map((s) => SlotSummary(
+                key: s.key,
                 label: s.label,
-                legacyImtTarix: s.legacyImtTarix,
+                legacyDate: s.legacyDate,
               ))
           .toList(),
       onUnsyncedRemaining: (remaining) {
@@ -196,14 +175,14 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
     OfflineDatabaseProvider offlineProvider,
     AuthProvider authProvider,
   ) async {
-    final outcome = await ExamSessionSwitcher.downloadForRole(
+    final outcome = await SlotSwitcher.downloadForRole(
       authProvider: authProvider,
       offlineProvider: offlineProvider,
     );
     if (!mounted) return;
 
     switch (outcome.result) {
-      case SessionSwitchResult.success:
+      case SlotSwitchResult.success:
         if (authProvider.canAccessDashboard) {
           // Admin download has no participant/supervisor counts to show —
           // navigate straight away, same as before.
@@ -218,15 +197,15 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
         _navigateToTarget(authProvider);
-      case SessionSwitchResult.partialSuccess:
+      case SlotSwitchResult.partialSuccess:
         setState(() {
           _partialErrorMessage = outcome.message ?? '';
           _partialMissingParticipants = outcome.missingParticipants;
           _phase = _Phase.partialData;
         });
-      case SessionSwitchResult.emptyData:
+      case SlotSwitchResult.emptyData:
         setState(() => _phase = _Phase.emptyData);
-      case SessionSwitchResult.networkError:
+      case SlotSwitchResult.networkError:
         setState(() => _phase = _Phase.networkError);
     }
   }
@@ -315,7 +294,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
           title: 'Xəta baş verdi',
           subtitle: _listError,
           actionLabel: 'Yenidən cəhd et',
-          onAction: _loadExams,
+          onAction: _loadSlots,
         );
       case _ListState.empty:
         return _buildMessageState(
@@ -326,8 +305,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       case _ListState.loaded:
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-          itemCount: _exams.length,
-          itemBuilder: (context, index) => _buildExamCard(_exams[index]),
+          itemCount: _slots.length,
+          itemBuilder: (context, index) => _buildSlotCard(_slots[index]),
         );
     }
   }
@@ -380,25 +359,25 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
     );
   }
 
-  Widget _buildExamCard(ExamDto exam) {
+  Widget _buildSlotCard(SlotDto slot) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final disabled = !exam.hasSelectableSession;
     final busy = _phase != _Phase.idle;
-    final isActiveExam = _currentExamId != null
-        ? exam.id == _currentExamId
+    final isActiveSlot = _currentSlotKey != null && _currentSlotKey!.isNotEmpty
+        ? slot.key == _currentSlotKey
         : (_currentImtTarix != null &&
             _currentImtTarix!.isNotEmpty &&
-            exam.sessions.any((s) => s.legacyImtTarix == _currentImtTarix));
+            slot.legacyDate == _currentImtTarix);
+    final examNames = slot.examNamesJoined;
 
     return Opacity(
-      opacity: disabled ? 0.55 : 1.0,
+      opacity: busy ? 0.6 : 1.0,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border:
-              isActiveExam ? Border.all(color: Colors.white, width: 2) : null,
+              isActiveSlot ? Border.all(color: Colors.white, width: 2) : null,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
@@ -407,22 +386,41 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: busy ? null : () => _onSlotTap(slot),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      exam.name,
-                      style: AppTextStyles.cardTitle.copyWith(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          slot.label,
+                          style: AppTextStyles.cardTitle.copyWith(
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        if (examNames.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            examNames,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: isDark
+                                  ? Colors.white70
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (isActiveExam)
+                  if (isActiveSlot)
                     const Padding(
                       padding: EdgeInsets.only(left: 6),
                       child: Icon(Icons.check_circle,
@@ -430,102 +428,6 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                _formatExamDate(exam.examDate),
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: isDark ? Colors.white70 : AppColors.textSecondary,
-                ),
-              ),
-              if (exam.shortName != null && exam.shortName!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(exam.shortName!, style: AppTextStyles.caption),
-              ],
-              if (disabled) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Köhnə sistemlə əlaqələndirilməyib',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.error),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: exam.sessions
-                    .map((session) => _buildSessionChip(
-                          exam,
-                          session,
-                          isDark: isDark,
-                          busy: busy,
-                        ))
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSessionChip(
-    ExamDto exam,
-    ExamSessionDto session, {
-    required bool isDark,
-    required bool busy,
-  }) {
-    final sessionDisabled = session.legacyImtTarix == null;
-    final isActiveSession = _currentSessionId != null
-        ? session.id == _currentSessionId && exam.id == _currentExamId
-        : (_currentImtTarix != null &&
-            _currentImtTarix!.isNotEmpty &&
-            session.legacyImtTarix == _currentImtTarix);
-
-    final baseColor = isDark ? AppColors.surfaceDark : Colors.white;
-    final activeColor = isDark
-        ? AppColors.splashLightBlue.withOpacity(0.25)
-        : AppColors.primaryBlue.withOpacity(0.12);
-
-    return Opacity(
-      opacity: sessionDisabled ? 0.5 : 1.0,
-      child: Material(
-        color: isActiveSession ? activeColor : baseColor,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: (sessionDisabled || busy)
-              ? null
-              : () => _onSessionTap(exam, session),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isActiveSession
-                    ? AppColors.primaryBlue
-                    : (isDark ? Colors.white24 : Colors.black12),
-                width: isActiveSession ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isActiveSession)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 6),
-                    child: Icon(Icons.check_circle,
-                        color: AppColors.success, size: 16),
-                  ),
-                Text(
-                  session.label,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontWeight:
-                        isActiveSession ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ],
             ),
           ),
         ),

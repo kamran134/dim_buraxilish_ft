@@ -20,8 +20,7 @@ class AuthProvider extends ChangeNotifier {
   List<String> _examDates = [];
   Auth? _authData;
   String? _currentUserRole;
-  String? _examName;
-  String? _sessionLabel;
+  String? _slotLabel;
 
   // Brute-force lockout state
   int _failedAttempts = 0;
@@ -39,24 +38,18 @@ class AuthProvider extends ChangeNotifier {
   List<String> get examDates => _examDates;
   Auth? get authData => _authData;
   String? get currentUserRole => _currentUserRole;
-  // Display name of the currently selected exam (from ExamDetails.examName,
-  // set once an exam is picked on ExamSelectScreen). Null until then.
-  String? get examName => _examName;
-  // Display label of the currently selected session (from
-  // ExamDetails.sessionLabel, e.g. "I növbə · 10:00"). Null until a session
-  // has been picked.
-  String? get sessionLabel => _sessionLabel;
-  // "<examName> · <sessionLabel>" for headers, falling back gracefully when
-  // either half is missing.
-  String? get activeExamHeaderLabel {
-    if (_examName != null && _examName!.isNotEmpty) {
-      if (_sessionLabel != null && _sessionLabel!.isNotEmpty) {
-        return '$_examName · $_sessionLabel';
-      }
-      return _examName;
-    }
-    return null;
-  }
+  // Display label of the currently selected slot (from
+  // ExamDetails.slotLabel, e.g. "24 sentyabr 2026 · 10:00"). Null until a
+  // slot has been picked on ExamSelectScreen.
+  String? get slotLabel => _slotLabel;
+  // Header label for the home screen / admin dashboard. Kept under its
+  // original name (was exam+session, now just the slot) so call sites don't
+  // need to change.
+  String? get activeExamHeaderLabel =>
+      (_slotLabel != null && _slotLabel!.isNotEmpty) ? _slotLabel : null;
+  // Whether a slot is currently active — drives the "switch" affordance
+  // next to [activeExamHeaderLabel] on the home screen / admin dashboard.
+  bool get hasActiveExam => activeExamHeaderLabel != null;
 
   // Role-based getters
   bool get isAdmin => RoleHelper.isAdministrativeRole(_currentUserRole);
@@ -102,8 +95,7 @@ class AuthProvider extends ChangeNotifier {
         if (examDetails != null) {
           final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
           _authData = Auth(bina: bina, examDate: examDetails.imtTarix ?? '');
-          _examName = examDetails.examName;
-          _sessionLabel = examDetails.sessionLabel;
+          _slotLabel = examDetails.slotLabel;
 
           // Reconnect to emergency hub after app restart
           final storedToken = await _httpService.getToken();
@@ -127,8 +119,7 @@ class AuthProvider extends ChangeNotifier {
           _currentUserRole = null;
           _accessToken = null;
           _authData = null;
-          _examName = null;
-          _sessionLabel = null;
+          _slotLabel = null;
         }
       }
     } catch (e) {
@@ -137,8 +128,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUserRole = null;
       _accessToken = null;
       _authData = null;
-      _examName = null;
-      _sessionLabel = null;
+      _slotLabel = null;
     } finally {
       _setLoading(false);
     }
@@ -216,8 +206,7 @@ class AuthProvider extends ChangeNotifier {
         // Update state
         _accessToken = response.data;
         _authData = Auth(bina: bina, examDate: '');
-        _examName = null;
-        _sessionLabel = null;
+        _slotLabel = null;
         _isAuthenticated = true;
 
         // Reset lockout on successful login
@@ -266,21 +255,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Called by ExamSelectScreen (and the dashboard's session switcher) right
-  /// after persisting the chosen exam/session via
-  /// HttpService.storeExamDetails(). Updates in-memory state (Auth.examDate +
-  /// examName + sessionLabel) so every provider that reads AuthProvider sees
-  /// the new exam/session immediately, without requiring a re-login.
+  /// Called by ExamSelectScreen (and the dashboard's slot switcher) right
+  /// after persisting the chosen slot via HttpService.storeExamDetails().
+  /// Updates in-memory state (Auth.examDate + slotLabel) so every provider
+  /// that reads AuthProvider sees the new slot immediately, without
+  /// requiring a re-login.
   void setActiveExam({
     required String imtTarix,
-    String? examName,
-    String? sessionLabel,
+    String? slotLabel,
   }) {
     if (_authData != null) {
       _authData = Auth(bina: _authData!.bina, examDate: imtTarix);
     }
-    _examName = examName;
-    _sessionLabel = sessionLabel;
+    _slotLabel = slotLabel;
     notifyListeners();
   }
 
@@ -336,8 +323,7 @@ class AuthProvider extends ChangeNotifier {
       _accessToken = null;
       _authData = null;
       _currentUserRole = null;
-      _examName = null;
-      _sessionLabel = null;
+      _slotLabel = null;
       _examDates.clear();
       _clearError();
 
