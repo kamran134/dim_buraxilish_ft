@@ -153,7 +153,6 @@ class MonitorProvider with ChangeNotifier {
       // Call API to scan monitor (admin doesn't need building code for scanning)
       final response = await _httpService.scanMonitor(
         workNumber: qrCode,
-        examDate: examDetails.imtTarix ?? '',
       );
 
       if (response.success && response.data != null) {
@@ -214,19 +213,14 @@ class MonitorProvider with ChangeNotifier {
     _setLoading(true);
 
     try {
-      // Get exam details for exam date
-      final examDetails = await _httpService.getExamDetailsFromStorage();
-      if (examDetails == null) {
-        _setError('İmtahan məlumatları tapılmadı');
+      final id = _currentMonitor!.id;
+      if (id == null) {
+        _setError('Qeydiyyat identifikatoru tapılmadı');
         _setLoading(false);
         return;
       }
 
-      final response = await _httpService.cancelMonitorRegistration(
-        workNumber: _currentMonitor!.workNumber,
-        buildingCode: _currentMonitor!.buildingCode,
-        examDate: examDetails.imtTarix ?? '',
-      );
+      final response = await _httpService.cancelMonitorRegistration(id: id);
 
       if (response.success) {
         _setSuccess(response.message);

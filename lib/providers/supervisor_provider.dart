@@ -184,11 +184,10 @@ class SupervisorProvider with ChangeNotifier {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails != null) {
         final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
-        final examDate = examDetails.imtTarix ?? '';
 
         // Show local numbers instantly, then overlay the server aggregate
         // (sum across all scanners) — best-effort, silent when offline.
-        await _recomputeStats(buildingCode, examDate);
+        await _recomputeStats(buildingCode);
         await refreshServerStatistics();
       } else {
         _supervisorDetails = const SupervisorDetails(
@@ -212,10 +211,9 @@ class SupervisorProvider with ChangeNotifier {
   /// Recompute the displayed supervisor stats. When a server aggregate has been
   /// fetched this session, show server-count (all scanners) + this device's own
   /// not-yet-synced registrations on top. Otherwise fall back to local-only.
-  Future<void> _recomputeStats(int buildingCode, String examDate) async {
+  Future<void> _recomputeStats(int buildingCode) async {
     try {
-      final stats =
-          await DatabaseService.getLocalSupervisorStats(buildingCode, examDate);
+      final stats = await DatabaseService.getLocalSupervisorStats(buildingCode);
       int reg, all;
       if (_serverReg != null) {
         final unsynced = await DatabaseService.getUnsyncedSupervisorCount();
@@ -229,7 +227,6 @@ class SupervisorProvider with ChangeNotifier {
         allPersonCount: all,
         regPersonCount: reg,
         buildingCode: buildingCode,
-        examDate: examDate,
       );
       notifyListeners();
     } catch (e) {
@@ -244,19 +241,17 @@ class SupervisorProvider with ChangeNotifier {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails == null) return;
       final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
-      final examDate = examDetails.imtTarix ?? '';
-      if (buildingCode == 0 || examDate.isEmpty) return;
+      if (buildingCode == 0) return;
 
       final server = await _httpService.getSupervisorDetails(
         buildingCode: buildingCode,
-        examDate: examDate,
         persist: false,
       );
       if (server == null) return; // offline / not found → keep current numbers
 
       _serverReg = server.regPersonCount;
       _serverAll = server.allPersonCount;
-      await _recomputeStats(buildingCode, examDate);
+      await _recomputeStats(buildingCode);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[Supervisor] refreshServerStatistics error: $e');
@@ -381,12 +376,10 @@ class SupervisorProvider with ChangeNotifier {
   Future<void> _updateSupervisorStatistics() async {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
-      if (examDetails != null &&
-          examDetails.kodBina != null &&
-          examDetails.imtTarix != null) {
+      if (examDetails != null && examDetails.kodBina != null) {
         final buildingCode = int.tryParse(examDetails.kodBina!);
         if (buildingCode != null) {
-          await _recomputeStats(buildingCode, examDetails.imtTarix!);
+          await _recomputeStats(buildingCode);
         }
       }
     } catch (e) {
@@ -461,14 +454,15 @@ class SupervisorProvider with ChangeNotifier {
         return;
       }
 
-      final response = await _httpService.cancelSupervisorRegistration(
-        cardNumber: _currentSupervisor!.cardNumber,
-        buildingCode: _currentSupervisor!.buildingCode,
-        examDate: _currentSupervisor!.examDate,
-      );
+      final id = _currentSupervisor!.id;
+      if (id == null) {
+        _setError('Qeydiyyat identifikatoru tapılmadı');
+        _setLoading(false);
+        return;
+      }
 
-      print(
-          'Cancel supervisor response: success=${response.success}, message=${response.message}');
+      final response =
+          await _httpService.cancelSupervisorRegistration(id: id);
 
       if (response.success) {
         _setSuccess(response.message);

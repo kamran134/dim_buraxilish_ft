@@ -30,8 +30,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   final StatisticsService _statisticsService = StatisticsService();
   List<ExamStatisticsDto> _adminStatistics = [];
   bool _isAdminLoading = false;
-  // Статистика всегда по выбранному слоту (imtTarix из ExamDetails); без
-  // слота показываем NoActiveSlotView вместо данных.
+  // Статистика всегда по выбранному слоту (X-Exam-Slot); без слота
+  // показываем NoActiveSlotView вместо данных.
   bool _noActiveSlot = false;
 
   @override
@@ -61,15 +61,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final supervisorProvider =
         Provider.of<SupervisorProvider>(context, listen: false);
 
-    final examDate = await _statisticsService.getActiveSlotExamDate();
+    final hasSlot = await _statisticsService.hasActiveSlot();
     if (!mounted) return;
     setState(() {
-      _noActiveSlot = examDate == null;
+      _noActiveSlot = !hasSlot;
     });
-    if (examDate == null) return;
+    if (!hasSlot) return;
 
     if (authProvider.isAdmin || authProvider.isSuperAdmin) {
-      await _loadAdminStatistics(examDate);
+      await _loadAdminStatistics();
     } else {
       // Для мониторов - загружаем данные как обычно
 
@@ -81,13 +81,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
   }
 
-  Future<void> _loadAdminStatistics(String examDate) async {
+  Future<void> _loadAdminStatistics() async {
     setState(() {
       _isAdminLoading = true;
     });
 
     try {
-      final result = await _statisticsService.getExamStatisticsByDate(examDate);
+      final result = await _statisticsService.getExamStatisticsByDate();
       if (!mounted) return;
       if (result.success && result.data != null) {
         setState(() {

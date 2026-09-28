@@ -72,8 +72,8 @@ class DatabaseService {
 
   /// Offline-downloaded participants (full re-download every time — see
   /// OfflineDatabaseProvider). Server `id`/`exam_session_id` replace the old
-  /// `imt_Tarix`/`imt_Begin`/`ad_Bina`/`s_Nomer` string plumbing (contract
-  /// §1.2). `is_N` stays unique for QR-scan lookups.
+  /// legacy exam-date-string / `imt_Begin` / `ad_Bina` / `s_Nomer` plumbing
+  /// (contract §1.2). `is_N` stays unique for QR-scan lookups.
   static String get _participantsTableDdl => '''
       CREATE TABLE $_participantsTable (
         id INTEGER PRIMARY KEY,
@@ -1400,8 +1400,9 @@ class DatabaseService {
   /// only ever holds one slot's worth of data at a time (fully repopulated
   /// on every download, cleared on every login/slot switch — see
   /// [clearAllDatabase]), so no separate exam/session filter is needed here
-  /// (contract-adjacent simplification: the old `imt_Tarix` column this used
-  /// to filter on no longer exists at all — see the v9 migration).
+  /// (contract-adjacent simplification: the old legacy exam-date-string
+  /// column this used to filter on no longer exists at all — see the v9
+  /// migration).
   ///
   /// Returns a map with keys:
   ///   allMen, allWomen, regMen, regWomen

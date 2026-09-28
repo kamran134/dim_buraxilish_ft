@@ -16,8 +16,8 @@ class Participant {
   final String bina; // Bina
   final int gins; // Cins: 1 = kişi, 2 = qadın
   // Full-switch (9.2, contract §1.2/§1.3): server identity, replaces the old
-  // (is_N, imt_Tarix) pair. [id] is `Participants.Id` — used for
-  // cancel-by-id and the preferred sync branch. Null only for a v8 offline
+  // (is_N, legacy exam-date string) pair. [id] is `Participants.Id` — used
+  // for cancel-by-id and the preferred sync branch. Null only for a v8 offline
   // queue row migrated to the v9 schema before it ever reached the server
   // (see DatabaseService's v9 migration) — such rows sync via the
   // is_N+bina+slotKey fallback branch instead (contract §1.3).

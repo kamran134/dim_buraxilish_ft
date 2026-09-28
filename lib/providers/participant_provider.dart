@@ -183,16 +183,14 @@ class ParticipantProvider with ChangeNotifier {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails != null) {
         _examDetails = examDetails;
-        print(
-            'Loaded exam details: kodBina=${examDetails.kodBina}, imtTarix=${examDetails.imtTarix}');
 
-        // Load updated statistics from API if we have building and exam date info
-        if (examDetails.kodBina != null && examDetails.imtTarix != null) {
+        // Load updated statistics from API if we have building info
+        if (examDetails.kodBina != null) {
           final binaInt = int.tryParse(examDetails.kodBina!);
           if (binaInt != null) {
             // Show local numbers instantly, then overlay the server aggregate
             // (sum across all scanners) — best-effort, silent when offline.
-            await _loadStatistics(binaInt, examDetails.imtTarix!);
+            await _loadStatistics(binaInt);
             await refreshServerStatistics();
           }
         }
@@ -225,11 +223,10 @@ class ParticipantProvider with ChangeNotifier {
   // own not-yet-synced scans on top — so the number reflects the whole
   // building and never drops below reality between syncs. When offline / no
   // server data yet, fall back to local-only counts (this device's scans).
-  Future<void> _loadStatistics(int bina, String examDate) async {
+  Future<void> _loadStatistics(int bina) async {
     try {
       final binaStr = bina.toString();
-      final stats =
-          await DatabaseService.getLocalParticipantStats(binaStr, examDate);
+      final stats = await DatabaseService.getLocalParticipantStats(binaStr);
 
       if (_examDetails == null) return;
 
@@ -260,7 +257,6 @@ class ParticipantProvider with ChangeNotifier {
       _examDetails = ExamDetails(
         adBina: _examDetails!.adBina,
         kodBina: _examDetails!.kodBina,
-        imtTarix: _examDetails!.imtTarix,
         allManCount: allMen,
         allWomanCount: allWomen,
         regManCount: regMen,
@@ -274,12 +270,10 @@ class ParticipantProvider with ChangeNotifier {
 
   Future<void> _updateParticipantStatistics() async {
     try {
-      if (_examDetails != null &&
-          _examDetails!.kodBina != null &&
-          _examDetails!.imtTarix != null) {
+      if (_examDetails != null && _examDetails!.kodBina != null) {
         final binaInt = int.tryParse(_examDetails!.kodBina!);
         if (binaInt != null) {
-          await _loadStatistics(binaInt, _examDetails!.imtTarix!);
+          await _loadStatistics(binaInt);
         }
       }
     } catch (e) {
@@ -293,7 +287,7 @@ class ParticipantProvider with ChangeNotifier {
   /// offline or the building has no server record yet.
   Future<void> refreshServerStatistics() async {
     try {
-      if (_examDetails?.kodBina == null || _examDetails?.imtTarix == null) {
+      if (_examDetails?.kodBina == null) {
         return;
       }
       final bina = int.tryParse(_examDetails!.kodBina!);
@@ -301,7 +295,6 @@ class ParticipantProvider with ChangeNotifier {
 
       final server = await _httpService.getExamDetails(
         bina: bina,
-        examDate: _examDetails!.imtTarix!,
         persist: false,
       );
       if (server == null) return; // offline / not found → keep current numbers
@@ -311,7 +304,7 @@ class ParticipantProvider with ChangeNotifier {
       _serverAllMen = server.allManCount ?? 0;
       _serverAllWomen = server.allWomanCount ?? 0;
 
-      await _loadStatistics(bina, _examDetails!.imtTarix!);
+      await _loadStatistics(bina);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[Participant] refreshServerStatistics error: $e');
@@ -494,14 +487,15 @@ class ParticipantProvider with ChangeNotifier {
         return;
       }
 
-      final response = await _httpService.cancelParticipantRegistration(
-        isN: _currentParticipant!.isN,
-        bina: _currentParticipant!.bina,
-        examDate: _currentParticipant!.imtTarix,
-      );
+      final id = _currentParticipant!.id;
+      if (id == null) {
+        _setError('Qeydiyyat identifikatoru tapılmadı');
+        _setLoading(false);
+        return;
+      }
 
-      print(
-          'Cancel participant response: success=${response.success}, message=${response.message}');
+      final response =
+          await _httpService.cancelParticipantRegistration(id: id);
 
       if (response.success) {
         _setSuccess(response.message);

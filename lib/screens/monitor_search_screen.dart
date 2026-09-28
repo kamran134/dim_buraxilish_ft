@@ -45,9 +45,9 @@ class _MonitorSearchScreenState extends State<MonitorSearchScreen> {
   }
 
   Future<void> _search(String term) async {
-    final examDate = context.read<AuthProvider>().authData?.examDate ?? '';
-    if (examDate.isEmpty) {
-      setState(() => _errorMessage = 'İmtahan tarixi müəyyən edilmədi');
+    final hasExam = context.read<AuthProvider>().hasActiveExam;
+    if (!hasExam) {
+      setState(() => _errorMessage = 'İmtahan seçilməyib');
       return;
     }
 
@@ -59,7 +59,6 @@ class _MonitorSearchScreenState extends State<MonitorSearchScreen> {
     try {
       final results = await _httpService.searchMonitorsByName(
         searchTerm: term,
-        examDate: examDate,
       );
       setState(() {
         _results = results;

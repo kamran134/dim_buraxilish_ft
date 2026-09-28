@@ -39,9 +39,9 @@ class _BuildingsStatisticsScreenState extends State<BuildingsStatisticsScreen> {
     });
 
     try {
-      final examDate = await _statisticsService.getActiveSlotExamDate();
+      final hasSlot = await _statisticsService.hasActiveSlot();
       if (!mounted) return;
-      if (examDate == null) {
+      if (!hasSlot) {
         setState(() {
           _noActiveSlot = true;
           _statistics = [];
@@ -50,7 +50,7 @@ class _BuildingsStatisticsScreenState extends State<BuildingsStatisticsScreen> {
       }
       _noActiveSlot = false;
 
-      final result = await _statisticsService.getExamStatisticsByDate(examDate);
+      final result = await _statisticsService.getExamStatisticsByDate();
       if (!mounted) return;
       if (result.success && result.data != null) {
         setState(() {

@@ -140,19 +140,9 @@ class _ProtocolNotesScreenState extends State<ProtocolNotesScreen> {
         return;
       }
 
-      // Convert to ISO format
-      final isoDate = DateFormatter.azerbaijaniDateToISO(examDate);
-      if (isoDate == null) {
-        _showSnackBar('Tarix formatı yanlışdır', isError: true);
-        setState(() {
-          _isSaving = false;
-        });
-        return;
-      }
-
       final request = CreateProtocolNoteRequest(
         note: _noteController.text.trim(),
-        examDate: isoDate,
+        examDate: examDate,
         noteTypeId: _selectedNoteTypeId,
       );
 
@@ -207,20 +197,10 @@ class _ProtocolNotesScreenState extends State<ProtocolNotesScreen> {
         return;
       }
 
-      // Convert to ISO format
-      final isoDate = DateFormatter.azerbaijaniDateToISO(examDate);
-      if (isoDate == null) {
-        _showSnackBar('Tarix formatı yanlışdır', isError: true);
-        setState(() {
-          _isUpdating = false;
-        });
-        return;
-      }
-
       final request = UpdateProtocolNoteRequest(
         id: _editingNoteId!,
         note: _editNoteController.text.trim(),
-        examDate: isoDate,
+        examDate: examDate,
         noteTypeId: _editSelectedNoteTypeId,
       );
 

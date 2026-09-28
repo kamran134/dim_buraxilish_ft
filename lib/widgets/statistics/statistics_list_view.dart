@@ -70,12 +70,17 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   }
 
   Future<void> _cancelParticipant(Participant participant) async {
+    final id = participant.id;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Qeydiyyat identifikatoru tapılmadı'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
     try {
-      final response = await _httpService.cancelParticipantRegistration(
-        isN: participant.isN,
-        bina: participant.bina,
-        examDate: participant.imtTarix,
-      );
+      final response =
+          await _httpService.cancelParticipantRegistration(id: id);
       if (!mounted) return;
       if (response.success) {
         await DatabaseService.unregisterParticipant(participant.isN);
@@ -102,12 +107,17 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   }
 
   Future<void> _cancelSupervisor(Supervisor supervisor) async {
+    final id = supervisor.id;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Qeydiyyat identifikatoru tapılmadı'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
     try {
-      final response = await _httpService.cancelSupervisorRegistration(
-        cardNumber: supervisor.cardNumber,
-        buildingCode: supervisor.buildingCode,
-        examDate: supervisor.examDate,
-      );
+      final response =
+          await _httpService.cancelSupervisorRegistration(id: id);
       if (!mounted) return;
       if (response.success) {
         await DatabaseService.unregisterSupervisor(supervisor.cardNumber);

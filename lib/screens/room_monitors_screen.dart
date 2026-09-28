@@ -41,16 +41,15 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
     try {
       final httpService = HttpService();
       final examDetails = await httpService.getExamDetailsFromStorage();
-      final imtTarix = examDetails?.imtTarix ?? '';
+      final hasSlot = (examDetails?.slotKey ?? '').isNotEmpty;
 
       List<Monitor> allMonitors = [];
 
       // Try API: GetByRoomIdAndExamDate — no building code needed, same format as supervisors/scanMonitor
-      if (imtTarix.isNotEmpty) {
+      if (hasSlot) {
         try {
           allMonitors = await httpService.getMonitorsByRoomId(
             roomId: widget.roomStats.roomId,
-            examDate: imtTarix,
           );
         } catch (_) {
           // API unavailable, will try offline below
@@ -68,7 +67,6 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
         // Overlay registration status from local registered_monitors
         final registered = await DatabaseService.getRegisteredMonitorsByRoom(
           widget.roomStats.roomId,
-          examDate: widget.roomStats.examDate,
         );
         final registeredMap = {for (final m in registered) m.workNumber: m};
 
@@ -107,7 +105,6 @@ class _RoomMonitorsScreenState extends State<RoomMonitorsScreen> {
         // Last resort: only scanned-in monitors (monitor device, offline)
         final monitors = await DatabaseService.getRegisteredMonitorsByRoom(
           widget.roomStats.roomId,
-          examDate: widget.roomStats.examDate,
         );
         setState(() {
           _monitors = monitors;

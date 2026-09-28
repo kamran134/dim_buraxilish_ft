@@ -8,12 +8,10 @@ import '../design/app_text_styles.dart';
 
 class BuildingDetailsScreen extends StatefulWidget {
   final ExamDetailsDto building;
-  final String examDate;
 
   const BuildingDetailsScreen({
     Key? key,
     required this.building,
-    required this.examDate,
   }) : super(key: key);
 
   @override
@@ -61,18 +59,13 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
     try {
       // Проверяем параметры перед запросом
       final buildingCode = widget.building.kodBina ?? '';
-      print('DEBUG BuildingDetails: Loading participants');
-      print('DEBUG BuildingDetails: buildingCode = "$buildingCode"');
-      print('DEBUG BuildingDetails: examDate = "${widget.examDate}"');
 
       if (buildingCode.isEmpty) {
         throw Exception('Kod bina boşdur');
       }
 
-      final result = await _statisticsService.getAllParticipantsInBuilding(
-        buildingCode,
-        widget.examDate,
-      );
+      final result =
+          await _statisticsService.getAllParticipantsInBuilding(buildingCode);
 
       if (result.success && result.data != null) {
         setState(() {
@@ -103,18 +96,13 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
     try {
       // Проверяем параметры перед запросом
       final buildingCode = widget.building.kodBina ?? '';
-      print('DEBUG BuildingDetails: Loading supervisors');
-      print('DEBUG BuildingDetails: buildingCode = "$buildingCode"');
-      print('DEBUG BuildingDetails: examDate = "${widget.examDate}"');
 
       if (buildingCode.isEmpty) {
         throw Exception('Kod bina boşdur');
       }
 
-      final result = await _statisticsService.getAllSupervisorsInBuilding(
-        buildingCode,
-        widget.examDate,
-      );
+      final result =
+          await _statisticsService.getAllSupervisorsInBuilding(buildingCode);
 
       if (result.success && result.data != null) {
         setState(() {

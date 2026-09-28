@@ -137,8 +137,8 @@ class AuthProvider extends ChangeNotifier {
 
   // Login with JWT. The exam is no longer chosen at login time — it's picked
   // afterwards on ExamSelectScreen (see setActiveExam()). ExamDetails is
-  // stored here with an empty imtTarix; only the building (kodBina/adBina)
-  // is known at this point.
+  // stored here with no slot yet; only the building (kodBina/adBina) is
+  // known at this point.
   Future<bool> signInWithJWT(String userName, String password) async {
     // Check lockout before attempting login
     if (isLockedOut) {

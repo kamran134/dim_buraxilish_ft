@@ -46,8 +46,8 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   DashboardStatistics? _dashboardStats;
   List<ExamStatisticsDto> _examStatistics = [];
   List<MonitorRoomStatistics> _roomStatistics = [];
-  // Статистика всегда по выбранному слоту (imtTarix из ExamDetails, сервер
-  // фильтрует по `X-Exam-Slot`); своего выбора даты у дашборда нет.
+  // Статистика всегда по выбранному слоту (сервер фильтрует по
+  // `X-Exam-Slot`); своего выбора даты у дашборда нет.
   bool _noActiveSlot = false;
   bool _isLoading = false;
   String? _errorMessage;
@@ -104,9 +104,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   /// Loads the dashboard for the currently selected slot. Re-reads the slot
   /// from storage each time, so it also picks up a slot switch.
   Future<void> _loadForActiveSlot() async {
-    final examDate = await _statisticsService.getActiveSlotExamDate();
+    final hasSlot = await _statisticsService.hasActiveSlot();
     if (!mounted) return;
-    if (examDate == null) {
+    if (!hasSlot) {
       setState(() {
         _noActiveSlot = true;
         _errorMessage = null;
@@ -117,7 +117,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       return;
     }
     _noActiveSlot = false;
-    await _loadDashboardStatistics(examDate);
+    await _loadDashboardStatistics();
   }
 
   /// Публичный метод для обновления статистики (вызывается извне)
@@ -140,7 +140,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     }
   }
 
-  Future<void> _loadDashboardStatistics(String examDate) async {
+  Future<void> _loadDashboardStatistics() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -148,16 +148,13 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
 
     try {
       // Загружаем обычную статистику Dashboard
-      final dashboardResult =
-          await _statisticsService.getDashboardStatistics(examDate);
+      final dashboardResult = await _statisticsService.getDashboardStatistics();
 
       // Загружаем объединенную статистику (участники + наблюдатели)
-      final combinedResult =
-          await _statisticsService.getExamStatisticsByDate(examDate);
+      final combinedResult = await _statisticsService.getExamStatisticsByDate();
 
       // Загружаем статистику комнат
-      final roomStatsResult =
-          await _statisticsService.getAllRoomStatistics(examDate);
+      final roomStatsResult = await _statisticsService.getAllRoomStatistics();
 
       if (dashboardResult.success && dashboardResult.data != null) {
         setState(() {
@@ -1503,7 +1500,6 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
       MaterialPageRoute(
         builder: (context) => BuildingDetailsScreen(
           building: building,
-          examDate: _dashboardStats?.examDate ?? '',
         ),
       ),
     );

@@ -101,18 +101,16 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         return;
       }
 
-      final examDate = examDetails.imtTarix ?? '';
-      if (examDate.isEmpty) {
-        _setError('İmtahan tarixi tapılmadı.');
+      final slotKey = examDetails.slotKey ?? '';
+      if (slotKey.isEmpty) {
+        _setError('İmtahan slotu tapılmadı.');
         return;
       }
 
-      print('Admin offline download: examDate=$examDate');
-
-      // Download ALL monitors for this exam date (admin has no building code)
+      // Download ALL monitors for the active slot (admin has no building code)
       List<Monitor> monitors;
       try {
-        monitors = await _httpService.getAllMonitorsInExamDate(examDate);
+        monitors = await _httpService.getAllMonitors();
       } on DioException catch (e) {
         if (e.response?.statusCode == 400) {
           // Invalid `X-Exam-Slot` header — never fall through to saving
@@ -169,9 +167,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       }
 
       final buildingCode = examDetails.kodBina ?? '0';
-      final examDate = examDetails.imtTarix ?? '';
-
-      print('Offline DB download — building: $buildingCode, date: $examDate');
 
       bool hadNetworkError = false;
 
@@ -180,7 +175,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       try {
         participants = await _httpService.getParticipantsLightByBuilding(
           buildingCode: buildingCode,
-          examDate: examDate,
         );
         print('Downloaded ${participants.length} participants');
       } on DioException catch (e) {
@@ -202,7 +196,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       try {
         final result = await _httpService.getSupervisorsByBuilding(
           buildingCode: buildingCode,
-          examDate: examDate,
         );
         supervisors = result.cast<Supervisor>();
         print('Downloaded ${supervisors.length} supervisors');
@@ -223,7 +216,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       try {
         violators = await _httpService.getViolatorsInBuilding(
           buildingCode: buildingCode,
-          examDate: examDate,
         );
         print('Downloaded ${violators.length} violators');
       } catch (e) {
@@ -246,7 +238,6 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         try {
           final got = await _httpService.downloadParticipantPhotos(
             buildingCode: buildingCode,
-            examDate: examDate,
             onBatch: DatabaseService.updateParticipantPhotos,
             onProgress: (done, total) {
               _photosDone = done;
@@ -327,11 +318,12 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   Future<void> reportDownloadComplete() async {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
-      if (examDetails == null) return;
+      final slotKey = examDetails?.slotKey;
+      if (examDetails == null || slotKey == null || slotKey.isEmpty) return;
       final version = await getAppVersion();
       await _httpService.reportDownloadComplete(
         buildingCode: examDetails.kodBina ?? '0',
-        examDate: examDetails.imtTarix ?? '',
+        slotKey: slotKey,
         participantCount: _participantCount,
         supervisorCount: _supervisorCount,
         appVersion: version,

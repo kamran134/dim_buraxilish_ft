@@ -7,7 +7,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/protocol_models.dart';
-import '../utils/date_formatter.dart';
 import 'http_service.dart';
 
 class ProtocolService {
@@ -74,13 +73,11 @@ class ProtocolService {
     try {
       String url = '/protocols/my-notes';
 
-      // Add examDate filter if provided
+      // examDate here is a plain calendar date (yyyy-MM-dd, derived from the
+      // active slot — see AuthProvider.setActiveExam), not an exam identity;
+      // the server takes it as-is (contract §1.4).
       if (examDate != null && examDate.isNotEmpty) {
-        // Convert to ISO format for API
-        final isoDate = DateFormatter.azerbaijaniDateToISO(examDate);
-        if (isoDate != null) {
-          url += '?examDate=${Uri.encodeComponent(isoDate)}';
-        }
+        url += '?examDate=${Uri.encodeComponent(examDate)}';
       }
 
       final response = await _dio.get(url);
