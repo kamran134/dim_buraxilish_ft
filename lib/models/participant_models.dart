@@ -24,6 +24,12 @@ class Participant {
   final int? id;
   // Server `ExamSessionId` this participant belongs to.
   final int? examSessionId;
+  // Sync-queue fallback only (never sent to the server as part of the
+  // participant payload itself): the slot key to sync by when [id] is null
+  // — i.e. a v8 offline-queue row migrated to v9 (see DatabaseService's v9
+  // migration). Populated only when reading a queued row back out of
+  // `registered_participants`.
+  final String? slotKey;
 
   Participant({
     required this.isN,
@@ -41,6 +47,7 @@ class Participant {
     this.gins = 0,
     this.id,
     this.examSessionId,
+    this.slotKey,
   });
 
   /// Фото как base64 (для мест, где нужна строка): из photo, либо из photoBytes.

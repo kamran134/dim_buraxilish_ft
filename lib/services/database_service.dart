@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/participant_models.dart';
@@ -11,7 +12,7 @@ import '../models/notification_message.dart';
 class DatabaseService {
   static Database? _database;
   static const String _databaseName = 'dim_buraxilish.db';
-  static const int _databaseVersion = 8;
+  static const int _databaseVersion = 9;
 
   // Table names
   static const String _participantsTable = 'participants';
@@ -33,6 +34,11 @@ class DatabaseService {
   // Initialize database
   static Future<Database> _initDatabase() async {
     final path = join(await getDatabasesPath(), _databaseName);
+    // Read the pre-9.2 active slot BEFORE opening the DB, so the v8->v9
+    // upgrade (below) can backfill it onto migrated offline-queue rows that
+    // never carried a slot/session id of their own. Safe/cheap even when no
+    // upgrade will run (fresh install, or already on v9+).
+    _pendingV8SlotKey = await _readSlotKeyForMigration();
     return await openDatabase(
       path,
       version: _databaseVersion,
@@ -41,47 +47,67 @@ class DatabaseService {
     );
   }
 
-  // DDL for the participants table (offline download). Kept in one place so
-  // _onCreate and _onUpgrade (v8: photo TEXT -> BLOB) never drift apart.
+  /// `exam_details.slotKey` as it was stored by a pre-9.2 app, read once
+  /// before `openDatabase()` so `_onUpgrade`'s v9 migration can stamp it onto
+  /// migrated sync-queue rows. See the migration note on `_onUpgrade` below.
+  static String? _pendingV8SlotKey;
+
+  static Future<String?> _readSlotKeyForMigration() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final raw = await storage.read(key: 'exam_details');
+      if (raw == null) return null;
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final slotKey = map['slotKey'];
+      return (slotKey is String && slotKey.isNotEmpty) ? slotKey : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DDL — kept as getters in one place so _onCreate and _onUpgrade never
+  // drift apart (established convention since the v8 migration).
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Offline-downloaded participants (full re-download every time — see
+  /// OfflineDatabaseProvider). Server `id`/`exam_session_id` replace the old
+  /// `imt_Tarix`/`imt_Begin`/`ad_Bina`/`s_Nomer` string plumbing (contract
+  /// §1.2). `is_N` stays unique for QR-scan lookups.
   static String get _participantsTableDdl => '''
       CREATE TABLE $_participantsTable (
-        external_id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         is_N INTEGER UNIQUE,
+        exam_session_id INTEGER,
         soy TEXT,
         adi TEXT,
         baba TEXT,
-        tev TEXT,
         gins INTEGER,
-        sv_Seriya TEXT,
-        s_Ves TEXT,
         bina TEXT,
         zal TEXT,
         mertebe TEXT,
         sira TEXT,
         yer TEXT,
-        imt_Tarix TEXT,
-        imt_Begin TEXT,
         photo BLOB,
-        ad_Bina TEXT,
-        qeydiyyat TEXT,
-        s_Nomer INTEGER
+        qeydiyyat TEXT
       )
     ''';
 
-  // Create database tables
-  static Future<void> _onCreate(Database db, int version) async {
-    // Create participants table (offline download)
-    await db.execute(_participantsTableDdl);
-
-    // Create registered participants table
-    await db.execute('''
+  /// Sync queue (+ local statistics cache) for offline participant scans.
+  /// `id` is the server `Participants.Id` once known (new 9.2 scans always
+  /// have it, since the master table is downloaded with it); `slot_key` is
+  /// only ever set for a v8 row migrated to v9 (see `_onUpgrade`) — the
+  /// fallback sync branch matches those by `is_N`+`bina`+`slot_key`
+  /// (contract §1.3).
+  static String get _registeredParticipantsTableDdl => '''
       CREATE TABLE $_registeredParticipantsTable (
         is_N INTEGER PRIMARY KEY,
+        id INTEGER,
+        slot_key TEXT,
         soy TEXT,
         adi TEXT,
         baba TEXT,
         bina TEXT,
-        imt_Tarix TEXT,
         qeydiyyat TEXT,
         online INTEGER DEFAULT 0,
         gins INTEGER,
@@ -91,12 +117,17 @@ class DatabaseService {
         sira TEXT,
         yer TEXT
       )
-    ''');
+    ''';
 
-    // Create registered monitors table
-    await db.execute('''
+  /// Registered-monitor cache (monitors have no offline sync queue — scanning
+  /// is always online, see mobile_inventory.md §2 — this is a local display
+  /// cache only). `examDate` is kept as a display value (session time), never
+  /// used as a lookup key (contract-adjacent decision, mobile spec §5).
+  static String get _registeredMonitorsTableDdl => '''
       CREATE TABLE $_registeredMonitorsTable (
         workNumber INTEGER PRIMARY KEY,
+        id INTEGER,
+        exam_session_id INTEGER,
         firstName TEXT,
         lastName TEXT,
         middleName TEXT,
@@ -110,12 +141,14 @@ class DatabaseService {
         image TEXT,
         online INTEGER DEFAULT 0
       )
-    ''');
+    ''';
 
-    // Create supervisors table (offline download)
-    await db.execute('''
+  /// Offline-downloaded supervisors. `examDate` kept as a display value only.
+  static String get _supervisorsTableDdl => '''
       CREATE TABLE $_supervisorsTable (
         cardNumber TEXT PRIMARY KEY,
+        id INTEGER,
+        exam_session_id INTEGER,
         lastName TEXT,
         firstName TEXT,
         fatherName TEXT,
@@ -128,12 +161,14 @@ class DatabaseService {
         registerDate TEXT,
         supervisorAction INTEGER
       )
-    ''');
+    ''';
 
-    // Create all_monitors table (offline download for admin)
-    await db.execute('''
+  /// All-monitors offline download (admin). `examDate` kept as display value.
+  static String get _allMonitorsTableDdl => '''
       CREATE TABLE $_allMonitorsTable (
         workNumber INTEGER PRIMARY KEY,
+        id INTEGER,
+        exam_session_id INTEGER,
         firstName TEXT,
         lastName TEXT,
         middleName TEXT,
@@ -147,12 +182,15 @@ class DatabaseService {
         image TEXT,
         phone TEXT
       )
-    ''');
+    ''';
 
-    // Create registered supervisors table
-    await db.execute('''
+  /// Sync queue for offline supervisor scans — see
+  /// `_registeredParticipantsTableDdl` for the `id`/`slot_key` contract.
+  static String get _registeredSupervisorsTableDdl => '''
       CREATE TABLE $_registeredSupervisorsTable (
         cardNumber TEXT PRIMARY KEY,
+        id INTEGER,
+        slot_key TEXT,
         lastName TEXT,
         firstName TEXT,
         fatherName TEXT,
@@ -166,7 +204,16 @@ class DatabaseService {
         supervisorAction INTEGER,
         online INTEGER DEFAULT 0
       )
-    ''');
+    ''';
+
+  // Create database tables
+  static Future<void> _onCreate(Database db, int version) async {
+    await db.execute(_participantsTableDdl);
+    await db.execute(_registeredParticipantsTableDdl);
+    await db.execute(_registeredMonitorsTableDdl);
+    await db.execute(_supervisorsTableDdl);
+    await db.execute(_allMonitorsTableDdl);
+    await db.execute(_registeredSupervisorsTableDdl);
 
     await db.execute('''
       CREATE TABLE $_participantViolationsTable (
@@ -272,7 +319,123 @@ class DatabaseService {
       // repopulated on every offline download, so dropping it here loses
       // nothing — SQLite can't ALTER a column's type in place.
       await db.execute('DROP TABLE IF EXISTS $_participantsTable');
-      await db.execute(_participantsTableDdl);
+      await db.execute('''
+        CREATE TABLE $_participantsTable (
+          external_id INTEGER PRIMARY KEY,
+          is_N INTEGER UNIQUE,
+          soy TEXT,
+          adi TEXT,
+          baba TEXT,
+          tev TEXT,
+          gins INTEGER,
+          sv_Seriya TEXT,
+          s_Ves TEXT,
+          bina TEXT,
+          zal TEXT,
+          mertebe TEXT,
+          sira TEXT,
+          yer TEXT,
+          imt_Tarix TEXT,
+          imt_Begin TEXT,
+          photo BLOB,
+          ad_Bina TEXT,
+          qeydiyyat TEXT,
+          s_Nomer INTEGER
+        )
+      ''');
+    }
+    if (oldVersion < 9) {
+      // Full switch to server id + exam_session_id (contract §1.2/§1.3):
+      // downloaded "master" tables (participants/supervisors/all_monitors/
+      // registered_monitors) are always fully repopulated on the next
+      // download, so they're safe to drop + recreate outright — same
+      // precedent as v8. The offline sync QUEUE tables
+      // (registered_participants/registered_supervisors) must never lose
+      // rows: their v8 contents are read out, the table is recreated with
+      // the new (id, slot_key) columns, then the old rows are re-inserted
+      // with id=NULL and slot_key backfilled from the pre-9.2
+      // `exam_details.slotKey` (read in `_initDatabase`, before the DB was
+      // even opened). Those rows sync via the is_N/cardNumber+bina/
+      // buildingCode+slotKey fallback branch (contract §1.3) the first time
+      // SyncService runs after upgrade. Everything below runs in one
+      // transaction so a crash mid-migration can't half-drop the queue.
+      final fallbackSlotKey = _pendingV8SlotKey;
+
+      await db.transaction((txn) async {
+        // Preserve the v8 queues before touching anything.
+        final oldQueuedParticipants =
+            await txn.query(_registeredParticipantsTable);
+        final oldQueuedSupervisors =
+            await txn.query(_registeredSupervisorsTable);
+
+        // Master/download-only tables: drop + recreate.
+        await txn.execute('DROP TABLE IF EXISTS $_participantsTable');
+        await txn.execute(_participantsTableDdl);
+
+        await txn.execute('DROP TABLE IF EXISTS $_supervisorsTable');
+        await txn.execute(_supervisorsTableDdl);
+
+        await txn.execute('DROP TABLE IF EXISTS $_allMonitorsTable');
+        await txn.execute(_allMonitorsTableDdl);
+
+        await txn.execute('DROP TABLE IF EXISTS $_registeredMonitorsTable');
+        await txn.execute(_registeredMonitorsTableDdl);
+
+        // Queue tables: drop + recreate, then copy the v8 rows back in.
+        await txn
+            .execute('DROP TABLE IF EXISTS $_registeredParticipantsTable');
+        await txn.execute(_registeredParticipantsTableDdl);
+        for (final row in oldQueuedParticipants) {
+          await txn.insert(
+            _registeredParticipantsTable,
+            {
+              'is_N': row['is_N'],
+              'id': null,
+              'slot_key': fallbackSlotKey,
+              'soy': row['soy'],
+              'adi': row['adi'],
+              'baba': row['baba'],
+              'bina': row['bina'],
+              'qeydiyyat': row['qeydiyyat'],
+              'online': row['online'] ?? 0,
+              'gins': row['gins'],
+              'photo': row['photo'],
+              'zal': row['zal'],
+              'mertebe': row['mertebe'],
+              'sira': row['sira'],
+              'yer': row['yer'],
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+
+        await txn
+            .execute('DROP TABLE IF EXISTS $_registeredSupervisorsTable');
+        await txn.execute(_registeredSupervisorsTableDdl);
+        for (final row in oldQueuedSupervisors) {
+          await txn.insert(
+            _registeredSupervisorsTable,
+            {
+              'cardNumber': row['cardNumber'],
+              'id': null,
+              'slot_key': fallbackSlotKey,
+              'lastName': row['lastName'],
+              'firstName': row['firstName'],
+              'fatherName': row['fatherName'],
+              'buildingCode': row['buildingCode'],
+              'buildingName': row['buildingName'],
+              'districtCode': row['districtCode'],
+              'examDate': row['examDate'],
+              'image': row['image'],
+              'pinCode': row['pinCode'],
+              'registerDate': row['registerDate'],
+              'supervisorAction': row['supervisorAction'],
+              'online': row['online'] ?? 0,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      });
     }
   }
 
@@ -327,11 +490,14 @@ class DatabaseService {
         _registeredParticipantsTable,
         {
           'is_N': participant.isN,
+          // New (9.2) scans always know the server id from the download —
+          // no slot_key fallback needed for these rows (contract §1.3).
+          'id': participant.id,
+          'slot_key': null,
           'soy': participant.soy,
           'adi': participant.adi,
           'baba': participant.baba,
           'bina': participant.bina,
-          'imt_Tarix': participant.imtTarix,
           'qeydiyyat': registrationDate,
           'online': 0,
           'gins': participant.gins,
@@ -357,7 +523,7 @@ class DatabaseService {
     }
 
     final results = await db.rawQuery('''
-      SELECT is_N, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, imt_Tarix, photo, qeydiyyat, online
+      SELECT is_N, id, slot_key, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, photo, qeydiyyat, online
       FROM $_registeredParticipantsTable $whereClause
       ORDER BY qeydiyyat DESC
     ''');
@@ -388,6 +554,8 @@ class DatabaseService {
       _registeredMonitorsTable,
       {
         'workNumber': monitor.workNumber,
+        'id': monitor.id,
+        'exam_session_id': monitor.examSessionId,
         'firstName': monitor.firstName,
         'lastName': monitor.lastName,
         'middleName': monitor.middleName,
@@ -447,8 +615,11 @@ class DatabaseService {
     );
   }
 
-  /// Get registered monitors from local database
-  static Future<List<Monitor>> getRegisteredMonitors({String? examDate}) async {
+  /// Get registered monitors from local database. `examDate` is no longer a
+  /// filter key (contract-adjacent decision, mobile spec §5) — the table
+  /// only ever holds one slot's worth of data at a time (cleared on every
+  /// login/slot switch, see [clearAllDatabase]).
+  static Future<List<Monitor>> getRegisteredMonitors() async {
     final db = await database;
 
     final results = await db.query(
@@ -456,29 +627,12 @@ class DatabaseService {
       orderBy: 'registerDate DESC',
     );
 
-    final monitors =
-        results.map((map) => _registeredMonitorFromMap(map)).toList();
-
-    if (examDate == null || examDate.trim().isEmpty) {
-      return monitors;
-    }
-
-    final dateKey = _normalizeDateKey(examDate);
-    if (dateKey.isEmpty) {
-      return monitors;
-    }
-
-    return monitors
-        .where((monitor) => _normalizeDateKey(monitor.examDate) == dateKey)
-        .toList();
+    return results.map((map) => _registeredMonitorFromMap(map)).toList();
   }
 
   /// Get locally registered monitors for a specific room
-  static Future<List<Monitor>> getRegisteredMonitorsByRoom(
-    int roomId, {
-    String? examDate,
-  }) async {
-    final monitors = await getRegisteredMonitors(examDate: examDate);
+  static Future<List<Monitor>> getRegisteredMonitorsByRoom(int roomId) async {
+    final monitors = await getRegisteredMonitors();
     return monitors.where((monitor) => monitor.roomId == roomId).toList();
   }
 
@@ -546,6 +700,10 @@ class DatabaseService {
         _registeredSupervisorsTable,
         {
           'cardNumber': supervisor.cardNumber,
+          // New (9.2) scans always know the server id from the download —
+          // no slot_key fallback needed for these rows (contract §1.3).
+          'id': supervisor.id,
+          'slot_key': null,
           'lastName': supervisor.lastName,
           'firstName': supervisor.firstName,
           'fatherName': supervisor.fatherName,
@@ -677,26 +835,20 @@ class DatabaseService {
 
   static Map<String, dynamic> _participantToMap(Participant participant) {
     return {
-      'external_id': participant.isN, // is_N is unique per participant
+      'id': participant.id,
       'is_N': participant.isN,
+      'exam_session_id': participant.examSessionId,
       'soy': participant.soy,
       'adi': participant.adi,
       'baba': participant.baba,
-      'tev': '', // Not used in current model
       'gins': participant.gins,
-      'sv_Seriya': '', // Not used in current model
-      's_Ves': '', // Not used in current model
       'bina': participant.bina,
       'zal': participant.zal,
       'mertebe': participant.mertebe,
       'sira': participant.sira,
       'yer': participant.yer,
-      'imt_Tarix': participant.imtTarix,
-      'imt_Begin': '', // Not used in current model
       'photo': participant.photoBytes,
-      'ad_Bina': '', // Not used in current model
       'qeydiyyat': participant.qeydiyyat,
-      's_Nomer': 0, // Not used in current model
     };
   }
 
@@ -713,7 +865,9 @@ class DatabaseService {
       photoBytes: _photoBytesFromDb(map['photo']),
       qeydiyyat: map['qeydiyyat'] as String?,
       bina: map['bina'] as String,
-      imtTarix: map['imt_Tarix'] as String,
+      gins: (map['gins'] as int?) ?? 0,
+      id: map['id'] as int?,
+      examSessionId: map['exam_session_id'] as int?,
     );
   }
 
@@ -764,7 +918,9 @@ class DatabaseService {
       photo: map['photo'] as String?,
       qeydiyyat: map['qeydiyyat'] as String?,
       bina: map['bina'] as String,
-      imtTarix: map['imt_Tarix'] as String,
+      gins: (map['gins'] as int?) ?? 0,
+      id: map['id'] as int?,
+      slotKey: map['slot_key'] as String?,
     );
   }
 
@@ -783,65 +939,16 @@ class DatabaseService {
       registerDate: map['registerDate'] as String? ?? '',
       image: map['image'] as String? ?? '',
       online: map['online'] == 1,
+      id: map['id'] as int?,
+      examSessionId: map['exam_session_id'] as int?,
     );
-  }
-
-  static String _normalizeDateKey(String rawDate) {
-    final value = rawDate.trim();
-    if (value.isEmpty) return '';
-
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) {
-      return '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
-    }
-
-    final mmddyyyy = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(value);
-    if (mmddyyyy != null) {
-      final month = mmddyyyy.group(1)!.padLeft(2, '0');
-      final day = mmddyyyy.group(2)!.padLeft(2, '0');
-      final year = mmddyyyy.group(3)!;
-      return '$year-$month-$day';
-    }
-
-    final ddmmyyyy =
-        RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$').firstMatch(value);
-    if (ddmmyyyy != null) {
-      final day = ddmmyyyy.group(1)!.padLeft(2, '0');
-      final month = ddmmyyyy.group(2)!.padLeft(2, '0');
-      final year = ddmmyyyy.group(3)!;
-      return '$year-$month-$day';
-    }
-
-    final parts = value.split(' ');
-    if (parts.length >= 3) {
-      final day = int.tryParse(parts[0]);
-      final monthMap = {
-        'yanvar': 1,
-        'fevral': 2,
-        'mart': 3,
-        'aprel': 4,
-        'may': 5,
-        'iyun': 6,
-        'iyul': 7,
-        'avqust': 8,
-        'sentyabr': 9,
-        'oktyabr': 10,
-        'noyabr': 11,
-        'dekabr': 12,
-      };
-      final month = monthMap[parts[1].toLowerCase()];
-      final year = int.tryParse(parts[2].replaceAll(RegExp(r'[^\d]'), ''));
-      if (day != null && month != null && year != null) {
-        return '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-      }
-    }
-
-    return '';
   }
 
   static Map<String, dynamic> _supervisorToMap(Supervisor supervisor) {
     return {
       'cardNumber': supervisor.cardNumber,
+      'id': supervisor.id,
+      'exam_session_id': supervisor.examSessionId,
       'lastName': supervisor.lastName,
       'firstName': supervisor.firstName,
       'fatherName': supervisor.fatherName,
@@ -870,6 +977,8 @@ class DatabaseService {
       pinCode: map['pinCode'] as String? ?? '',
       registerDate: map['registerDate'] as String? ?? '',
       supervisorAction: map['supervisorAction'] as int? ?? 0,
+      id: map['id'] as int?,
+      examSessionId: map['exam_session_id'] as int?,
     );
   }
 
@@ -888,6 +997,8 @@ class DatabaseService {
       registerDate: map['registerDate'] as String? ?? '',
       supervisorAction: map['supervisorAction'] as int? ?? 0,
       online: map['online'] == 1,
+      id: map['id'] as int?,
+      slotKey: map['slot_key'] as String?,
     );
   }
 
@@ -961,6 +1072,8 @@ class DatabaseService {
         _allMonitorsTable,
         {
           'workNumber': monitor.workNumber,
+          'id': monitor.id,
+          'exam_session_id': monitor.examSessionId,
           'firstName': monitor.firstName,
           'lastName': monitor.lastName,
           'middleName': monitor.middleName,
@@ -984,23 +1097,7 @@ class DatabaseService {
   static Future<List<Monitor>> getAllMonitorsOffline() async {
     final db = await database;
     final results = await db.query(_allMonitorsTable);
-    return results
-        .map((map) => Monitor(
-              workNumber: map['workNumber'] as int? ?? 0,
-              firstName: map['firstName'] as String? ?? '',
-              lastName: map['lastName'] as String? ?? '',
-              middleName: map['middleName'] as String? ?? '',
-              idCardPin: map['idCardPin'] as String? ?? '',
-              buildingCode: map['buildingCode'] as int? ?? 0,
-              buildingName: map['buildingName'] as String? ?? '',
-              roomId: map['roomId'] as int? ?? 0,
-              roomName: map['roomName'] as String? ?? '',
-              examDate: map['examDate'] as String? ?? '',
-              registerDate: map['registerDate'] as String? ?? '',
-              image: map['image'] as String? ?? '',
-              phone: map['phone'] as String?,
-            ))
-        .toList();
+    return results.map(_monitorFromAllMonitorsMap).toList();
   }
 
   /// Get all monitors for a specific room from offline storage (admin download)
@@ -1011,23 +1108,27 @@ class DatabaseService {
       where: 'roomId = ?',
       whereArgs: [roomId],
     );
-    return results
-        .map((map) => Monitor(
-              workNumber: map['workNumber'] as int? ?? 0,
-              firstName: map['firstName'] as String? ?? '',
-              lastName: map['lastName'] as String? ?? '',
-              middleName: map['middleName'] as String? ?? '',
-              idCardPin: map['idCardPin'] as String? ?? '',
-              buildingCode: map['buildingCode'] as int? ?? 0,
-              buildingName: map['buildingName'] as String? ?? '',
-              roomId: map['roomId'] as int? ?? 0,
-              roomName: map['roomName'] as String? ?? '',
-              examDate: map['examDate'] as String? ?? '',
-              registerDate: map['registerDate'] as String? ?? '',
-              image: map['image'] as String? ?? '',
-              phone: map['phone'] as String?,
-            ))
-        .toList();
+    return results.map(_monitorFromAllMonitorsMap).toList();
+  }
+
+  static Monitor _monitorFromAllMonitorsMap(Map<String, dynamic> map) {
+    return Monitor(
+      workNumber: map['workNumber'] as int? ?? 0,
+      firstName: map['firstName'] as String? ?? '',
+      lastName: map['lastName'] as String? ?? '',
+      middleName: map['middleName'] as String? ?? '',
+      idCardPin: map['idCardPin'] as String? ?? '',
+      buildingCode: map['buildingCode'] as int? ?? 0,
+      buildingName: map['buildingName'] as String? ?? '',
+      roomId: map['roomId'] as int? ?? 0,
+      roomName: map['roomName'] as String? ?? '',
+      examDate: map['examDate'] as String? ?? '',
+      registerDate: map['registerDate'] as String? ?? '',
+      image: map['image'] as String? ?? '',
+      phone: map['phone'] as String?,
+      id: map['id'] as int?,
+      examSessionId: map['exam_session_id'] as int?,
+    );
   }
 
   /// Clear all_monitors table
@@ -1173,7 +1274,7 @@ class DatabaseService {
   static Future<List<Participant>> getUnSyncedParticipants() async {
     final db = await database;
     final results = await db.rawQuery('''
-      SELECT is_N, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, imt_Tarix, photo, qeydiyyat, online
+      SELECT is_N, id, slot_key, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, photo, qeydiyyat, online
       FROM $_registeredParticipantsTable
       WHERE online = 0
       ORDER BY qeydiyyat ASC
@@ -1295,35 +1396,39 @@ class DatabaseService {
 
   /// Returns participant statistics computed entirely from the local SQLite DB.
   ///
-  /// [bina] – building code as stored in the participants table.
-  /// [examDate] – exam date string as stored in the participants table.
+  /// [bina] – building code as stored in the participants table. The table
+  /// only ever holds one slot's worth of data at a time (fully repopulated
+  /// on every download, cleared on every login/slot switch — see
+  /// [clearAllDatabase]), so no separate exam/session filter is needed here
+  /// (contract-adjacent simplification: the old `imt_Tarix` column this used
+  /// to filter on no longer exists at all — see the v9 migration).
   ///
   /// Returns a map with keys:
   ///   allMen, allWomen, regMen, regWomen
   ///
   /// `gins = 1` → male;  `gins = 2` → female  (values from server).
   static Future<Map<String, int>> getLocalParticipantStats(
-      String bina, String examDate) async {
+      String bina) async {
     final db = await database;
 
     // Total by gender
     final allMenResult = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 1',
-      [bina, examDate],
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 1',
+      [bina],
     );
     final allWomenResult = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 2',
-      [bina, examDate],
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 2',
+      [bina],
     );
 
     // Registered by gender (qeydiyyat IS NOT NULL and not empty)
     final regMenResult = await db.rawQuery(
-      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
-      [bina, examDate],
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
+      [bina],
     );
     final regWomenResult = await db.rawQuery(
-      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND imt_Tarix = ? AND gins = 2 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
-      [bina, examDate],
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 2 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
+      [bina],
     );
 
     return {
@@ -1336,12 +1441,12 @@ class DatabaseService {
 
   /// Returns supervisor statistics computed entirely from the local SQLite DB.
   ///
-  /// [buildingCode] – building code.
-  /// [examDate] – exam date string as stored in the supervisors table.
+  /// [buildingCode] – building code. Same single-slot-at-a-time reasoning as
+  /// [getLocalParticipantStats] applies — no separate date/session filter.
   ///
   /// Returns a map with keys: allCount, regCount
   static Future<Map<String, int>> getLocalSupervisorStats(
-      int buildingCode, String examDate) async {
+      int buildingCode) async {
     final db = await database;
 
     final allResult = await db.rawQuery(

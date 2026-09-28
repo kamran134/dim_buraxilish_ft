@@ -19,6 +19,8 @@ class Supervisor {
   // sync via the cardNumber+buildingCode+slotKey fallback branch instead.
   final int? id;
   final int? examSessionId;
+  // Sync-queue fallback only — see Participant.slotKey for the full story.
+  final String? slotKey;
 
   const Supervisor({
     required this.buildingCode,
@@ -36,6 +38,7 @@ class Supervisor {
     this.online,
     this.id,
     this.examSessionId,
+    this.slotKey,
   });
 
   /// Получить полное имя нəzarətçi
