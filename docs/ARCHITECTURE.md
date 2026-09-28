@@ -4,7 +4,7 @@
 
 ## 1. Стек
 
-Версия приложения: `9.0.11+28` (`pubspec.yaml`), SDK `>=3.1.3 <4.0.0`.
+Версия приложения: `9.2.0+32` (`pubspec.yaml`), SDK `>=3.1.3 <4.0.0`.
 
 | Пакет | Версия | Назначение |
 |---|---|---|
@@ -36,7 +36,7 @@
 
 `WidgetsFlutterBinding.ensureInitialized()` → загрузка версии приложения через `PackageInfo` → `Firebase.initializeApp()` → `EmergencyMessageService.instance.init(navigatorKey)` → `PushNotificationService.instance.init()` → `runApp`.
 
-`MultiProvider` регистрирует: `ThemeProvider`, `FontProvider`, `AuthProvider`, `ParticipantProvider`, `SupervisorProvider`, `MonitorProvider`, `OfflineDatabaseProvider`, `UnsentDataProvider`, `SyncService.instance` (как `ChangeNotifier.value`), `NotificationsProvider.instance` (аналогично). `EnhancedParticipantProvider` **не зарегистрирован** — мёртвый код (см. раздел 12).
+`MultiProvider` регистрирует: `ThemeProvider`, `FontProvider`, `AuthProvider`, `ParticipantProvider`, `SupervisorProvider`, `MonitorProvider`, `OfflineDatabaseProvider`, `UnsentDataProvider`, `SyncService.instance` (как `ChangeNotifier.value`), `NotificationsProvider.instance` (аналогично).
 
 Роутинг — без `go_router`, стартовый экран `SplashScreen`, дальше вручную через `Navigator`. Redirect-логика по auth/роли не централизована в одном guard-слое: `splash_screen.dart` и `login_screen.dart` оба напрямую решают, показывать `RealDashboardScreen` или нет, на основе состояния `AuthProvider`.
 
@@ -53,25 +53,23 @@
 | `theme_provider.dart` | Светлая/тёмная тема | `ThemeMode`, persisted в `shared_preferences` |
 | `font_provider.dart` | Размер шрифта UI | persisted в `shared_preferences` |
 | `notifications_provider.dart` (singleton) | Список emergency-уведомлений, unread count, REST-поллинг `/emergencyacks/pending` | список уведомлений |
-| `enhanced_participant_provider.dart` | **мёртвый** — альтернативная реализация поверх `core/`-паттернов, нигде не подключена | — |
 
 ## 5. Сервисы (`lib/services/`)
 
 | Файл | Назначение |
 |---|---|
-| `http_service.dart` (1400 строк) | Основной и реально используемый REST-клиент на `Dio`: логин, refresh (single-flight через `_refreshInFlight`), CRUD участников/супервайзеров/мониторов/протоколов/статистики/версии приложения (~30 эндпоинтов, см. раздел 9) |
-| `http_service_cleaned.dart` (1008 строк) | **мёртвый файл** — нигде не импортируется, похоже на недоведённый рефакторинг `http_service.dart` |
-| `database_service.dart` (1315 строк) | Вся офлайн-SQLite логика: 8 таблиц, CRUD, get/clear unsynced (см. раздел 7) |
+| `http_service.dart` | Основной и реально используемый REST-клиент на `Dio`: логин, refresh (single-flight через `_refreshInFlight`), CRUD участников/супервайзеров/мониторов/протоколов/статистики/версии приложения (~30 эндпоинтов, см. раздел 13). Full-switch (9.2): каждый эндпоинт кроме sync/cancel/downloadcomplete потерял параметр `examDate` — контекст экзамена только из заголовка `X-Exam-Slot` |
+| `database_service.dart` | Вся офлайн-SQLite логика: 8 таблиц (версия БД 9), CRUD, get/clear unsynced (см. раздел 8) |
 | `sync_service.dart` | Фоновая синхронизация очереди — 30 сек таймер, 10 мин idle-таймаут (см. раздел 7) |
 | `device_identity_service.dart` | Генерация/хранение стабильного `device_id` (16 случайных байт, `Random.secure()`) в secure_storage + человекочитаемое имя устройства |
 | `emergency_message_service.dart` | SignalR-подключение к hub `/hubs/emergency`, health-таймер (10 сек), показ `EmergencyMessageDialog`, дедуп через `Set<int> _activeDialogIds` |
 | `push_notification_service.dart` | FCM: разрешение, получение/загрузка/удаление токена (`/devicetokens`), обработка открытия по тапу (foreground/background/terminated через `getInitialMessage`) |
-| `statistics_service.dart` (702 строки) | REST-запросы статистики по зданиям/залам/мониторам для дашборда |
+| `statistics_service.dart` | REST-запросы статистики по зданиям/залам/мониторам для дашборда. Full-switch (9.2): методы больше не принимают `examDate` — `getActiveSlotExamDate()` заменён на `hasActiveSlot()` (bool) |
 | `statistics_event_bus.dart` | Broadcast `StreamController<String>` — событие «статистика обновилась» |
-| `storage_service.dart` | Обёртка над `shared_preferences`, используется в мёртвом DI-слое (`ServiceFactory`) |
+| `storage_service.dart` | Обёртка над `shared_preferences` |
 | `protocol_service.dart` | Работа с протоколами (заметки/отчёты) |
 
-Репозитории (`lib/repositories/`: `auth_repository.dart`, `participant_repository.dart`) используются только мёртвым DI-слоем (`ServiceFactory`) и `enhanced_participant_provider.dart` — реальные провайдеры обращаются к `HttpService` напрямую.
+Провайдеры обращаются к `HttpService` напрямую (нет отдельного repository-слоя).
 
 ## 6. Роуты и экраны (`lib/screens/`)
 
@@ -80,11 +78,11 @@
 | Экран | Назначение |
 |---|---|
 | `splash_screen.dart` | Стартовый экран, решает, показывать логин или дашборд |
-| `login_screen.dart` | Форма логина (юзернейм/пароль/дата экзамена) |
+| `login_screen.dart` | Форма логина (юзернейм/пароль — без даты экзамена, экзамен/слот выбирается после входа на `exam_select_screen.dart`) |
 | `main_screen.dart` | Обёртка с нижней навигацией |
 | `home_screen.dart` | Домашний экран после входа |
-| `dashboard_screen.dart` | Старая версия дашборда, есть TODO «добавить реальную статистику» — фактически заменена, см. раздел 12 |
-| `real_dashboard_screen.dart` | Актуальный дашборд (1529 строк, самый большой файл проекта) |
+| `exam_select_screen.dart` | Выбор слота (дата+время) после логина или для переключения — список из `GET /slots`/`GET /slots/all` |
+| `real_dashboard_screen.dart` | Актуальный дашборд (самый большой файл проекта) |
 | `participant_screen.dart` | Сканирование/регистрация участников |
 | `supervisor_screen.dart` | Сканирование/регистрация супервайзеров |
 | `monitor_screen.dart` | Сканирование/регистрация мониторов на входе в здание |
@@ -105,7 +103,7 @@
 
 ## 7. Auth
 
-- Логин: `HttpService.login()` → `POST /auth/login` с `LoginModel` (userName/password/examDate/deviceId/deviceName). Ответ `LoginResponse` с `AccessTokenModel` (token/expiration/refreshToken).
+- Логин: `HttpService.login()` → `POST /auth/login` с `LoginModel` (userName/password/deviceId/deviceName — без даты/слота экзамена, он выбирается после входа на `exam_select_screen.dart`). Ответ `LoginResponse` с `AccessTokenModel` (token/expiration/refreshToken).
 - Хранение: `flutter_secure_storage`, ключи `jwt_token` (весь `AccessTokenModel` как JSON) и `auth` (bool-флаг).
 - Refresh: `getToken()` проверяет `token.isExpired`, при истечении — `_refreshAccessToken()` → `_performRefresh()` → `POST /auth/refresh` (deviceId + refreshToken) через отдельный `_plainDio` (без auth-интерцептора, чтобы не зациклиться). Конкурентные refresh-запросы схлопываются через статический `_refreshInFlight` (single-flight).
 - Logout: `removeToken()` удаляет оба ключа из secure_storage; `AuthProvider` дополнительно останавливает `SyncService.instance.stopTimer()`.
@@ -115,22 +113,22 @@
 
 ## 8. Офлайн-режим
 
-### Схема SQLite (`database_service.dart`, версия БД = 7, файл `dim_buraxilish.db`)
+### Схема SQLite (`database_service.dart`, версия БД = 9, файл `dim_buraxilish.db`)
 
 | Таблица | PK | Назначение |
 |---|---|---|
-| `participants` | `external_id` (unique `is_N`) | Скачанная офлайн-база участников (ФИО, зал/место, фото, дата/время экзамена) |
-| `registered_participants` | `is_N` | Очередь зарегистрированных участников, `online INTEGER DEFAULT 0` — флаг отправки на сервер |
-| `registered_monitors` | `workNumber` | Очередь зарегистрированных мониторов, тоже с `online` |
-| `supervisors` | — | Офлайн-база супервайзеров |
-| `all_monitors` | — | Справочник всех мониторов (для офлайн-поиска) |
-| `registered_supervisors` | `cardNumber` | Очередь зарегистрированных супервайзеров |
+| `participants` | `id` (server `Participants.Id`, unique `is_N`) | Скачанная офлайн-база участников (ФИО, зал/место, фото, `exam_session_id`) |
+| `registered_participants` | `is_N` | Очередь зарегистрированных участников; `id` (server id, `NULL` только для v8-строки, мигрированной в v9 без своего id) + `slot_key` (fallback для синка такой строки) + `online INTEGER DEFAULT 0` |
+| `registered_monitors` | `workNumber` | Локальный кэш зарегистрированных мониторов (мониторы не имеют офлайн-очереди — сканирование всегда онлайн), `id`/`exam_session_id`, `examDate` — только отображение |
+| `supervisors` | `cardNumber` | Офлайн-база супервайзеров, `id`/`exam_session_id`, `examDate` — только отображение |
+| `all_monitors` | `workNumber` | Справочник всех мониторов (офлайн-поиск, admin), `id`/`exam_session_id` |
+| `registered_supervisors` | `cardNumber` | Очередь зарегистрированных супервайзеров; `id`/`slot_key` как у `registered_participants` |
 | `participant_violations` | — | Нарушения участников |
 | `emergency_notifications` | — | Локальный кэш emergency-уведомлений |
 
 Шифрования БД нет (обычный `sqflite`, не `sqflite_sqlcipher`) — ФИО, PIN (`idCardPin`), фото хранятся на устройстве в открытом виде.
 
-Миграции: `_databaseVersion = 7`; `_onUpgrade` (`database_service.dart:190-260`) — пошаговая схема `if (oldVersion < 2) … if (oldVersion < 7)`, внутри шагов `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE`. При добавлении таблицы/колонки: поднять `_databaseVersion` и добавить новый `if (oldVersion < N)` блок.
+Миграции: `_databaseVersion = 9`; `_onUpgrade` — пошаговая схема `if (oldVersion < 2) … if (oldVersion < 9)`. v9 (full-switch, contract §1.2/§1.3) заменяет строковую дату экзамена (`imt_Tarix`/`examDate`-как-ключ) на серверные `id`/`exam_session_id`: скачиваемые таблицы (`participants`, `supervisors`, `all_monitors`, `registered_monitors`) дропаются и создаются заново (они всегда полностью перезаписываются при следующей загрузке), а таблицы очереди синка (`registered_participants`, `registered_supervisors`) пересоздаются с новыми колонками `id`/`slot_key`, и их v8-строки переносятся внутри той же транзакции с `id = NULL` и `slot_key`, взятым из `exam_details.slotKey` (secure storage, читается до `openDatabase()`) — такие строки синкаются через fallback-ветку контракта §1.3 (`is_N`/`cardNumber` + `bina`/`buildingCode` + `slotKey`). При добавлении таблицы/колонки: поднять `_databaseVersion` и добавить новый `if (oldVersion < N)` блок.
 
 ### `sync_service.dart`
 
@@ -176,13 +174,15 @@
 
 ## 13. Карта API-вызовов (`http_service.dart`)
 
-Base URL — **захардкоженная константа**: `HttpService.baseUrl = 'https://eservices.dim.gov.az/buraxilishScan/api/api'` (`lib/services/http_service.dart:15-16`). Нет dev/staging конфигурации, флейворов сборки под окружения нет. Та же строка задублирована в мёртвом `core/service_factory.dart:25` и как отдельные hardcoded URL в `emergency_message_service.dart`, `push_notification_service.dart`, `notifications_provider.dart`.
+Base URL — **захардкоженная константа**: `HttpService.baseUrl = 'https://eservices.dim.gov.az/buraxilishScan/api/api'` (`lib/services/http_service.dart:15-16`). Нет dev/staging конфигурации, флейворов сборки под окружения нет. Та же строка задублирована как отдельные hardcoded URL в `emergency_message_service.dart`, `push_notification_service.dart`, `notifications_provider.dart`.
+
+Full-switch (9.2, contract §1): `X-Exam-Slot` (интерцептор `HttpService`, из `ExamDetails.slotKey`) — единственный источник контекста экзамена. `GET /buraxilishes/getallexamdate` удалён из контракта; синк (`syncburaxilish`/`syncsupervisors`) шлёт `{id?, is_N?/cardNumber?, bina?/buildingCode?, slotKey?, ...}`, отмена регистрации (`cancelregistration` — участники/супервайзеры/мониторы) — только `{id}`, `admin/downloadcomplete` — `{buildingCode, slotKey, ...}`. Все прочие эндпоинты (детали/списки/скан/поиск) потеряли параметр `examDate`.
 
 | Метод в `HttpService` | HTTP | Route (относительно `baseUrl`) | Прим. |
 |---|---|---|---|
 | `login()` | POST | `/auth/login` | + deviceId/deviceName |
 | `_performRefresh()` | POST | `/auth/refresh` | отдельный `_plainDio` без auth-интерцептора |
-| — | GET | `/buraxilishes/getallexamdate` | список дат экзаменов |
+| `getSlots()` / `getAllSlots()` | GET | `/slots`, `/slots/all` | выбор слота после логина/при переключении |
 | — | GET | `/tparols/getall` | |
 | — | GET | `/tparols/getbybina?bina=$bina` | |
 | — | GET | `/supervisorbuildings/getall` | |
@@ -199,30 +199,14 @@ Base URL — **захардкоженная константа**: `HttpService.b
 - `notifications_provider.dart` — REST через `package:http` на `/emergencyacks/pending` и `/emergencyacks/acknowledge` — дублирует URL-константы из `emergency_message_service.dart`.
 
 ### Формат дат
-Два формата по замыслу (определяются типом колонки на сервере):
-- Участники (`/buraxilishes/*`): `examDate` передаётся как есть — азербайджанская словесная дата `"29 sentyabr 2025-ci il"` (легаси-колонка `Imt_Tarix: string`).
-- Супервайзеры и мониторы (`/supervisors/*`, `/monitors/*`): `DateFormatter.dateToAzToDate()` → `MM/dd/yyyy` (колонка `ExamDate: DateTime`).
+Full-switch (9.2): запросы больше не несут строковую дату экзамена вообще — только `X-Exam-Slot`. `DateFormatter` теперь содержит только display-форматтеры (`formatDateTimeToAz`/`formatDateToAz`/`formatISOToAz`) для показа реальных `DateTime`/ISO-значений (время регистрации, протоколы) — API-ориентированные конвертеры азербайджанской словесной даты (`dateToAzToDate*`, `dateFromAzToDate`, `parseAzerbaijaniDate`, `azerbaijaniDateToISO*`) удалены вместе с тремя их дублирующими копиями (`HttpService._formatExamDateForApi*`, `StatisticsService._convertToMMDDYYYY*`) и с `DatabaseService._normalizeDateKey`.
 
 Подробнее — `SYSTEM_OVERVIEW.md` §7.2 в бэкенд-репо.
 
 ## 14. Мёртвый код
 
-Кандидаты на удаление (подтверждено grep — 0 импортов вне собственного файла/группы), подробности и приоритет — в отчёте ревью:
+Full-switch (9.2) удалил весь ранее выявленный мёртвый код (0 импортов вне собственного файла/группы, ссылался на удалённые из контракта поля/сигнатуры и не собрался бы после миграции): `lib/patterns.dart`, `lib/core/` (`auth_strategy.dart`, `commands.dart`, `service_factory.dart`), `lib/repositories/` (`auth_repository.dart`, `participant_repository.dart`), `lib/providers/enhanced_participant_provider.dart`, `lib/services/http_service_cleaned.dart`, `lib/screens/dashboard_screen.dart`, `lib/widgets/exam_date_dropdown.dart`.
 
-| Файл | Статус |
-|---|---|
-| `lib/patterns.dart` | Не импортируется нигде в `lib/` — весь файл мёртв |
-| `lib/providers/enhanced_participant_provider.dart` | Не зарегистрирован в `main.dart` `MultiProvider`, импортируется только из `patterns.dart` — эффективно мёртв |
-| `lib/core/auth_strategy.dart` | Импортируется только сам собой, `authenticate()` бросает `UnimplementedError` — заготовка, не подключена |
-| `lib/core/commands.dart` | Используется только мёртвыми `patterns.dart`/`enhanced_participant_provider.dart` |
-| `lib/core/service_factory.dart` | Используется только мёртвым кодом; содержит собственную копию `baseUrl` |
-| `lib/repositories/auth_repository.dart`, `participant_repository.dart` | Используются только мёртвым DI-слоем/enhanced-провайдером |
-| `lib/services/http_service_cleaned.dart` (1008 строк) | Не импортируется нигде — недоведённый рефакторинг `http_service.dart` |
-| `lib/screens/dashboard_screen.dart` (738 строк) | Прямых конструкторов `DashboardScreen(` за пределами своего файла не найдено (используется `RealDashboardScreen`), содержит 2 TODO «добавить реальную статистику» — вероятно предыдущая версия экрана; полная проверка всех ссылок не проводилась |
-| `lib/providers/participant_provider.dart:42` | `_isOnlineMode = false` — захардкожено, геттер есть, значение никогда не меняется (мёртвая ветка логики), унаследовано из старого отчёта |
+Остаётся: `lib/providers/participant_provider.dart` — `_isOnlineMode = false` захардкожено, геттер есть, значение никогда не меняется (мёртвая ветка логики, унаследовано из старого отчёта, не в рамках full-switch). `lib/models/registered_participant.dart`/`registered_supervisor.dart` — те же 0-импортов-вовне модели, всё ещё несут легаси-поле `imt_Tarix`/`examDate`; вне зоны `mobile_inventory.md`, не тронуты.
 
-Весь `core/` (`auth_strategy.dart`, `commands.dart`, `service_factory.dart`) — заготовка паттернов проектирования (Strategy/Command/Factory-DI), не подключённая к реальному приложению; реальный код использует провайдеры + `HttpService` напрямую.
-
-Не проверено так же тщательно (не хватило времени пройтись по каждому из 114 файлов): `lib/services/storage_service.dart` (использование за пределами DI-слоя отдельно не подтверждалось), `lib/screens/database_people_screen.dart` vs `registered_people_screen.dart` (не сравнивались функционально).
-
-Кандидат на удаление, см. отчёт ревью.
+Не проверено так же тщательно (не хватило времени пройтись по каждому из файлов): `lib/services/storage_service.dart`, `lib/screens/database_people_screen.dart` vs `registered_people_screen.dart` (не сравнивались функционально).
