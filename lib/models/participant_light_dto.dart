@@ -1,6 +1,5 @@
 /// Модель для участника (облегченная версия)
 class ParticipantLightDto {
-  final String? erize;
   final int? isN;
   final String? soy;
   final String? adi;
@@ -14,15 +13,12 @@ class ParticipantLightDto {
   final String? mertebe;
   final String? sira;
   final String? yer;
-  final String? imtTarix;
-  final String? imtBegin;
   final String? adBina;
   final DateTime? qeydiyyat;
-  final int? sNomer;
   final int? id;
+  final int? examSessionId;
 
   ParticipantLightDto({
-    this.erize,
     this.isN,
     this.soy,
     this.adi,
@@ -36,17 +32,14 @@ class ParticipantLightDto {
     this.mertebe,
     this.sira,
     this.yer,
-    this.imtTarix,
-    this.imtBegin,
     this.adBina,
     this.qeydiyyat,
-    this.sNomer,
     this.id,
+    this.examSessionId,
   });
 
   factory ParticipantLightDto.fromJson(Map<String, dynamic> json) {
     return ParticipantLightDto(
-      erize: json['erize'] as String?,
       isN: json['is_N'] as int?,
       soy: json['soy'] as String?,
       adi: json['adi'] as String?,
@@ -60,14 +53,12 @@ class ParticipantLightDto {
       mertebe: json['mertebe'] as String?,
       sira: json['sira'] as String?,
       yer: json['yer'] as String?,
-      imtTarix: json['imt_Tarix'] as String?,
-      imtBegin: json['imt_Begin'] as String?,
       adBina: json['ad_Bina'] as String?,
       qeydiyyat: json['qeydiyyat'] != null
           ? DateTime.tryParse(json['qeydiyyat'])
           : null,
-      sNomer: json['s_Nomer'] as int?,
       id: json['id'] as int?,
+      examSessionId: json['examSessionId'] as int?,
     );
   }
 

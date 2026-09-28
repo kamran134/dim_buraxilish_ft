@@ -9,7 +9,6 @@ import '../models/supervisor_models.dart';
 import '../models/monitor_models.dart';
 import '../models/violator_models.dart';
 import '../models/exam_models.dart';
-import '../utils/date_formatter.dart';
 import 'database_service.dart';
 
 class HttpService {
@@ -56,9 +55,10 @@ class HttpService {
           options.headers['Authorization'] = 'Bearer $token';
         }
         // Tell the server which slot (date+time) the request is for, once
-        // one has been picked — see API_slots.md. The server filters legacy
-        // endpoints by this header when present; without it (old clients)
-        // they keep working off the `examDate` query parameter alone.
+        // one has been picked — see API_slots.md. Full-switch (9.2, contract
+        // §1): this header (or `X-Exam-Session-Id`, resolved server-side) is
+        // now the ONLY way the server learns the exam context — there is no
+        // `examDate` query/body fallback left on any endpoint.
         final examDetails = await getExamDetailsFromStorage();
         final slotKey = examDetails?.slotKey;
         if (slotKey != null && slotKey.isNotEmpty) {
@@ -200,7 +200,7 @@ class HttpService {
   }
 
   // Login request (no token needed). examDate is no longer part of login —
-  // the exam is picked afterwards on a dedicated screen (see getExams()).
+  // the exam is picked afterwards on a dedicated screen (see getSlots()).
   Future<LoginResponse> login(String userName, String password) async {
     try {
       final loginData = LoginModel(
@@ -237,102 +237,6 @@ class HttpService {
           message: 'Əlaqə xətası baş verdi',
         );
       }
-    }
-  }
-
-  // Get exam dates
-  Future<ExamDates> getExamDates() async {
-    try {
-      final response = await _dio.get('/buraxilishes/getallexamdate');
-      print('getExamDates response: ${response.data}'); // Добавляем логирование
-
-      // Проверяем структуру ответа как в React Native
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data != null && data['success'] == true && data['data'] != null) {
-          return ExamDates.fromJson(data);
-        } else {
-          print('Invalid response structure: $data');
-          return ExamDates(
-            data: [],
-            success: false,
-            message: data?['message'] ??
-                'İmtahan tarixlərini əldə etmək mümkün olmadı!',
-          );
-        }
-      } else {
-        print('HTTP error: ${response.statusCode}');
-        return ExamDates(
-          data: [],
-          success: false,
-          message: 'İmtahan tarixlərini əldə etmək mümkün olmadı!',
-        );
-      }
-    } on DioException catch (e) {
-      print('DioException: ${e.message}');
-      print('Response data: ${e.response?.data}');
-      return ExamDates(
-        data: [],
-        success: false,
-        message: e.response?.data?['message'] ?? 'İnternet bağlantı yoxdur!',
-      );
-    } catch (e) {
-      print('General error: $e');
-      return ExamDates(
-        data: [],
-        success: false,
-        message: 'İmtahan tarixlərini əldə etmək mümkün olmadı!',
-      );
-    }
-  }
-
-  /// Get published exams for the exam-select screen. Requires JWT (attached
-  /// automatically by the request interceptor).
-  Future<ExamsResponse> getExams() async {
-    try {
-      final response = await _dio.get('/exams');
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['success'] == true && data['data'] != null) {
-          final List<dynamic> list = data['data'] as List;
-          return ExamsResponse(
-            success: true,
-            message: data['message'] as String? ?? '',
-            data: list
-                .map((e) => ExamDto.fromJson(e as Map<String, dynamic>))
-                .toList(),
-          );
-        }
-        return ExamsResponse(
-          success: false,
-          message:
-              (data is Map ? data['message'] as String? : null) ??
-                  'İmtahanları əldə etmək mümkün olmadı!',
-          data: [],
-        );
-      }
-      return ExamsResponse(
-        success: false,
-        message: 'İmtahanları əldə etmək mümkün olmadı!',
-        data: [],
-      );
-    } on DioException catch (e) {
-      if (kDebugMode) print('getExams DioException: ${e.message}');
-      final responseData = e.response?.data;
-      return ExamsResponse(
-        success: false,
-        message: (responseData is Map ? responseData['message'] as String? : null) ??
-            'İnternet bağlantı yoxdur!',
-        data: [],
-      );
-    } catch (e) {
-      if (kDebugMode) print('getExams general error: $e');
-      return ExamsResponse(
-        success: false,
-        message: 'İmtahanları əldə etmək mümkün olmadı!',
-        data: [],
-      );
     }
   }
 
@@ -422,9 +326,11 @@ class HttpService {
     return await _dio.get('/tparols/getbybina?bina=$bina');
   }
 
-  Future<Response> getAllBuildingInExamDate(String examDate) async {
-    return await _dio
-        .get('/tparols/getallbuildinginexamdate?examDate=$examDate');
+  /// Full-switch (9.2, contract §1.4): `examDate` dropped — the server reads
+  /// the exam scope from `X-Exam-Slot` (or falls back to all buildings for
+  /// the emergency-message building selector when no exam is selected).
+  Future<Response> getAllBuildingInExamDate() async {
+    return await _dio.get('/tparols/getallbuildinginexamdate');
   }
 
   // Participant scanning methods
@@ -433,26 +339,18 @@ class HttpService {
   Future<ParticipantResponse> scanParticipant({
     required String jobNo,
     required String building,
-    required String examDate,
   }) async {
     try {
-      print(
-          'Scanning participant: jobNo=$jobNo, building=$building, examDate=$examDate');
-
       final response = await _dio.get(
         '/buraxilishes/checkjobnoatbinaandexamdate',
         queryParameters: {
           'jobNo': jobNo,
           'bina': building,
-          'examDate': examDate,
         },
       );
 
       if (response.statusCode == 200) {
-        print('API response data: ${response.data}');
-        final participantResponse = ParticipantResponse.fromJson(response.data);
-        print('Parsed participant photo: "${participantResponse.data?.photo}"');
-        return participantResponse;
+        return ParticipantResponse.fromJson(response.data);
       } else {
         return ParticipantResponse(
           success: false,
@@ -482,7 +380,7 @@ class HttpService {
         );
       }
     } catch (e) {
-      print('Error scanning participant: $e');
+      if (kDebugMode) print('Error scanning participant: $e');
       return ParticipantResponse(
         success: false,
         message: 'Skan zamanı xəta baş verdi',
@@ -495,22 +393,13 @@ class HttpService {
   /// Pass false for periodic stats polling to avoid unnecessary storage writes.
   Future<ExamDetails?> getExamDetails({
     required int bina,
-    required String examDate,
     bool persist = true,
   }) async {
     try {
-      print('Getting exam details: bina=$bina, examDate=$examDate');
-
       final response = await _dio.get(
         '/buraxilishes/getexamdetailsinexamdate',
-        queryParameters: {
-          'bina': bina,
-          'examDate': examDate,
-        },
+        queryParameters: {'bina': bina},
       );
-
-      print('Exam details response status: ${response.statusCode}');
-      print('Exam details response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
@@ -524,7 +413,7 @@ class HttpService {
 
       return null;
     } catch (e) {
-      print('Error getting exam details: $e');
+      if (kDebugMode) print('Error getting exam details: $e');
       return null;
     }
   }
@@ -559,10 +448,9 @@ class HttpService {
   // Offline participant methods
   Future<Participant?> getParticipantFromOfflineDB(int workNumber) async {
     try {
-      print('Searching participant offline: $workNumber');
       return await DatabaseService.getParticipantByWorkNumber(workNumber);
     } catch (e) {
-      print('Error getting participant from offline DB: $e');
+      if (kDebugMode) print('Error getting participant from offline DB: $e');
       return null;
     }
   }
@@ -581,7 +469,7 @@ class HttpService {
     try {
       return await DatabaseService.getRegisteredParticipants();
     } catch (e) {
-      print('Error getting registered participants: $e');
+      if (kDebugMode) print('Error getting registered participants: $e');
       return [];
     }
   }
@@ -590,9 +478,8 @@ class HttpService {
   Future<void> saveParticipantsOffline(List<Participant> participants) async {
     try {
       await DatabaseService.saveParticipants(participants);
-      print('Saved ${participants.length} participants to offline database');
     } catch (e) {
-      print('Error saving participants offline: $e');
+      if (kDebugMode) print('Error saving participants offline: $e');
     }
   }
 
@@ -601,7 +488,7 @@ class HttpService {
     try {
       return await DatabaseService.hasOfflineData();
     } catch (e) {
-      print('Error checking offline data: $e');
+      if (kDebugMode) print('Error checking offline data: $e');
       return false;
     }
   }
@@ -626,26 +513,15 @@ class HttpService {
   Future<SupervisorResponse> scanSupervisor({
     required String cardNumber,
     required int buildingCode,
-    required String examDate,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
-
-      print(
-          'Scanning supervisor: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
-
       final response = await _dio.get(
         '/supervisors/checksupervisor',
         queryParameters: {
           'cardNumber': cardNumber,
           'buildingCode': buildingCode,
-          'examDate': formattedDate,
         },
       );
-
-      print('Supervisor scan response status: ${response.statusCode}');
-      print('Supervisor scan response data: ${response.data}');
 
       if (response.statusCode == 200) {
         return SupervisorResponse.fromJson(response.data);
@@ -656,18 +532,15 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Dio error scanning supervisor: $e');
       if (e.response?.statusCode == 400) {
         return SupervisorResponse(
           success: false,
           message: 'Axtarılan şəxs haqqında məlumat tapılmadı',
         );
       } else if (e.response != null) {
-        print('Error response data: ${e.response!.data}');
         try {
           return SupervisorResponse.fromJson(e.response!.data);
         } catch (parseError) {
-          print('Error parsing error response: $parseError');
           return SupervisorResponse(
             success: false,
             message: 'Nəzarətçi məlumatları oxunarkən xəta baş verdi',
@@ -680,7 +553,7 @@ class HttpService {
         );
       }
     } catch (error) {
-      print('General error scanning supervisor: $error');
+      if (kDebugMode) print('General error scanning supervisor: $error');
       return SupervisorResponse(
         success: false,
         message: 'Gözlənilməz xəta baş verdi',
@@ -692,8 +565,6 @@ class HttpService {
   Future<SupervisorResponse> getSupervisorFromOfflineDB(
       String cardNumber) async {
     try {
-      print('Getting supervisor from offline DB: $cardNumber');
-
       final supervisor =
           await DatabaseService.getSupervisorByCardNumber(cardNumber);
 
@@ -710,7 +581,7 @@ class HttpService {
         );
       }
     } catch (error) {
-      print('Error getting supervisor from offline DB: $error');
+      if (kDebugMode) print('Error getting supervisor from offline DB: $error');
       return SupervisorResponse(
         success: false,
         message: 'Lokal bazadan məlumat oxunarkən xəta baş verdi',
@@ -733,7 +604,7 @@ class HttpService {
     try {
       return await DatabaseService.getRegisteredSupervisors();
     } catch (e) {
-      print('Error getting registered supervisors: $e');
+      if (kDebugMode) print('Error getting registered supervisors: $e');
       return [];
     }
   }
@@ -742,9 +613,8 @@ class HttpService {
   Future<void> saveSupervisorsOffline(List<Supervisor> supervisors) async {
     try {
       await DatabaseService.saveSupervisors(supervisors);
-      print('Saved ${supervisors.length} supervisors to offline database');
     } catch (e) {
-      print('Error saving supervisors offline: $e');
+      if (kDebugMode) print('Error saving supervisors offline: $e');
     }
   }
 
@@ -752,26 +622,13 @@ class HttpService {
   /// [persist] controls whether the result is written to secure storage.
   Future<SupervisorDetails?> getSupervisorDetails({
     required int buildingCode,
-    required String examDate,
     bool persist = true,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
-
-      print(
-          'Getting supervisor details: buildingCode=$buildingCode, examDate=$examDate -> $formattedDate');
-
       final response = await _dio.get(
         '/supervisors/GetExamDetailsInExamDate',
-        queryParameters: {
-          'buildingCode': buildingCode,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'buildingCode': buildingCode},
       );
-
-      print('Supervisor details response status: ${response.statusCode}');
-      print('Supervisor details response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
@@ -785,7 +642,7 @@ class HttpService {
 
       return null;
     } catch (e) {
-      print('Error getting supervisor details: $e');
+      if (kDebugMode) print('Error getting supervisor details: $e');
       return null;
     }
   }
@@ -818,66 +675,43 @@ class HttpService {
     }
   }
 
-  /// Get all participants by building and exam date (for offline download)
+  /// Get all participants by building (for offline download)
   Future<List<Participant>> getParticipantsByBuilding({
     required String buildingCode,
-    required String examDate,
   }) async {
     try {
-      // DON'T FORMAT DATE - React Native sends original date string
-      print('getParticipantsByBuilding - Original date: $examDate');
-      print('getParticipantsByBuilding - Building code: $buildingCode');
-      print(
-          'getParticipantsByBuilding - Making request to: /buraxilishes/GetAllParticipantInBuildingAndExamDate');
-
       final response = await _dio.get(
         '/buraxilishes/GetAllParticipantInBuildingAndExamDate',
-        queryParameters: {
-          'bina': buildingCode,
-          'examDate': examDate, // Use original date format like React Native
-        },
+        queryParameters: {'bina': buildingCode},
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
-      print(
-          'getParticipantsByBuilding - Response status: ${response.statusCode}');
-
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];
-        print(
-            'getParticipantsByBuilding - Success! Found ${data.length} participants');
         return data.map((json) => Participant.fromJson(json)).toList();
       }
 
-      print('getParticipantsByBuilding - No success or no data found');
-      print(
-          'getParticipantsByBuilding - Response success: ${response.data['success']}');
       return [];
     } catch (e) {
-      print('Error getting participants by building: $e');
+      if (kDebugMode) print('Error getting participants by building: $e');
       return [];
     }
   }
 
-  /// Get all participants by building and exam date, WITHOUT photos (for
-  /// offline download). Same response fields as [getParticipantsByBuilding],
-  /// just lighter — photos are downloaded separately in bulk via
-  /// [downloadParticipantPhotos] and merged into SQLite afterwards.
+  /// Get all participants by building, WITHOUT photos (for offline download).
+  /// Same response fields as [getParticipantsByBuilding], just lighter —
+  /// photos are downloaded separately in bulk via [downloadParticipantPhotos]
+  /// and merged into SQLite afterwards.
   ///
   /// Unlike [getParticipantsByBuilding], errors are NOT swallowed here — they
   /// propagate to the caller (OfflineDatabaseProvider already wraps this call
   /// in its own try/catch that logs and flags the network error).
   Future<List<Participant>> getParticipantsLightByBuilding({
     required String buildingCode,
-    required String examDate,
   }) async {
-    // DON'T FORMAT DATE - same as getParticipantsByBuilding
     final response = await _dio.get(
       '/buraxilishes/getallparticipantlightinbuildingandexamdate',
-      queryParameters: {
-        'bina': buildingCode,
-        'examDate': examDate, // Use original date format like React Native
-      },
+      queryParameters: {'bina': buildingCode},
       options: Options(receiveTimeout: const Duration(minutes: 5)),
     );
 
@@ -906,17 +740,13 @@ class HttpService {
   /// returned. An EOF in the middle of a record is a [FormatException].
   Future<int> downloadParticipantPhotos({
     required String buildingCode,
-    required String examDate,
     required Future<void> Function(List<MapEntry<int, Uint8List>> batch)
         onBatch,
     void Function(int done, int total)? onProgress,
   }) async {
     final response = await _dio.get(
       '/buraxilishes/getparticipantphotosstream',
-      queryParameters: {
-        'bina': buildingCode,
-        'examDate': examDate,
-      },
+      queryParameters: {'bina': buildingCode},
       options: Options(
         responseType: ResponseType.stream,
         receiveTimeout: const Duration(minutes: 10),
@@ -1042,26 +872,14 @@ class HttpService {
     return received;
   }
 
-  /// Get all supervisors by building and exam date (for offline download)
+  /// Get all supervisors by building (for offline download)
   Future<List<Supervisor>> getSupervisorsByBuilding({
     required String buildingCode,
-    required String examDate,
   }) async {
     try {
-      // For supervisors, React Native FORMATS the date using dateToAzToDate
-      final formattedDate = _formatExamDateWithSessionForApi(examDate);
-      print('getSupervisorsByBuilding - Original date: $examDate');
-      print('getSupervisorsByBuilding - Formatted date: $formattedDate');
-      print('getSupervisorsByBuilding - Building code: $buildingCode');
-      print(
-          'getSupervisorsByBuilding - Making request to: /supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding?buildingCode=$buildingCode&examDate=$formattedDate');
-
       final response = await _dio.get(
         '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
-        queryParameters: {
-          'buildingCode': buildingCode,
-          'examDate': formattedDate, // Use formatted date like React Native
-        },
+        queryParameters: {'buildingCode': buildingCode},
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
@@ -1077,30 +895,22 @@ class HttpService {
       // "no data" and refuse to save a silently-partial offline database
       // (see API_slots.md and OfflineDatabaseProvider.downloadOfflineDatabase).
       if (e.response?.statusCode == 400) rethrow;
-      print('Error getting supervisors by building: $e');
+      if (kDebugMode) print('Error getting supervisors by building: $e');
       return [];
     } catch (e) {
-      print('Error getting supervisors by building: $e');
+      if (kDebugMode) print('Error getting supervisors by building: $e');
       return [];
     }
   }
 
-  /// Get all monitors for a building and exam date (used for admin offline download)
+  /// Get all monitors for a building (used for admin offline download)
   Future<List<Monitor>> getMonitorsByBuilding({
     required String buildingCode,
-    required String examDate,
   }) async {
     try {
-      final formattedDate = _formatExamDateForApi(examDate);
-      print(
-          'getMonitorsByBuilding - buildingCode: $buildingCode, examDate: $formattedDate');
-
       final response = await _dio.get(
         '/monitors/GetByBuildingCodeAndExamDate',
-        queryParameters: {
-          'buildingCode': buildingCode,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'buildingCode': buildingCode},
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -1110,21 +920,17 @@ class HttpService {
 
       return [];
     } catch (e) {
-      print('Error getting monitors by building: $e');
+      if (kDebugMode) print('Error getting monitors by building: $e');
       return [];
     }
   }
 
-  /// Get ALL monitors with images for an exam date (admin — no building code needed)
-  Future<List<Monitor>> getAllMonitorsInExamDate(String examDate) async {
+  /// Get ALL monitors with images for the active slot (admin — no building
+  /// code needed).
+  Future<List<Monitor>> getAllMonitors() async {
     try {
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-      print('getAllMonitorsInExamDate - examDate: $examDate -> $formattedDate');
-
-      final response = await _dio.get(
-        '/monitors/GetAllMonitorDetailDtoInExamDate',
-        queryParameters: {'examDate': formattedDate},
-      );
+      final response =
+          await _dio.get('/monitors/GetAllMonitorDetailDtoInExamDate');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -1134,32 +940,24 @@ class HttpService {
     } on DioException catch (e) {
       // A 400 means the `X-Exam-Slot` header was rejected — propagate so
       // OfflineDatabaseProvider can show an explicit error instead of the
-      // generic "no data for this date" message.
+      // generic "no data" message.
       if (e.response?.statusCode == 400) rethrow;
-      print('Error getting all monitors in exam date: $e');
+      if (kDebugMode) print('Error getting all monitors: $e');
       return [];
     } catch (e) {
-      print('Error getting all monitors in exam date: $e');
+      if (kDebugMode) print('Error getting all monitors: $e');
       return [];
     }
   }
 
-  /// Get monitors for a specific room and exam date (admin — no building code needed)
+  /// Get monitors for a specific room (admin — no building code needed)
   Future<List<Monitor>> getMonitorsByRoomId({
     required int roomId,
-    required String examDate,
   }) async {
     try {
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-      print(
-          'getMonitorsByRoomId - roomId: $roomId, examDate: $examDate -> $formattedDate');
-
       final response = await _dio.get(
         '/monitors/GetByRoomIdAndExamDate',
-        queryParameters: {
-          'roomId': roomId,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'roomId': roomId},
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -1168,87 +966,39 @@ class HttpService {
       }
       return [];
     } catch (e) {
-      print('Error getting monitors by room: $e');
+      if (kDebugMode) print('Error getting monitors by room: $e');
       return [];
     }
   }
 
-  /// Convert exam date from Azerbaijani format to API format
-  String _formatExamDateForApi(String examDate) {
-    try {
-      // Example: "29 sentyabr 2025-ci il" -> "09/29/2025"
-      final monthsMap = {
-        'yanvar': '01',
-        'fevral': '02',
-        'mart': '03',
-        'aprel': '04',
-        'may': '05',
-        'iyun': '06',
-        'iyul': '07',
-        'avqust': '08',
-        'sentyabr': '09',
-        'oktyabr': '10',
-        'noyabr': '11',
-        'dekabr': '12'
-      };
-
-      final parts = examDate.toLowerCase().split(' ');
-      if (parts.length >= 3) {
-        final day = parts[0].padLeft(2, '0');
-        final month = monthsMap[parts[1]] ?? '01';
-        final year = parts[2].replaceAll(RegExp(r'[^\d]'), '');
-
-        return '$month/$day/$year';
-      }
-
-      return examDate;
-    } catch (e) {
-      print('Error formatting exam date: $e');
-      return examDate;
-    }
-  }
-
-  /// Same as [_formatExamDateForApi], but keeps the session time ("HH:mm") when the
-  /// Azerbaijani string carries one. Only for nezaretchi (Supervisor) requests —
-  /// participants and monitors have no session time.
-  String _formatExamDateWithSessionForApi(String examDate) {
-    final converted = _formatExamDateForApi(examDate);
-    if (converted == examDate) {
-      return converted;
-    }
-    final lastToken = examDate.split(' ').last;
-    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lastToken)) {
-      return '$converted $lastToken';
-    }
-    return converted;
-  }
-
   // =========== SYNC METHODS ===========
 
-  /// Sync registered participants to server
+  /// Sync registered participants to server.
+  ///
+  /// Contract §1.3: `[{id?, is_N?, bina?, slotKey?, qeydiyyat}]`. Rows that
+  /// already know their server `Participants.Id` (every scan since 9.2) sync
+  /// by `id`; a row with no `id` (a v8 offline-queue row migrated to v9 —
+  /// see DatabaseService's v9 migration) falls back to
+  /// `is_N`+`bina`+`slotKey`. No exam-scope header is required for this call.
   Future<ResponseModel> syncParticipants(List<Participant> participants) async {
     try {
-      // Convert to short format like React Native
-      final participantsData = participants
-          .map((p) => {
-                'is_N': p.isN,
-                'bina': p.bina,
-                'imt_Tarix': p.imtTarix,
-                'qeydiyyat': p.qeydiyyat,
-              })
-          .toList();
-
-      print('Syncing ${participantsData.length} participants to server');
-      print('Participants data: $participantsData');
+      final participantsData = participants.map((p) {
+        final row = <String, dynamic>{'qeydiyyat': p.qeydiyyat};
+        if (p.id != null) {
+          row['id'] = p.id;
+        } else {
+          row['is_N'] = p.isN;
+          row['bina'] = p.bina;
+          row['slotKey'] = p.slotKey;
+        }
+        return row;
+      }).toList();
 
       final response = await _dio.post(
         '/buraxilishes/syncburaxilish',
         data: participantsData,
       );
 
-      print('Sync participants response status: ${response.statusCode}');
-      print('Sync participants response data: ${response.data}');
-
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
           success: true,
@@ -1262,10 +1012,10 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Error syncing participants: $e');
+      if (kDebugMode) print('Error syncing participants: $e');
       return ResponseModel(success: false, message: _syncErrorMessage(e));
     } catch (e) {
-      print('General error syncing participants: $e');
+      if (kDebugMode) print('General error syncing participants: $e');
       return ResponseModel(
         success: false,
         message: 'Naməlum xəta: $e',
@@ -1273,30 +1023,30 @@ class HttpService {
     }
   }
 
-  /// Sync registered supervisors to server
+  /// Sync registered supervisors to server.
+  ///
+  /// Contract §1.3: `[{id?, cardNumber?, buildingCode?, slotKey?,
+  /// registerDate}]` — same id-first, slotKey-fallback branch as
+  /// [syncParticipants].
   Future<ResponseModel> syncSupervisors(List<Supervisor> supervisors) async {
     try {
-      // Convert to short format like React Native
-      final supervisorsData = supervisors
-          .map((s) => {
-                'cardNumber': s.cardNumber,
-                'buildingCode': s.buildingCode,
-                'examDate': s.examDate,
-                'registerDate': s.registerDate,
-              })
-          .toList();
-
-      print('Syncing ${supervisorsData.length} supervisors to server');
-      print('Supervisors data: $supervisorsData');
+      final supervisorsData = supervisors.map((s) {
+        final row = <String, dynamic>{'registerDate': s.registerDate};
+        if (s.id != null) {
+          row['id'] = s.id;
+        } else {
+          row['cardNumber'] = s.cardNumber;
+          row['buildingCode'] = s.buildingCode;
+          row['slotKey'] = s.slotKey;
+        }
+        return row;
+      }).toList();
 
       final response = await _dio.post(
         '/supervisors/syncsupervisors',
         data: supervisorsData,
       );
 
-      print('Sync supervisors response status: ${response.statusCode}');
-      print('Sync supervisors response data: ${response.data}');
-
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
           success: true,
@@ -1310,10 +1060,10 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Error syncing supervisors: $e');
+      if (kDebugMode) print('Error syncing supervisors: $e');
       return ResponseModel(success: false, message: _syncErrorMessage(e));
     } catch (e) {
-      print('General error syncing supervisors: $e');
+      if (kDebugMode) print('General error syncing supervisors: $e');
       return ResponseModel(
         success: false,
         message: 'Naməlum xəta: $e',
@@ -1321,30 +1071,15 @@ class HttpService {
     }
   }
 
-  /// Cancel participant registration (set Qeydiyyat to null)
+  /// Cancel participant registration by server row id (contract §1.3).
   Future<ResponseModel> cancelParticipantRegistration({
-    required int isN,
-    required String bina,
-    required String examDate,
+    required int id,
   }) async {
     try {
-      // NOTE: Imt_Tarix in DB is stored as raw string (e.g. Azerbaijani format).
-      // The cancel endpoint uses string comparison (b.Imt_Tarix == examDate),
-      // so we must NOT convert the date — pass the raw DB value as-is.
-      print(
-          'Canceling participant registration: isN=$isN, bina=$bina, examDate=$examDate');
-
       final response = await _dio.post(
         '/buraxilishes/cancelregistration',
-        queryParameters: {
-          'isN': isN,
-          'bina': bina,
-          'examDate': examDate,
-        },
+        queryParameters: {'id': id},
       );
-
-      print('Cancel participant registration response: ${response.statusCode}');
-      print('Response data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
@@ -1359,11 +1094,7 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Error canceling participant registration: $e');
       if (e.response != null) {
-        print('Error response status: ${e.response!.statusCode}');
-        print('Error response data: ${e.response!.data}');
-        // Handle BadRequest (400) from backend
         if (e.response!.data != null && e.response!.data is Map) {
           return ResponseModel(
             success: false,
@@ -1381,7 +1112,7 @@ class HttpService {
         message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
       );
     } catch (e) {
-      print('General error canceling participant registration: $e');
+      if (kDebugMode) print('General error canceling participant registration: $e');
       return ResponseModel(
         success: false,
         message: 'Xəta baş verdi',
@@ -1389,30 +1120,15 @@ class HttpService {
     }
   }
 
-  /// Cancel supervisor registration (set RegisterDate to null)
+  /// Cancel supervisor registration by server row id (contract §1.3).
   Future<ResponseModel> cancelSupervisorRegistration({
-    required String cardNumber,
-    required int buildingCode,
-    required String examDate,
+    required int id,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDateWithSession(examDate);
-
-      print(
-          'Canceling supervisor registration: cardNumber=$cardNumber, buildingCode=$buildingCode, examDate=$formattedDate');
-
       final response = await _dio.post(
         '/supervisors/cancelregistration',
-        queryParameters: {
-          'cardNumber': cardNumber,
-          'buildingCode': buildingCode,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'id': id},
       );
-
-      print('Cancel supervisor registration response: ${response.statusCode}');
-      print('Response data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
@@ -1427,11 +1143,7 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Error canceling supervisor registration: $e');
       if (e.response != null) {
-        print('Error response status: ${e.response!.statusCode}');
-        print('Error response data: ${e.response!.data}');
-        // Handle BadRequest (400) from backend
         if (e.response!.data != null && e.response!.data is Map) {
           return ResponseModel(
             success: false,
@@ -1449,7 +1161,7 @@ class HttpService {
         message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
       );
     } catch (e) {
-      print('General error canceling supervisor registration: $e');
+      if (kDebugMode) print('General error canceling supervisor registration: $e');
       return ResponseModel(
         success: false,
         message: 'Xəta baş verdi',
@@ -1462,25 +1174,12 @@ class HttpService {
   /// Scan monitor (İmtahan rəhbəri) by work number
   Future<MonitorResponse> scanMonitor({
     required String workNumber,
-    required String examDate,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-
-      print(
-          'Scanning monitor: workNumber=$workNumber, examDate=$examDate -> $formattedDate');
-
       final response = await _dio.get(
         '/monitors/checkmonitor',
-        queryParameters: {
-          'workNumber': workNumber,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'workNumber': workNumber},
       );
-
-      print('Monitor scan response status: ${response.statusCode}');
-      print('Monitor scan response data: ${response.data}');
 
       if (response.statusCode == 200) {
         return MonitorResponse.fromJson(response.data);
@@ -1491,18 +1190,15 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Dio error scanning monitor: $e');
       if (e.response?.statusCode == 400) {
         return MonitorResponse(
           success: false,
           message: 'Axtarılan şəxs haqqında məlumat tapılmadı',
         );
       } else if (e.response != null) {
-        print('Error response data: ${e.response!.data}');
         try {
           return MonitorResponse.fromJson(e.response!.data);
         } catch (parseError) {
-          print('Error parsing error response: $parseError');
           return MonitorResponse(
             success: false,
             message: 'İmtahan rəhbəri məlumatları oxunarkən xəta baş verdi',
@@ -1515,7 +1211,7 @@ class HttpService {
         );
       }
     } catch (error) {
-      print('General error scanning monitor: $error');
+      if (kDebugMode) print('General error scanning monitor: $error');
       return MonitorResponse(
         success: false,
         message: 'Gözlənilməz xəta baş verdi',
@@ -1523,30 +1219,15 @@ class HttpService {
     }
   }
 
-  /// Cancel monitor registration (set RegisterDate to null)
+  /// Cancel monitor registration by server row id (contract §1.3).
   Future<ResponseModel> cancelMonitorRegistration({
-    required int workNumber,
-    required int buildingCode,
-    required String examDate,
+    required int id,
   }) async {
     try {
-      // Convert date format from "29 sentyabr 2025-ci il" to "09/29/2025"
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-
-      print(
-          'Canceling monitor registration: workNumber=$workNumber, buildingCode=$buildingCode, examDate=$formattedDate');
-
       final response = await _dio.post(
         '/monitors/cancelregistration',
-        queryParameters: {
-          'workNumber': workNumber,
-          'buildingCode': buildingCode,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'id': id},
       );
-
-      print('Cancel monitor registration response: ${response.statusCode}');
-      print('Response data: ${response.data}');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return ResponseModel(
@@ -1561,11 +1242,7 @@ class HttpService {
         );
       }
     } on DioException catch (e) {
-      print('Error canceling monitor registration: $e');
       if (e.response != null) {
-        print('Error response status: ${e.response!.statusCode}');
-        print('Error response data: ${e.response!.data}');
-        // Handle BadRequest (400) from backend
         if (e.response!.data != null && e.response!.data is Map) {
           return ResponseModel(
             success: false,
@@ -1583,7 +1260,7 @@ class HttpService {
         message: 'Şəbəkə xətası. İnternet bağlantınızı yoxlayın.',
       );
     } catch (e) {
-      print('General error canceling monitor registration: $e');
+      if (kDebugMode) print('General error canceling monitor registration: $e');
       return ResponseModel(
         success: false,
         message: 'Xəta baş verdi',
@@ -1591,15 +1268,14 @@ class HttpService {
     }
   }
 
-  /// Get violators for a building and exam date (offline download)
+  /// Get violators for a building (offline download)
   Future<List<ViolatorInfo>> getViolatorsInBuilding({
     required String buildingCode,
-    required String examDate,
   }) async {
     try {
       final response = await _dio.get(
         '/buraxilishes/getviolatorsinbuildingandexamdate',
-        queryParameters: {'bina': buildingCode, 'examDate': examDate},
+        queryParameters: {'bina': buildingCode},
       );
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -1612,22 +1288,14 @@ class HttpService {
     }
   }
 
-  /// Search İmtahan rəhbərləri by name/surname/patronymic for a given exam date
+  /// Search İmtahan rəhbərləri by name/surname/patronymic (active slot)
   Future<List<Monitor>> searchMonitorsByName({
     required String searchTerm,
-    required String examDate,
   }) async {
     try {
-      final formattedDate = DateFormatter.dateToAzToDate(examDate);
-      print(
-          'searchMonitorsByName - searchTerm: $searchTerm, examDate: $formattedDate');
-
       final response = await _dio.get(
         '/monitors/SearchByName',
-        queryParameters: {
-          'searchTerm': searchTerm,
-          'examDate': formattedDate,
-        },
+        queryParameters: {'searchTerm': searchTerm},
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -1636,19 +1304,21 @@ class HttpService {
       }
       return [];
     } on DioException catch (e) {
-      print('Error searching monitors: $e');
+      if (kDebugMode) print('Error searching monitors: $e');
       return [];
     } catch (e) {
-      print('General error searching monitors: $e');
+      if (kDebugMode) print('General error searching monitors: $e');
       return [];
     }
   }
 
   /// Notifies the server that the offline database was fully downloaded.
   /// Fire-and-forget — errors are swallowed so they never block the user.
+  /// Contract §1.3: body is `{buildingCode, slotKey, ...}` — the server
+  /// resolves `DbDownloadLog.ExamDate`/`ExamDateRaw` from the slot itself.
   Future<void> reportDownloadComplete({
     required String buildingCode,
-    required String examDate,
+    required String slotKey,
     required int participantCount,
     required int supervisorCount,
     required String appVersion,
@@ -1659,8 +1329,7 @@ class HttpService {
         '/admin/downloadcomplete',
         data: {
           'buildingCode': buildingCode,
-          'examDate': _formatExamDateForApi(examDate),
-          'examDateRaw': examDate,
+          'slotKey': slotKey,
           'participantCount': participantCount,
           'supervisorCount': supervisorCount,
           'appVersion': appVersion,
@@ -1668,7 +1337,7 @@ class HttpService {
         },
       );
     } catch (e) {
-      print('reportDownloadComplete error (ignored): $e');
+      if (kDebugMode) print('reportDownloadComplete error (ignored): $e');
     }
   }
 

@@ -2,9 +2,6 @@
 class ExamDetailsDto {
   final String? kodBina;
   final String? adBina;
-  final String? erize;
-  final String? imtTarix;
-  final String? imtBegin;
   final int? allManCount;
   final int? regManCount;
   final int? allWomanCount;
@@ -13,9 +10,6 @@ class ExamDetailsDto {
   ExamDetailsDto({
     this.kodBina,
     this.adBina,
-    this.erize,
-    this.imtTarix,
-    this.imtBegin,
     this.allManCount,
     this.regManCount,
     this.allWomanCount,
@@ -26,9 +20,6 @@ class ExamDetailsDto {
     return ExamDetailsDto(
       kodBina: json['kod_Bina'] as String?,
       adBina: json['ad_Bina'] as String?,
-      erize: json['erize'] as String?,
-      imtTarix: json['imt_Tarix'] as String?,
-      imtBegin: json['imt_Begin'] as String?,
       allManCount: json['allManCount'] as int? ?? 0,
       regManCount: json['regManCount'] as int? ?? 0,
       allWomanCount: json['allWomanCount'] as int? ?? 0,
@@ -40,9 +31,6 @@ class ExamDetailsDto {
     return {
       'kod_Bina': kodBina,
       'ad_Bina': adBina,
-      'erize': erize,
-      'imt_Tarix': imtTarix,
-      'imt_Begin': imtBegin,
       'allManCount': allManCount,
       'regManCount': regManCount,
       'allWomanCount': allWomanCount,

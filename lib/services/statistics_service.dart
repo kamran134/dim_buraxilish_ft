@@ -26,19 +26,14 @@ class _ApiResponse {
 class StatisticsService {
   final HttpService _httpService = HttpService();
 
-  /// `imtTarix` (legacyDate) активного слота — дата, которую экраны
-  /// статистики передают как `examDate`. null, если слот не выбран.
-  Future<String?> getActiveSlotExamDate() async {
+  /// Whether a slot is currently active. Full-switch (9.2, contract §1.4):
+  /// every statistics endpoint below gets its exam scope from the
+  /// `X-Exam-Slot` header alone (attached automatically by HttpService's dio
+  /// interceptor) — screens only need to know whether to call them at all.
+  Future<bool> hasActiveSlot() async {
     final details = await _httpService.getExamDetailsFromStorage();
     final slotKey = details?.slotKey;
-    final examDate = details?.imtTarix;
-    if (slotKey == null ||
-        slotKey.isEmpty ||
-        examDate == null ||
-        examDate.isEmpty) {
-      return null;
-    }
-    return examDate;
+    return slotKey != null && slotKey.isNotEmpty;
   }
 
   /// GET через общий dio. Ответ с кодом ошибки (dio бросает DioException)
@@ -75,48 +70,11 @@ class StatisticsService {
     return 'Server xətası: ${response.statusCode}';
   }
 
-  /// Получает все даты экзаменов (легаси-список; экраны статистики его больше
-  /// не используют — дата берётся из выбранного слота).
-  Future<DataResult<List<String>>> getAllExamDates() async {
+  /// Получает все детали экзаменов для активного слота
+  Future<DataResult<List<ExamDetailsDto>>> getAllExamDetailsInExamDate() async {
     try {
-      final response = await _get('/buraxilishes/getallexamdate', {});
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = response.body ?? {};
-
-        if (jsonResponse['success'] == true) {
-          final List<dynamic> data = jsonResponse['data'] ?? [];
-          final List<String> examDates = data.map((e) => e.toString()).toList();
-
-          return DataResult<List<String>>.success(
-            data: examDates,
-            message: jsonResponse['message'] ?? 'Tarixlər uğurla alındı',
-          );
-        } else {
-          return DataResult<List<String>>.error(
-            message: jsonResponse['message'] ?? 'Tarixlər alınmadı',
-          );
-        }
-      } else {
-        return DataResult<List<String>>.error(
-          message: _serverError(response),
-        );
-      }
-    } catch (e) {
-      return DataResult<List<String>>.error(
-        message: 'Şəbəkə xətası: $e',
-      );
-    }
-  }
-
-  /// Получает все детали экзаменов для конкретной даты
-  Future<DataResult<List<ExamDetailsDto>>> getAllExamDetailsInExamDate(
-      String examDate) async {
-    try {
-      final response = await _get(
-        '/buraxilishes/getallexamdetailsinexamdate',
-        {'examDate': examDate},
-      );
+      final response =
+          await _get('/buraxilishes/getallexamdetailsinexamdate', {});
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = response.body ?? {};
@@ -149,13 +107,13 @@ class StatisticsService {
     }
   }
 
-  /// Получает статистику для конкретного здания в определенную дату
+  /// Получает статистику для конкретного здания (активный слот)
   Future<DataResult<ExamDetailsDto>> getExamDetailsInExamDate(
-      String bina, String examDate) async {
+      String bina) async {
     try {
       final response = await _get(
         '/buraxilishes/getexamdetailsinexamdate',
-        {'bina': bina, 'examDate': examDate},
+        {'bina': bina},
       );
 
       if (response.statusCode == 200) {
@@ -188,29 +146,21 @@ class StatisticsService {
   }
 
   /// Получает комбинированную статистику экзаменов (участники + наблюдатели)
-  /// ОБХОДНОЙ ПУТЬ: вызываем два отдельных эндпоинта и объединяем данные
-  Future<DataResult<List<ExamStatisticsDto>>> getExamStatisticsByDate(
-      String examDate) async {
+  /// для активного слота. ОБХОДНОЙ ПУТЬ: вызываем три отдельных эндпоинта и
+  /// объединяем данные.
+  Future<DataResult<List<ExamStatisticsDto>>> getExamStatisticsByDate() async {
     try {
-      final formattedExamDate = _convertToMMDDYYYY(examDate);
-
-      // 1. Получаем данные участников (используем ФОРМАТИРОВАННУЮ дату!)
-      final participantsResponse = await _get(
-        '/buraxilishes/getallexamdetailsinexamdate',
-        {'examDate': formattedExamDate},
-      );
+      // 1. Получаем данные участников
+      final participantsResponse =
+          await _get('/buraxilishes/getallexamdetailsinexamdate', {});
 
       // 2. Получаем данные супервайзеров
-      final supervisorsResponse = await _get(
-        '/supervisors/GetAllExamDetailsInExamDate',
-        {'examDate': formattedExamDate},
-      );
+      final supervisorsResponse =
+          await _get('/supervisors/GetAllExamDetailsInExamDate', {});
 
       // 3. Получаем данные мониторов
-      final monitorsResponse = await _get(
-        '/monitors/GetAllExamDetailsInExamDate',
-        {'examDate': formattedExamDate},
-      );
+      final monitorsResponse =
+          await _get('/monitors/GetAllExamDetailsInExamDate', {});
 
       if (participantsResponse.statusCode == 200) {
         final participantsJson = participantsResponse.body ?? {};
@@ -280,9 +230,6 @@ class StatisticsService {
             adBina: participant?['ad_Bina'] ??
                 supervisor?['buildingName'] ??
                 'Bina $buildingCode',
-            erize: participant?['erize'],
-            imtBegin: participant?['imt_Begin'],
-            imtTarix: participant?['imt_Tarix'],
             allManCount: participant?['allManCount'] ?? 0,
             regManCount: participant?['regManCount'] ?? 0,
             allWomanCount: participant?['allWomanCount'] ?? 0,
@@ -303,9 +250,6 @@ class StatisticsService {
           examStatistics[0] = ExamStatisticsDto(
             kodBina: examStatistics[0].kodBina,
             adBina: examStatistics[0].adBina,
-            erize: examStatistics[0].erize,
-            imtBegin: examStatistics[0].imtBegin,
-            imtTarix: examStatistics[0].imtTarix,
             allManCount: examStatistics[0].allManCount,
             regManCount: examStatistics[0].regManCount,
             allWomanCount: examStatistics[0].allWomanCount,
@@ -335,12 +279,11 @@ class StatisticsService {
     }
   }
 
-  /// Получает реальную статистику Dashboard вместо моков
-  Future<DataResult<DashboardStatistics>> getDashboardStatistics(
-      String examDate) async {
+  /// Получает реальную статистику Dashboard вместо моков (активный слот)
+  Future<DataResult<DashboardStatistics>> getDashboardStatistics() async {
     try {
       // Получаем все детали экзаменов
-      final examDetailsResult = await getAllExamDetailsInExamDate(examDate);
+      final examDetailsResult = await getAllExamDetailsInExamDate();
 
       if (!examDetailsResult.success || examDetailsResult.data == null) {
         return DataResult<DashboardStatistics>.error(
@@ -360,7 +303,6 @@ class StatisticsService {
         registrationRate: examSum.registrationRate,
         examDetails: examDetails,
         examSum: examSum,
-        examDate: examDate,
       );
 
       return DataResult<DashboardStatistics>.success(
@@ -374,13 +316,13 @@ class StatisticsService {
     }
   }
 
-  /// Получает список участников по зданию и дате экзамена
+  /// Получает список участников по зданию (активный слот)
   Future<DataResult<List<ParticipantLightDto>>> getAllParticipantsInBuilding(
-      String bina, String examDate) async {
+      String bina) async {
     try {
       final response = await _get(
         '/buraxilishes/getallparticipantlightinbuildingandexamdate',
-        {'bina': bina, 'examDate': examDate},
+        {'bina': bina},
       );
 
       if (response.statusCode == 200) {
@@ -414,22 +356,16 @@ class StatisticsService {
     }
   }
 
-  /// Получает список наблюдателей по зданию и дате экзамена
+  /// Получает список наблюдателей по зданию (активный слот)
   Future<DataResult<List<SupervisorDetailDto>>> getAllSupervisorsInBuilding(
-      String buildingCode, String examDate) async {
+      String buildingCode) async {
     try {
       // Преобразуем buildingCode в число (Angular ожидает number)
       final buildingCodeNum = int.tryParse(buildingCode) ?? 0;
 
-      // Преобразуем дату в формат MM/DD/yyyy [HH:mm] как делает Angular
-      final formattedExamDate = _convertToMMDDYYYYWithSession(examDate);
-
       final response = await _get(
         '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
-        {
-          'buildingCode': buildingCodeNum.toString(),
-          'examDate': formattedExamDate,
-        },
+        {'buildingCode': buildingCodeNum.toString()},
       );
 
       if (response.statusCode == 200) {
@@ -463,20 +399,13 @@ class StatisticsService {
     }
   }
 
-  /// Получает статистику по всем комнатам для конкретной даты экзамена
-  Future<DataResult<List<MonitorRoomStatistics>>> getAllRoomStatistics(
-      String examDate) async {
-    final localRegisteredMonitors =
-        await DatabaseService.getRegisteredMonitors(examDate: examDate);
+  /// Получает статистику по всем комнатам для активного слота
+  Future<DataResult<List<MonitorRoomStatistics>>> getAllRoomStatistics() async {
+    final localRegisteredMonitors = await DatabaseService.getRegisteredMonitors();
 
     try {
-      // Преобразуем дату в формат MM/DD/yyyy как делает Angular
-      final formattedExamDate = _convertToMMDDYYYY(examDate);
-
-      final response = await _get(
-        '/monitors/GetAllExamDetailsInExamDate',
-        {'examDate': formattedExamDate},
-      );
+      final response =
+          await _get('/monitors/GetAllExamDetailsInExamDate', {});
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = response.body ?? {};
@@ -619,85 +548,6 @@ class StatisticsService {
     return localStats;
   }
 
-  /// Преобразует дату из азербайджанского формата в MM/DD/yyyy
-  /// Копирует логику из Angular HelperService.convertToDate()
-  String _convertToMMDDYYYY(String examDate) {
-    // Если дата уже в правильном формате, возвращаем как есть
-    if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(examDate)) {
-      return examDate;
-    }
-
-    // Разбираем азербайджанскую дату: "5 oktyabr 2025-ci il"
-    final parts = examDate.split(' ');
-    if (parts.length < 3) {
-      return examDate; // Если формат не подходит, возвращаем как есть
-    }
-
-    final day = parts[0].padLeft(2, '0'); // Добавляем ведущий ноль если нужно
-    final monthName = parts[1].toLowerCase();
-    final year = parts[2].replaceAll(RegExp(r'[^\d]'), ''); // Убираем "-ci il"
-
-    // Преобразуем названия месяцев в номера (копируем логику Angular)
-    String month;
-    switch (monthName) {
-      case 'yanvar':
-        month = '01';
-        break;
-      case 'fevral':
-        month = '02';
-        break;
-      case 'mart':
-        month = '03';
-        break;
-      case 'aprel':
-        month = '04';
-        break;
-      case 'may':
-        month = '05';
-        break;
-      case 'iyun':
-        month = '06';
-        break;
-      case 'iyul':
-        month = '07';
-        break;
-      case 'avqust':
-        month = '08';
-        break;
-      case 'sentyabr':
-        month = '09';
-        break;
-      case 'oktyabr':
-        month = '10';
-        break;
-      case 'noyabr':
-        month = '11';
-        break;
-      case 'dekabr':
-        month = '12';
-        break;
-      default:
-        return examDate; // Если месяц неизвестен, возвращаем как есть
-    }
-
-    // Возвращаем в формате MM/DD/yyyy
-    return '$month/$day/$year';
-  }
-
-  /// То же, что _convertToMMDDYYYY, но сохраняет время сеанса ("HH:mm"), если оно есть.
-  /// Только для запросов по nəzarətçilər (Supervisor) — у участников и мониторов
-  /// времени сеанса нет.
-  String _convertToMMDDYYYYWithSession(String examDate) {
-    final converted = _convertToMMDDYYYY(examDate);
-    if (converted == examDate) {
-      return converted;
-    }
-    final lastToken = examDate.split(' ').last;
-    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(lastToken)) {
-      return '$converted $lastToken';
-    }
-    return converted;
-  }
 }
 
 /// Модель для статистики Dashboard
@@ -709,7 +559,6 @@ class DashboardStatistics {
   final double registrationRate;
   final List<ExamDetailsDto> examDetails;
   final ExamStatisticsSum examSum;
-  final String examDate;
 
   DashboardStatistics({
     required this.totalParticipants,
@@ -719,6 +568,5 @@ class DashboardStatistics {
     required this.registrationRate,
     required this.examDetails,
     required this.examSum,
-    required this.examDate,
   });
 }
