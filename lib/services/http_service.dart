@@ -322,8 +322,8 @@ class HttpService {
     return await _dio.get('/tparols/getall');
   }
 
-  Future<Response> getTParolByBina(int bina) async {
-    return await _dio.get('/tparols/getbybina?bina=$bina');
+  Future<Response> getTParolByBina(int buildingCode) async {
+    return await _dio.get('/tparols/getbybina?buildingCode=$buildingCode');
   }
 
   /// Full-switch (9.2, contract §1.4): `examDate` dropped — the server reads
@@ -344,8 +344,8 @@ class HttpService {
       final response = await _dio.get(
         '/buraxilishes/checkjobnoatbinaandexamdate',
         queryParameters: {
-          'jobNo': jobNo,
-          'bina': building,
+          'cardNumber': jobNo,
+          'buildingCode': building,
         },
       );
 
@@ -392,13 +392,13 @@ class HttpService {
   /// [persist] controls whether the result is written to secure storage.
   /// Pass false for periodic stats polling to avoid unnecessary storage writes.
   Future<ExamDetails?> getExamDetails({
-    required int bina,
+    required int buildingCode,
     bool persist = true,
   }) async {
     try {
       final response = await _dio.get(
         '/buraxilishes/getexamdetailsinexamdate',
-        queryParameters: {'bina': bina},
+        queryParameters: {'buildingCode': buildingCode},
       );
 
       if (response.statusCode == 200) {
@@ -682,7 +682,7 @@ class HttpService {
     try {
       final response = await _dio.get(
         '/buraxilishes/GetAllParticipantInBuildingAndExamDate',
-        queryParameters: {'bina': buildingCode},
+        queryParameters: {'buildingCode': buildingCode},
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
@@ -711,7 +711,7 @@ class HttpService {
   }) async {
     final response = await _dio.get(
       '/buraxilishes/getallparticipantlightinbuildingandexamdate',
-      queryParameters: {'bina': buildingCode},
+      queryParameters: {'buildingCode': buildingCode},
       options: Options(receiveTimeout: const Duration(minutes: 5)),
     );
 
@@ -731,7 +731,7 @@ class HttpService {
   /// magic  : 4 bytes ASCII "BXP1"
   /// count  : int32
   /// record x count:
-  ///   isN  : int64
+  ///   cardNumber : int64
   ///   len  : int32  (> 0)
   ///   data : len bytes
   /// ```
@@ -746,7 +746,7 @@ class HttpService {
   }) async {
     final response = await _dio.get(
       '/buraxilishes/getparticipantphotosstream',
-      queryParameters: {'bina': buildingCode},
+      queryParameters: {'buildingCode': buildingCode},
       options: Options(
         responseType: ResponseType.stream,
         receiveTimeout: const Duration(minutes: 10),
@@ -975,20 +975,21 @@ class HttpService {
 
   /// Sync registered participants to server.
   ///
-  /// Contract §1.3: `[{id?, is_N?, bina?, slotKey?, qeydiyyat}]`. Rows that
-  /// already know their server `Participants.Id` (every scan since 9.2) sync
-  /// by `id`; a row with no `id` (a v8 offline-queue row migrated to v9 —
-  /// see DatabaseService's v9 migration) falls back to
-  /// `is_N`+`bina`+`slotKey`. No exam-scope header is required for this call.
+  /// Contract §1.3: `[{id?, cardNumber?, buildingCode?, slotKey?,
+  /// registeredAt}]`. Rows that already know their server `Participants.Id`
+  /// (every scan since 9.2) sync by `id`; a row with no `id` (a v8
+  /// offline-queue row migrated to v9 — see DatabaseService's v9 migration)
+  /// falls back to `cardNumber`+`buildingCode`+`slotKey`. No exam-scope
+  /// header is required for this call.
   Future<ResponseModel> syncParticipants(List<Participant> participants) async {
     try {
       final participantsData = participants.map((p) {
-        final row = <String, dynamic>{'qeydiyyat': p.qeydiyyat};
+        final row = <String, dynamic>{'registeredAt': p.registeredAt};
         if (p.id != null) {
           row['id'] = p.id;
         } else {
-          row['is_N'] = p.isN;
-          row['bina'] = p.bina;
+          row['cardNumber'] = p.cardNumber;
+          row['buildingCode'] = p.buildingCode;
           row['slotKey'] = p.slotKey;
         }
         return row;
@@ -1275,7 +1276,7 @@ class HttpService {
     try {
       final response = await _dio.get(
         '/buraxilishes/getviolatorsinbuildingandexamdate',
-        queryParameters: {'bina': buildingCode},
+        queryParameters: {'buildingCode': buildingCode},
       );
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];

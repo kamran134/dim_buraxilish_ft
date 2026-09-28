@@ -166,7 +166,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         return OfflineDownloadResult.networkError;
       }
 
-      final buildingCode = examDetails.kodBina ?? '0';
+      final buildingCode = examDetails.buildingCode ?? '0';
 
       bool hadNetworkError = false;
 
@@ -228,7 +228,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       }
 
       // Step 4: save (participants land in SQLite first, without photos — the
-      // photo UPDATE below needs existing is_N rows to match against)
+      // photo UPDATE below needs existing card_number rows to match against)
       await _saveOfflineData(participants, supervisors, violators);
 
       // Step 5 (1b): photos — best-effort. Participants are already usable
@@ -322,7 +322,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       if (examDetails == null || slotKey == null || slotKey.isEmpty) return;
       final version = await getAppVersion();
       await _httpService.reportDownloadComplete(
-        buildingCode: examDetails.kodBina ?? '0',
+        buildingCode: examDetails.buildingCode ?? '0',
         slotKey: slotKey,
         participantCount: _participantCount,
         supervisorCount: _supervisorCount,

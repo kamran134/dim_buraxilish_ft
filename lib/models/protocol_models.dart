@@ -46,7 +46,7 @@ class NoteType {
 /// Protocol note model representing individual protocol entries
 class ProtocolNote {
   final int id;
-  final int bina;
+  final int buildingCode;
   final int noteTypeId;
   final String noteTypeName;
   final String note;
@@ -56,7 +56,7 @@ class ProtocolNote {
 
   const ProtocolNote({
     required this.id,
-    required this.bina,
+    required this.buildingCode,
     required this.noteTypeId,
     required this.noteTypeName,
     required this.note,
@@ -68,7 +68,7 @@ class ProtocolNote {
   factory ProtocolNote.fromJson(Map<String, dynamic> json) {
     return ProtocolNote(
       id: json['id'] as int,
-      bina: json['bina'] as int,
+      buildingCode: json['buildingCode'] as int,
       noteTypeId: json['noteTypeId'] as int,
       noteTypeName: json['noteTypeName'] as String,
       note: json['note'] as String,
@@ -81,7 +81,7 @@ class ProtocolNote {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'bina': bina,
+      'buildingCode': buildingCode,
       'noteTypeId': noteTypeId,
       'noteTypeName': noteTypeName,
       'note': note,
@@ -93,7 +93,7 @@ class ProtocolNote {
 
   @override
   String toString() {
-    return 'ProtocolNote(id: $id, bina: $bina, noteTypeId: $noteTypeId, '
+    return 'ProtocolNote(id: $id, buildingCode: $buildingCode, noteTypeId: $noteTypeId, '
         'noteTypeName: $noteTypeName, note: $note, createdAt: $createdAt, '
         'updatedAt: $updatedAt, examDate: $examDate)';
   }
@@ -104,7 +104,7 @@ class ProtocolNote {
       other is ProtocolNote &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          bina == other.bina &&
+          buildingCode == other.buildingCode &&
           noteTypeId == other.noteTypeId &&
           noteTypeName == other.noteTypeName &&
           note == other.note &&
@@ -115,7 +115,7 @@ class ProtocolNote {
   @override
   int get hashCode {
     return id.hashCode ^
-        bina.hashCode ^
+        buildingCode.hashCode ^
         noteTypeId.hashCode ^
         noteTypeName.hashCode ^
         note.hashCode ^
@@ -201,7 +201,7 @@ class UpdateProtocolNoteRequest {
 
 /// Model for protocol reports (used by admins)
 class ProtocolReport {
-  final int bina;
+  final int buildingCode;
   final String noteTypeName;
   final String note;
   final String examDate;
@@ -209,7 +209,7 @@ class ProtocolReport {
   final String updatedAt;
 
   const ProtocolReport({
-    required this.bina,
+    required this.buildingCode,
     required this.noteTypeName,
     required this.note,
     required this.examDate,
@@ -219,7 +219,7 @@ class ProtocolReport {
 
   factory ProtocolReport.fromJson(Map<String, dynamic> json) {
     return ProtocolReport(
-      bina: json['bina'] as int,
+      buildingCode: json['buildingCode'] as int,
       noteTypeName: json['noteTypeName'] as String,
       note: json['note'] as String,
       examDate: json['examDate'] as String,
@@ -230,7 +230,7 @@ class ProtocolReport {
 
   Map<String, dynamic> toJson() {
     return {
-      'bina': bina,
+      'buildingCode': buildingCode,
       'noteTypeName': noteTypeName,
       'note': note,
       'examDate': examDate,
@@ -241,7 +241,7 @@ class ProtocolReport {
 
   @override
   String toString() {
-    return 'ProtocolReport(bina: $bina, noteTypeName: $noteTypeName, '
+    return 'ProtocolReport(buildingCode: $buildingCode, noteTypeName: $noteTypeName, '
         'note: $note, examDate: $examDate, createdAt: $createdAt, '
         'updatedAt: $updatedAt)';
   }

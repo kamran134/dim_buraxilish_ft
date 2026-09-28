@@ -91,7 +91,7 @@ class AuthProvider extends ChangeNotifier {
         // Также восстанавливаем данные экзамена если они есть
         final examDetails = await _httpService.getExamDetailsFromStorage();
         if (examDetails != null) {
-          final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+          final bina = int.tryParse(examDetails.buildingCode ?? '0') ?? 0;
           _authData = Auth(
             bina: bina,
             examDate: _isoDateFromSlotKey(examDetails.slotKey),
@@ -137,8 +137,8 @@ class AuthProvider extends ChangeNotifier {
 
   // Login with JWT. The exam is no longer chosen at login time — it's picked
   // afterwards on ExamSelectScreen (see setActiveExam()). ExamDetails is
-  // stored here with no slot yet; only the building (kodBina/adBina) is
-  // known at this point.
+  // stored here with no slot yet; only the building (buildingCode/
+  // buildingName) is known at this point.
   Future<bool> signInWithJWT(String userName, String password) async {
     // Check lockout before attempting login
     if (isLockedOut) {
@@ -180,8 +180,8 @@ class AuthProvider extends ChangeNotifier {
 
         // Store exam details — building only, no exam selected yet.
         final examDetails = ExamDetails(
-          kodBina: bina.toString(),
-          adBina: adBinaFromToken,
+          buildingCode: bina.toString(),
+          buildingName: adBinaFromToken,
         );
         await _httpService.storeExamDetails(examDetails);
 

@@ -1,7 +1,7 @@
 /// DTO для объединенной статистики экзаменов (участники + наблюдатели)
 class ExamStatisticsDto {
-  final String? kodBina;
-  final String? adBina;
+  final String? buildingCode;
+  final String? buildingName;
   final int? allManCount;
   final int? regManCount;
   final int? allWomanCount;
@@ -13,8 +13,8 @@ class ExamStatisticsDto {
   final int? regMonitorCount;
 
   ExamStatisticsDto({
-    this.kodBina,
-    this.adBina,
+    this.buildingCode,
+    this.buildingName,
     this.allManCount,
     this.regManCount,
     this.allWomanCount,
@@ -28,8 +28,8 @@ class ExamStatisticsDto {
 
   factory ExamStatisticsDto.fromJson(Map<String, dynamic> json) {
     return ExamStatisticsDto(
-      kodBina: json['kod_Bina']?.toString(),
-      adBina: json['ad_Bina'] as String?,
+      buildingCode: json['buildingCode']?.toString(),
+      buildingName: json['buildingName'] as String?,
       allManCount: json['allManCount'] as int?,
       regManCount: json['regManCount'] as int?,
       allWomanCount: json['allWomanCount'] as int?,
@@ -81,8 +81,8 @@ class ExamStatisticsDto {
 
   Map<String, dynamic> toJson() {
     return {
-      'kod_Bina': kodBina,
-      'ad_Bina': adBina,
+      'buildingCode': buildingCode,
+      'buildingName': buildingName,
       'allManCount': allManCount,
       'regManCount': regManCount,
       'allWomanCount': allWomanCount,
@@ -97,6 +97,6 @@ class ExamStatisticsDto {
 
   @override
   String toString() {
-    return 'ExamStatisticsDto{kodBina: $kodBina, adBina: $adBina, totalParticipants: $totalParticipants, registeredParticipants: $registeredParticipants, allManCount: $allManCount, regManCount: $regManCount, allWomanCount: $allWomanCount, regWomanCount: $regWomanCount, supervisorCount: $supervisorCount, regSupervisorCount: $regSupervisorCount, hallCount: $hallCount, yetarsayStatus: $yetarsayStatus}';
+    return 'ExamStatisticsDto{buildingCode: $buildingCode, buildingName: $buildingName, totalParticipants: $totalParticipants, registeredParticipants: $registeredParticipants, allManCount: $allManCount, regManCount: $regManCount, allWomanCount: $allWomanCount, regWomanCount: $regWomanCount, supervisorCount: $supervisorCount, regSupervisorCount: $regSupervisorCount, hallCount: $hallCount, yetarsayStatus: $yetarsayStatus}';
   }
 }

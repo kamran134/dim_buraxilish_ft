@@ -1,15 +1,15 @@
 /// DTO для статистики экзаменов
 class ExamDetailsDto {
-  final String? kodBina;
-  final String? adBina;
+  final String? buildingCode;
+  final String? buildingName;
   final int? allManCount;
   final int? regManCount;
   final int? allWomanCount;
   final int? regWomanCount;
 
   ExamDetailsDto({
-    this.kodBina,
-    this.adBina,
+    this.buildingCode,
+    this.buildingName,
     this.allManCount,
     this.regManCount,
     this.allWomanCount,
@@ -18,8 +18,8 @@ class ExamDetailsDto {
 
   factory ExamDetailsDto.fromJson(Map<String, dynamic> json) {
     return ExamDetailsDto(
-      kodBina: json['kod_Bina'] as String?,
-      adBina: json['ad_Bina'] as String?,
+      buildingCode: json['buildingCode'] as String?,
+      buildingName: json['buildingName'] as String?,
       allManCount: json['allManCount'] as int? ?? 0,
       regManCount: json['regManCount'] as int? ?? 0,
       allWomanCount: json['allWomanCount'] as int? ?? 0,
@@ -29,8 +29,8 @@ class ExamDetailsDto {
 
   Map<String, dynamic> toJson() {
     return {
-      'kod_Bina': kodBina,
-      'ad_Bina': adBina,
+      'buildingCode': buildingCode,
+      'buildingName': buildingName,
       'allManCount': allManCount,
       'regManCount': regManCount,
       'allWomanCount': allWomanCount,

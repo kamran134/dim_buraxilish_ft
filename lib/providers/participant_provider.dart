@@ -185,8 +185,8 @@ class ParticipantProvider with ChangeNotifier {
         _examDetails = examDetails;
 
         // Load updated statistics from API if we have building info
-        if (examDetails.kodBina != null) {
-          final binaInt = int.tryParse(examDetails.kodBina!);
+        if (examDetails.buildingCode != null) {
+          final binaInt = int.tryParse(examDetails.buildingCode!);
           if (binaInt != null) {
             // Show local numbers instantly, then overlay the server aggregate
             // (sum across all scanners) — best-effort, silent when offline.
@@ -255,8 +255,8 @@ class ParticipantProvider with ChangeNotifier {
       }
 
       _examDetails = ExamDetails(
-        adBina: _examDetails!.adBina,
-        kodBina: _examDetails!.kodBina,
+        buildingName: _examDetails!.buildingName,
+        buildingCode: _examDetails!.buildingCode,
         allManCount: allMen,
         allWomanCount: allWomen,
         regManCount: regMen,
@@ -270,8 +270,8 @@ class ParticipantProvider with ChangeNotifier {
 
   Future<void> _updateParticipantStatistics() async {
     try {
-      if (_examDetails != null && _examDetails!.kodBina != null) {
-        final binaInt = int.tryParse(_examDetails!.kodBina!);
+      if (_examDetails != null && _examDetails!.buildingCode != null) {
+        final binaInt = int.tryParse(_examDetails!.buildingCode!);
         if (binaInt != null) {
           await _loadStatistics(binaInt);
         }
@@ -287,14 +287,14 @@ class ParticipantProvider with ChangeNotifier {
   /// offline or the building has no server record yet.
   Future<void> refreshServerStatistics() async {
     try {
-      if (_examDetails?.kodBina == null) {
+      if (_examDetails?.buildingCode == null) {
         return;
       }
-      final bina = int.tryParse(_examDetails!.kodBina!);
+      final bina = int.tryParse(_examDetails!.buildingCode!);
       if (bina == null) return;
 
       final server = await _httpService.getExamDetails(
-        bina: bina,
+        buildingCode: bina,
         persist: false,
       );
       if (server == null) return; // offline / not found → keep current numbers
@@ -393,12 +393,12 @@ class ParticipantProvider with ChangeNotifier {
           _currentViolation = null;
         }
 
-        // Check if already registered (for offline mode, check if qeydiyyat has today's date)
+        // Check if already registered (for offline mode, check if registeredAt has today's date)
         final today = DateTime.now().toIso8601String().substring(0, 10);
-        if (participant.qeydiyyat != null &&
-            participant.qeydiyyat!.isNotEmpty &&
-            participant.qeydiyyat != 'null' &&
-            participant.qeydiyyat!.contains(today)) {
+        if (participant.registeredAt != null &&
+            participant.registeredAt!.isNotEmpty &&
+            participant.registeredAt != 'null' &&
+            participant.registeredAt!.contains(today)) {
           _isRepeatEntry = true;
           _setSuccess('Bu iştirakçı artıq qeydiyyatdan keçib (oflayn)');
         } else {
@@ -472,10 +472,11 @@ class ParticipantProvider with ChangeNotifier {
       // the server), cancel it locally without a server round-trip. Calling the
       // server would otherwise fail/no-op while the queued record would still
       // sync later → a "ghost" registration the user tried to cancel.
-      final isQueued =
-          await DatabaseService.isParticipantQueued(_currentParticipant!.isN);
+      final isQueued = await DatabaseService.isParticipantQueued(
+          _currentParticipant!.cardNumber);
       if (isQueued) {
-        await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
+        await DatabaseService.unregisterParticipant(
+            _currentParticipant!.cardNumber);
         // Refresh the pending counter after dropping a queued record.
         await SyncService.instance.refreshPending();
         // Recompute the displayed stats (drops the unsynced overlay).
@@ -501,7 +502,8 @@ class ParticipantProvider with ChangeNotifier {
         _setSuccess(response.message);
 
         // Remove from local statistics cache
-        await DatabaseService.unregisterParticipant(_currentParticipant!.isN);
+        await DatabaseService.unregisterParticipant(
+            _currentParticipant!.cardNumber);
 
         // Server count changed → pull fresh aggregate; also recompute display.
         await refreshServerStatistics();

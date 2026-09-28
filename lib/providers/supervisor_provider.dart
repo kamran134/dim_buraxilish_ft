@@ -183,7 +183,8 @@ class SupervisorProvider with ChangeNotifier {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails != null) {
-        final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+        final buildingCode =
+            int.tryParse(examDetails.buildingCode ?? '0') ?? 0;
 
         // Show local numbers instantly, then overlay the server aggregate
         // (sum across all scanners) — best-effort, silent when offline.
@@ -240,7 +241,8 @@ class SupervisorProvider with ChangeNotifier {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails == null) return;
-      final buildingCode = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
+      final buildingCode =
+          int.tryParse(examDetails.buildingCode ?? '0') ?? 0;
       if (buildingCode == 0) return;
 
       final server = await _httpService.getSupervisorDetails(
@@ -376,8 +378,8 @@ class SupervisorProvider with ChangeNotifier {
   Future<void> _updateSupervisorStatistics() async {
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
-      if (examDetails != null && examDetails.kodBina != null) {
-        final buildingCode = int.tryParse(examDetails.kodBina!);
+      if (examDetails != null && examDetails.buildingCode != null) {
+        final buildingCode = int.tryParse(examDetails.buildingCode!);
         if (buildingCode != null) {
           await _recomputeStats(buildingCode);
         }

@@ -109,11 +109,11 @@ class StatisticsService {
 
   /// Получает статистику для конкретного здания (активный слот)
   Future<DataResult<ExamDetailsDto>> getExamDetailsInExamDate(
-      String bina) async {
+      String buildingCode) async {
     try {
       final response = await _get(
         '/buraxilishes/getexamdetailsinexamdate',
-        {'bina': bina},
+        {'buildingCode': buildingCode},
       );
 
       if (response.statusCode == 200) {
@@ -170,9 +170,9 @@ class StatisticsService {
         Map<String, dynamic> participantsByBuilding = {};
         Map<String, dynamic> supervisorsByBuilding = {};
 
-        // Индексируем участников по kod_Bina
+        // Индексируем участников по buildingCode
         for (var participant in participantsData) {
-          final buildingCode = participant['kod_Bina']?.toString() ?? '';
+          final buildingCode = participant['buildingCode']?.toString() ?? '';
           if (buildingCode.isNotEmpty) {
             participantsByBuilding[buildingCode] = participant;
           }
@@ -226,8 +226,9 @@ class StatisticsService {
 
           examStatistics.add(ExamStatisticsDto(
             // Данные участников (если есть)
-            kodBina: participant?['kod_Bina']?.toString() ?? buildingCode,
-            adBina: participant?['ad_Bina'] ??
+            buildingCode:
+                participant?['buildingCode']?.toString() ?? buildingCode,
+            buildingName: participant?['buildingName'] ??
                 supervisor?['buildingName'] ??
                 'Bina $buildingCode',
             allManCount: participant?['allManCount'] ?? 0,
@@ -248,8 +249,8 @@ class StatisticsService {
         if (examStatistics.isNotEmpty && totalMonitorCount > 0) {
           // Добавляем данные мониторов только к первому зданию для экономии памяти
           examStatistics[0] = ExamStatisticsDto(
-            kodBina: examStatistics[0].kodBina,
-            adBina: examStatistics[0].adBina,
+            buildingCode: examStatistics[0].buildingCode,
+            buildingName: examStatistics[0].buildingName,
             allManCount: examStatistics[0].allManCount,
             regManCount: examStatistics[0].regManCount,
             allWomanCount: examStatistics[0].allWomanCount,
@@ -318,11 +319,11 @@ class StatisticsService {
 
   /// Получает список участников по зданию (активный слот)
   Future<DataResult<List<ParticipantLightDto>>> getAllParticipantsInBuilding(
-      String bina) async {
+      String buildingCode) async {
     try {
       final response = await _get(
         '/buraxilishes/getallparticipantlightinbuildingandexamdate',
-        {'bina': bina},
+        {'buildingCode': buildingCode},
       );
 
       if (response.statusCode == 200) {

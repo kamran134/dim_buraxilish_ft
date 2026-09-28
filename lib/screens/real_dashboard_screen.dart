@@ -1080,9 +1080,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
   Widget _buildBuildingStatItem(ExamDetailsDto building) {
     // Find combined statistics for this building
     final combinedStats = _examStatistics.firstWhere(
-      (stat) => stat.kodBina == building.kodBina,
+      (stat) => stat.buildingCode == building.buildingCode,
       orElse: () => ExamStatisticsDto(
-        kodBina: building.kodBina,
+        buildingCode: building.buildingCode,
         supervisorCount: 0,
         regSupervisorCount: 0,
         hallCount: 0,
@@ -1110,7 +1110,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
               ),
               child: Center(
                 child: Text(
-                  building.kodBina ?? '?',
+                  building.buildingCode ?? '?',
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: isDark
                         ? AppColors.splashLightBlue
@@ -1126,7 +1126,7 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    building.adBina ?? 'Bilinməyən bina',
+                    building.buildingName ?? 'Bilinməyən bina',
                     style: AppTextStyles.body1.copyWith(
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -1400,9 +1400,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     int count = 0;
     for (final building in _dashboardStats!.examDetails) {
       final combinedStats = _examStatistics.firstWhere(
-        (stat) => stat.kodBina == building.kodBina,
+        (stat) => stat.buildingCode == building.buildingCode,
         orElse: () => ExamStatisticsDto(
-            kodBina: building.kodBina,
+            buildingCode: building.buildingCode,
             supervisorCount: 0,
             regSupervisorCount: 0,
             hallCount: 0),
@@ -1425,9 +1425,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     int count = 0;
     for (final building in _dashboardStats!.examDetails) {
       final combinedStats = _examStatistics.firstWhere(
-        (stat) => stat.kodBina == building.kodBina,
+        (stat) => stat.buildingCode == building.buildingCode,
         orElse: () => ExamStatisticsDto(
-            kodBina: building.kodBina,
+            buildingCode: building.buildingCode,
             supervisorCount: 0,
             regSupervisorCount: 0,
             hallCount: 0),
@@ -1450,9 +1450,9 @@ class _RealDashboardScreenState extends State<RealDashboardScreen>
     final problematicBuildings = <ExamDetailsDto>[];
     for (final building in _dashboardStats!.examDetails) {
       final combinedStats = _examStatistics.firstWhere(
-        (stat) => stat.kodBina == building.kodBina,
+        (stat) => stat.buildingCode == building.buildingCode,
         orElse: () => ExamStatisticsDto(
-            kodBina: building.kodBina,
+            buildingCode: building.buildingCode,
             supervisorCount: 0,
             regSupervisorCount: 0,
             hallCount: 0),

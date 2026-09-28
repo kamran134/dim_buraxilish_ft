@@ -407,7 +407,7 @@ class _UnsentDataScreenState extends State<UnsentDataScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${participant.isN}',
+                  '${participant.cardNumber}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -416,23 +416,23 @@ class _UnsentDataScreenState extends State<UnsentDataScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${participant.soy} ${participant.adi} ${participant.baba}',
+                  '${participant.lastName} ${participant.firstName} ${participant.fatherName}',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 4),
-                if (participant.qeydiyyat != null)
+                if (participant.registeredAt != null)
                   Text(
-                    'Qeydiyyat: ${participant.qeydiyyat}',
+                    'Qeydiyyat: ${participant.registeredAt}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
                     ),
                   ),
                 Text(
-                  'Mər.: ${participant.mertebe}, Zal: ${participant.zal}, Sıra: ${participant.sira}, Yer: ${participant.yer}',
+                  'Mər.: ${participant.floor}, Zal: ${participant.hall}, Sıra: ${participant.row}, Yer: ${participant.seat}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,

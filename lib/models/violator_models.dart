@@ -1,11 +1,11 @@
 class ViolatorInfo {
-  final int isN;
+  final int cardNumber;
   final String? altKatName;
   final String? katName;
   final String? qeyd;
 
   ViolatorInfo({
-    required this.isN,
+    required this.cardNumber,
     this.altKatName,
     this.katName,
     this.qeyd,
@@ -13,7 +13,7 @@ class ViolatorInfo {
 
   factory ViolatorInfo.fromJson(Map<String, dynamic> json) {
     return ViolatorInfo(
-      isN: (json['is_N'] as num?)?.toInt() ?? 0,
+      cardNumber: (json['cardNumber'] as num?)?.toInt() ?? 0,
       altKatName: json['altKatName'] as String?,
       katName: json['katName'] as String?,
       qeyd: json['qeyd'] as String?,
@@ -21,7 +21,9 @@ class ViolatorInfo {
   }
 
   Map<String, dynamic> toJson() => {
-        'is_N': isN,
+        // Local-only persistence key (participant_violations.is_N) — not part
+        // of the server wire contract, kept as-is; see DatabaseService.
+        'is_N': cardNumber,
         'altKatName': altKatName,
         'katName': katName,
         'qeyd': qeyd,

@@ -170,7 +170,7 @@ class SyncService extends ChangeNotifier {
           // Delete only the specific IDs that were sent, not all online=0 records.
           // This prevents a race condition where a scan that arrived during the
           // in-flight HTTP request gets wrongly deleted from the queue.
-          final ids = unsyncedParticipants.map((p) => p.isN).toList();
+          final ids = unsyncedParticipants.map((p) => p.cardNumber).toList();
           await DatabaseService.clearSyncedParticipantsByIds(ids);
           anySuccess = true;
           _lastSkippedCount += _parseSkippedCount(result.message);

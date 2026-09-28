@@ -58,7 +58,7 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
 
     try {
       // Проверяем параметры перед запросом
-      final buildingCode = widget.building.kodBina ?? '';
+      final buildingCode = widget.building.buildingCode ?? '';
 
       if (buildingCode.isEmpty) {
         throw Exception('Kod bina boşdur');
@@ -95,7 +95,7 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
 
     try {
       // Проверяем параметры перед запросом
-      final buildingCode = widget.building.kodBina ?? '';
+      final buildingCode = widget.building.buildingCode ?? '';
 
       if (buildingCode.isEmpty) {
         throw Exception('Kod bina boşdur');
@@ -133,11 +133,11 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.building.adBina ?? 'Bina',
+              widget.building.buildingName ?? 'Bina',
               style: AppTextStyles.appBarTitle.copyWith(fontSize: 16),
             ),
             Text(
-              'Kod: ${widget.building.kodBina}',
+              'Kod: ${widget.building.buildingCode}',
               style: AppTextStyles.caption.copyWith(
                 color: Colors.white70,
                 fontSize: 12,
@@ -279,15 +279,15 @@ class _BuildingDetailsScreenState extends State<BuildingDetailsScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'İş №: ${participant.isN ?? "N/A"}',
+                    'İş №: ${participant.cardNumber ?? "N/A"}',
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textGrey,
                     ),
                   ),
-                  if (participant.yer != null) ...[
+                  if (participant.seat != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      'Yer: ${participant.yer}',
+                      'Yer: ${participant.seat}',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textGrey,
                       ),

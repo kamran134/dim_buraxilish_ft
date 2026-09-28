@@ -39,7 +39,7 @@ class SlotSwitchOutcome {
 ///
 /// A slot (date + start time) may cover several exams in the same building —
 /// scanning at the door happens per building+slot, never per exam (see
-/// API_slots.md). `IS_N` is unique within a slot, so the sqflite v8 schema
+/// API_slots.md). `card_number` is unique within a slot, so the sqflite v9 schema
 /// (one exam session's worth of rows at a time) still applies unmodified —
 /// nothing here touches [DatabaseService]/[SyncService] internals or
 /// scanning, it only calls their existing public methods, same as the
@@ -84,8 +84,8 @@ class SlotSwitcher {
 
     final existing = await httpService.getExamDetailsFromStorage();
     final newDetails = ExamDetails(
-      kodBina: existing?.kodBina,
-      adBina: existing?.adBina,
+      buildingCode: existing?.buildingCode,
+      buildingName: existing?.buildingName,
       slotKey: slotKey,
       slotLabel: slotLabel,
       slots: slots,

@@ -48,7 +48,7 @@ class _RegisteredPeopleScreenState extends State<RegisteredPeopleScreen> {
         if (widget.isParticipants) {
           _filteredParticipants = widget.participants?.where((participant) {
                 final fullName =
-                    '${participant.soy} ${participant.adi} ${participant.baba}'
+                    '${participant.lastName} ${participant.firstName} ${participant.fatherName}'
                         .toLowerCase()
                         .replaceAll(RegExp(r'[^a-zA-ZəƏŞşÇçĞğÜüÖöIı ]'), '');
                 final searchTerm = query
@@ -277,16 +277,16 @@ class _ParticipantCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${participant.soy} ${participant.adi}',
+                      '${participant.lastName} ${participant.firstName}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (participant.baba.isNotEmpty)
+                    if (participant.fatherName.isNotEmpty)
                       Text(
-                        participant.baba,
+                        participant.fatherName,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 14,
@@ -316,14 +316,14 @@ class _ParticipantCard extends StatelessWidget {
           _buildInfoRow(
             Icons.badge,
             'İş nömrəsi',
-            participant.isN.toString(),
+            participant.cardNumber.toString(),
           ),
-          if (participant.qeydiyyat != null &&
-              participant.qeydiyyat!.isNotEmpty)
+          if (participant.registeredAt != null &&
+              participant.registeredAt!.isNotEmpty)
             _buildInfoRow(
               Icons.access_time,
               'Qeydiyyat vaxtı',
-              participant.qeydiyyat!,
+              participant.registeredAt!,
             ),
         ],
       ),

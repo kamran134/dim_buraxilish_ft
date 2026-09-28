@@ -206,8 +206,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Consumer2<ParticipantProvider, AuthProvider>(
                     builder: (context, participantProvider, authProvider, child) {
                       final examDetails = participantProvider.examDetails;
-                      final buildingCode = examDetails?.kodBina ?? '0000';
-                      final buildingName = examDetails?.adBina ??
+                      final buildingCode = examDetails?.buildingCode ?? '0000';
+                      final buildingName = examDetails?.buildingName ??
                           'Buraxılış sistemini idarə edin';
                       final examSessionLabel =
                           authProvider.activeExamHeaderLabel;

@@ -83,7 +83,7 @@ class _StatisticsListViewState extends State<StatisticsListView> {
           await _httpService.cancelParticipantRegistration(id: id);
       if (!mounted) return;
       if (response.success) {
-        await DatabaseService.unregisterParticipant(participant.isN);
+        await DatabaseService.unregisterParticipant(participant.cardNumber);
         StatisticsEventBus()
             .notifyStatisticsUpdate('StatisticsListView.cancelParticipant');
         await _loadData();
@@ -153,11 +153,11 @@ class _StatisticsListViewState extends State<StatisticsListView> {
 
         // Combine: participants in sync queue + participants already synced to server
         // (synced participants are removed from registered_participants after sync,
-        // but their qeydiyyat field is set in the participants table)
-        final queueIds = registeredList.map((p) => p.isN).toSet();
+        // but their registeredAt field is set in the participants table)
+        final queueIds = registeredList.map((p) => p.cardNumber).toSet();
         final syncedIds = allParticipants
-            .where((p) => p.qeydiyyat != null && p.qeydiyyat!.isNotEmpty)
-            .map((p) => p.isN)
+            .where((p) => p.registeredAt != null && p.registeredAt!.isNotEmpty)
+            .map((p) => p.cardNumber)
             .toSet();
         final registeredIds = queueIds.union(syncedIds);
 
@@ -216,16 +216,16 @@ class _StatisticsListViewState extends State<StatisticsListView> {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       all = all.where((p) {
-        return p.adi.toLowerCase().contains(q) ||
-            p.soy.toLowerCase().contains(q) ||
-            p.baba.toLowerCase().contains(q) ||
-            p.isN.toString().contains(q);
+        return p.firstName.toLowerCase().contains(q) ||
+            p.lastName.toLowerCase().contains(q) ||
+            p.fatherName.toLowerCase().contains(q) ||
+            p.cardNumber.toString().contains(q);
       }).toList();
     }
     // Registered first, then unregistered
     return [
-      ...all.where((p) => _registeredParticipantIds.contains(p.isN)),
-      ...all.where((p) => !_registeredParticipantIds.contains(p.isN)),
+      ...all.where((p) => _registeredParticipantIds.contains(p.cardNumber)),
+      ...all.where((p) => !_registeredParticipantIds.contains(p.cardNumber)),
     ];
   }
 
@@ -324,9 +324,9 @@ class _StatisticsListViewState extends State<StatisticsListView> {
         final p = participants[index];
         return ParticipantCard(
           participant: p,
-          isRegistered: _registeredParticipantIds.contains(p.isN),
-          violatorInfo: _violationMap[p.isN],
-          onCancel: _registeredParticipantIds.contains(p.isN)
+          isRegistered: _registeredParticipantIds.contains(p.cardNumber),
+          violatorInfo: _violationMap[p.cardNumber],
+          onCancel: _registeredParticipantIds.contains(p.cardNumber)
               ? () => _cancelParticipant(p)
               : null,
         );

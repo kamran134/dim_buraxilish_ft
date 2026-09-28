@@ -62,9 +62,9 @@ class _ProtocolReportsScreenState extends State<ProtocolReportsScreen> {
 
     try {
       // Build filter parameters
-      int? bina;
+      int? buildingCode;
       if (_binaController.text.isNotEmpty) {
-        bina = int.tryParse(_binaController.text);
+        buildingCode = int.tryParse(_binaController.text);
       }
 
       String? startDate;
@@ -99,7 +99,7 @@ class _ProtocolReportsScreenState extends State<ProtocolReportsScreen> {
 
       final response = await _protocolService.getProtocols(
         pageSize: 1000, // Get all protocols
-        bina: bina,
+        buildingCode: buildingCode,
         startDate: startDate,
         endDate: endDate,
         examDate: examDate,
@@ -517,7 +517,7 @@ class _ProtocolReportsScreenState extends State<ProtocolReportsScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Bina ${protocol.bina}',
+                                  'Bina ${protocol.buildingCode}',
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: AppColors.secondary,
                                     fontWeight: FontWeight.w600,

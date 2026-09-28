@@ -234,7 +234,7 @@ class _DatabasePeopleScreenState extends State<DatabasePeopleScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${participant.adi} ${participant.soy}'.trim(),
+                      '${participant.firstName} ${participant.lastName}'.trim(),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -245,7 +245,7 @@ class _DatabasePeopleScreenState extends State<DatabasePeopleScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'İş nömrəsi: ${participant.isN}',
+                      'İş nömrəsi: ${participant.cardNumber}',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textGrey,
@@ -256,19 +256,19 @@ class _DatabasePeopleScreenState extends State<DatabasePeopleScreen>
               ),
             ],
           ),
-          if (participant.baba.isNotEmpty) ...[
+          if (participant.fatherName.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              'Ata adı: ${participant.baba}',
+              'Ata adı: ${participant.fatherName}',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.black54,
               ),
             ),
           ],
-          if (participant.qeydiyyat != null &&
-              participant.qeydiyyat!.isNotEmpty &&
-              participant.qeydiyyat != 'null') ...[
+          if (participant.registeredAt != null &&
+              participant.registeredAt!.isNotEmpty &&
+              participant.registeredAt != 'null') ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -279,7 +279,7 @@ class _DatabasePeopleScreenState extends State<DatabasePeopleScreen>
                     color: AppColors.registeredGreen.withOpacity(0.3)),
               ),
               child: Text(
-                'Qeydiyyat: ${participant.qeydiyyat}',
+                'Qeydiyyat: ${participant.registeredAt}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.registeredGreen,

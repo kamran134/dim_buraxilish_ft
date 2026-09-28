@@ -87,16 +87,16 @@ class ParticipantCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${participant.soy} ${participant.adi}',
+                            '${participant.lastName} ${participant.firstName}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (participant.baba.isNotEmpty)
+                          if (participant.fatherName.isNotEmpty)
                             Text(
-                              participant.baba,
+                              participant.fatherName,
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.8),
                                 fontSize: 14,
@@ -112,17 +112,17 @@ class ParticipantCard extends StatelessWidget {
                 _buildInfoRow(
                   Icons.badge,
                   'İş nömrəsi',
-                  participant.isN.toString(),
+                  participant.cardNumber.toString(),
                 ),
                 _buildInfoRow(
                   Icons.access_time,
                   'Qeydiyyat vaxtı',
-                  _formatDate(participant.qeydiyyat),
+                  _formatDate(participant.registeredAt),
                 ),
                 _buildInfoRow(
                   Icons.location_on,
                   'Yer',
-                  '${participant.bina} - ${participant.zal} - ${participant.mertebe} - ${participant.sira} - ${participant.yer}',
+                  '${participant.buildingCode} - ${participant.hall} - ${participant.floor} - ${participant.row} - ${participant.seat}',
                 ),
                 if (hasViolation) _buildViolationRow(violatorInfo!),
               ],

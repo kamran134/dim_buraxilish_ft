@@ -73,23 +73,23 @@ class DatabaseService {
   /// Offline-downloaded participants (full re-download every time — see
   /// OfflineDatabaseProvider). Server `id`/`exam_session_id` replace the old
   /// legacy exam-date-string / `imt_Begin` / `ad_Bina` / `s_Nomer` plumbing
-  /// (contract §1.2). `is_N` stays unique for QR-scan lookups.
+  /// (contract §1.2). `card_number` stays unique for QR-scan lookups.
   static String get _participantsTableDdl => '''
       CREATE TABLE $_participantsTable (
         id INTEGER PRIMARY KEY,
-        is_N INTEGER UNIQUE,
+        card_number INTEGER UNIQUE,
         exam_session_id INTEGER,
-        soy TEXT,
-        adi TEXT,
-        baba TEXT,
-        gins INTEGER,
-        bina TEXT,
-        zal TEXT,
-        mertebe TEXT,
-        sira TEXT,
-        yer TEXT,
+        last_name TEXT,
+        first_name TEXT,
+        father_name TEXT,
+        gender INTEGER,
+        building_code TEXT,
+        hall TEXT,
+        floor TEXT,
+        row TEXT,
+        seat TEXT,
         photo BLOB,
-        qeydiyyat TEXT
+        registered_at TEXT
       )
     ''';
 
@@ -97,25 +97,25 @@ class DatabaseService {
   /// `id` is the server `Participants.Id` once known (new 9.2 scans always
   /// have it, since the master table is downloaded with it); `slot_key` is
   /// only ever set for a v8 row migrated to v9 (see `_onUpgrade`) — the
-  /// fallback sync branch matches those by `is_N`+`bina`+`slot_key`
-  /// (contract §1.3).
+  /// fallback sync branch matches those by `card_number`+`building_code`+
+  /// `slot_key` (contract §1.3).
   static String get _registeredParticipantsTableDdl => '''
       CREATE TABLE $_registeredParticipantsTable (
-        is_N INTEGER PRIMARY KEY,
+        card_number INTEGER PRIMARY KEY,
         id INTEGER,
         slot_key TEXT,
-        soy TEXT,
-        adi TEXT,
-        baba TEXT,
-        bina TEXT,
-        qeydiyyat TEXT,
+        last_name TEXT,
+        first_name TEXT,
+        father_name TEXT,
+        building_code TEXT,
+        registered_at TEXT,
         online INTEGER DEFAULT 0,
-        gins INTEGER,
+        gender INTEGER,
         photo TEXT,
-        zal TEXT,
-        mertebe TEXT,
-        sira TEXT,
-        yer TEXT
+        hall TEXT,
+        floor TEXT,
+        row TEXT,
+        seat TEXT
       )
     ''';
 
@@ -385,25 +385,29 @@ class DatabaseService {
         await txn
             .execute('DROP TABLE IF EXISTS $_registeredParticipantsTable');
         await txn.execute(_registeredParticipantsTableDdl);
+        // Read side uses the OLD v8 column names (is_N, soy, adi, baba, bina,
+        // qeydiyyat, gins, zal, mertebe, sira, yer) — `row` here is a raw map
+        // queried from the table before it was dropped/recreated above, so it
+        // still has the pre-9.2 schema. Write side uses the NEW v9 names.
         for (final row in oldQueuedParticipants) {
           await txn.insert(
             _registeredParticipantsTable,
             {
-              'is_N': row['is_N'],
+              'card_number': row['is_N'],
               'id': null,
               'slot_key': fallbackSlotKey,
-              'soy': row['soy'],
-              'adi': row['adi'],
-              'baba': row['baba'],
-              'bina': row['bina'],
-              'qeydiyyat': row['qeydiyyat'],
+              'last_name': row['soy'],
+              'first_name': row['adi'],
+              'father_name': row['baba'],
+              'building_code': row['bina'],
+              'registered_at': row['qeydiyyat'],
               'online': row['online'] ?? 0,
-              'gins': row['gins'],
+              'gender': row['gins'],
               'photo': row['photo'],
-              'zal': row['zal'],
-              'mertebe': row['mertebe'],
-              'sira': row['sira'],
-              'yer': row['yer'],
+              'hall': row['zal'],
+              'floor': row['mertebe'],
+              'row': row['sira'],
+              'seat': row['yer'],
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
@@ -462,7 +466,7 @@ class DatabaseService {
     final db = await database;
     final results = await db.query(
       _participantsTable,
-      where: 'is_N = ?',
+      where: 'card_number = ?',
       whereArgs: [workNumber],
       limit: 1,
     );
@@ -481,31 +485,31 @@ class DatabaseService {
     await db.transaction((txn) async {
       await txn.update(
         _participantsTable,
-        {'qeydiyyat': registrationDate},
-        where: 'is_N = ?',
-        whereArgs: [participant.isN],
+        {'registered_at': registrationDate},
+        where: 'card_number = ?',
+        whereArgs: [participant.cardNumber],
       );
 
       await txn.insert(
         _registeredParticipantsTable,
         {
-          'is_N': participant.isN,
+          'card_number': participant.cardNumber,
           // New (9.2) scans always know the server id from the download —
           // no slot_key fallback needed for these rows (contract §1.3).
           'id': participant.id,
           'slot_key': null,
-          'soy': participant.soy,
-          'adi': participant.adi,
-          'baba': participant.baba,
-          'bina': participant.bina,
-          'qeydiyyat': registrationDate,
+          'last_name': participant.lastName,
+          'first_name': participant.firstName,
+          'father_name': participant.fatherName,
+          'building_code': participant.buildingCode,
+          'registered_at': registrationDate,
           'online': 0,
-          'gins': participant.gins,
+          'gender': participant.gender,
           'photo': participant.photoBase64,
-          'zal': participant.zal,
-          'mertebe': participant.mertebe,
-          'sira': participant.sira,
-          'yer': participant.yer,
+          'hall': participant.hall,
+          'floor': participant.floor,
+          'row': participant.row,
+          'seat': participant.seat,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -523,9 +527,9 @@ class DatabaseService {
     }
 
     final results = await db.rawQuery('''
-      SELECT is_N, id, slot_key, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, photo, qeydiyyat, online
+      SELECT card_number, id, slot_key, last_name, first_name, father_name, gender, building_code, hall, floor, row, seat, photo, registered_at, online
       FROM $_registeredParticipantsTable $whereClause
-      ORDER BY qeydiyyat DESC
+      ORDER BY registered_at DESC
     ''');
 
     return results.map((map) => _registeredParticipantFromMap(map)).toList();
@@ -583,19 +587,19 @@ class DatabaseService {
     );
   }
 
-  /// Remove participant from local registered table and clear qeydiyyat (after cancellation)
-  static Future<void> unregisterParticipant(int isN) async {
+  /// Remove participant from local registered table and clear registered_at (after cancellation)
+  static Future<void> unregisterParticipant(int cardNumber) async {
     final db = await database;
     await db.delete(
       _registeredParticipantsTable,
-      where: 'is_N = ?',
-      whereArgs: [isN],
+      where: 'card_number = ?',
+      whereArgs: [cardNumber],
     );
     await db.update(
       _participantsTable,
-      {'qeydiyyat': null},
-      where: 'is_N = ?',
-      whereArgs: [isN],
+      {'registered_at': null},
+      where: 'card_number = ?',
+      whereArgs: [cardNumber],
     );
   }
 
@@ -769,7 +773,7 @@ class DatabaseService {
     final db = await database;
     final results = await db.query(
       _registeredParticipantsTable,
-      where: 'is_N = ?',
+      where: 'card_number = ?',
       whereArgs: [workNumber],
       limit: 1,
     );
@@ -836,36 +840,36 @@ class DatabaseService {
   static Map<String, dynamic> _participantToMap(Participant participant) {
     return {
       'id': participant.id,
-      'is_N': participant.isN,
+      'card_number': participant.cardNumber,
       'exam_session_id': participant.examSessionId,
-      'soy': participant.soy,
-      'adi': participant.adi,
-      'baba': participant.baba,
-      'gins': participant.gins,
-      'bina': participant.bina,
-      'zal': participant.zal,
-      'mertebe': participant.mertebe,
-      'sira': participant.sira,
-      'yer': participant.yer,
+      'last_name': participant.lastName,
+      'first_name': participant.firstName,
+      'father_name': participant.fatherName,
+      'gender': participant.gender,
+      'building_code': participant.buildingCode,
+      'hall': participant.hall,
+      'floor': participant.floor,
+      'row': participant.row,
+      'seat': participant.seat,
       'photo': participant.photoBytes,
-      'qeydiyyat': participant.qeydiyyat,
+      'registered_at': participant.registeredAt,
     };
   }
 
   static Participant _participantFromMap(Map<String, dynamic> map) {
     return Participant(
-      isN: map['is_N'] as int,
-      adi: map['adi'] as String,
-      soy: map['soy'] as String,
-      baba: map['baba'] as String,
-      mertebe: map['mertebe'] as String,
-      zal: map['zal'] as String,
-      sira: map['sira'] as String,
-      yer: map['yer'] as String,
+      cardNumber: map['card_number'] as int,
+      firstName: map['first_name'] as String,
+      lastName: map['last_name'] as String,
+      fatherName: map['father_name'] as String,
+      floor: map['floor'] as String,
+      hall: map['hall'] as String,
+      row: map['row'] as String,
+      seat: map['seat'] as String,
       photoBytes: _photoBytesFromDb(map['photo']),
-      qeydiyyat: map['qeydiyyat'] as String?,
-      bina: map['bina'] as String,
-      gins: (map['gins'] as int?) ?? 0,
+      registeredAt: map['registered_at'] as String?,
+      buildingCode: map['building_code'] as String,
+      gender: (map['gender'] as int?) ?? 0,
       id: map['id'] as int?,
       examSessionId: map['exam_session_id'] as int?,
     );
@@ -886,9 +890,9 @@ class DatabaseService {
     return null;
   }
 
-  /// Merge a batch of downloaded photos into the participants table by is_N.
-  /// One transaction per batch so a crash mid-download can't leave a partial
-  /// batch half-applied.
+  /// Merge a batch of downloaded photos into the participants table by
+  /// card_number. One transaction per batch so a crash mid-download can't
+  /// leave a partial batch half-applied.
   static Future<void> updateParticipantPhotos(
       List<MapEntry<int, Uint8List>> batch) async {
     if (batch.isEmpty) return;
@@ -898,7 +902,7 @@ class DatabaseService {
       dbBatch.update(
         _participantsTable,
         {'photo': entry.value},
-        where: 'is_N = ?',
+        where: 'card_number = ?',
         whereArgs: [entry.key],
       );
     }
@@ -907,18 +911,18 @@ class DatabaseService {
 
   static Participant _registeredParticipantFromMap(Map<String, dynamic> map) {
     return Participant(
-      isN: map['is_N'] as int,
-      adi: map['adi'] as String,
-      soy: map['soy'] as String,
-      baba: map['baba'] as String,
-      mertebe: map['mertebe'] as String,
-      zal: map['zal'] as String,
-      sira: map['sira'] as String,
-      yer: map['yer'] as String,
+      cardNumber: map['card_number'] as int,
+      firstName: map['first_name'] as String,
+      lastName: map['last_name'] as String,
+      fatherName: map['father_name'] as String,
+      floor: map['floor'] as String,
+      hall: map['hall'] as String,
+      row: map['row'] as String,
+      seat: map['seat'] as String,
       photo: map['photo'] as String?,
-      qeydiyyat: map['qeydiyyat'] as String?,
-      bina: map['bina'] as String,
-      gins: (map['gins'] as int?) ?? 0,
+      registeredAt: map['registered_at'] as String?,
+      buildingCode: map['building_code'] as String,
+      gender: (map['gender'] as int?) ?? 0,
       id: map['id'] as int?,
       slotKey: map['slot_key'] as String?,
     );
@@ -1204,7 +1208,12 @@ class DatabaseService {
 
   // VIOLATIONS METHODS
 
-  /// Save list of violators downloaded from server (replaces previous data)
+  /// Save list of violators downloaded from server (replaces previous data).
+  /// NOTE: the local `is_N` column is a purely internal persistence key —
+  /// not part of the spec's sqflite rename list (participants/
+  /// registered_participants only) — kept as-is to avoid a v9 migration for
+  /// this always-fully-repopulated, non-queue table; the wire-level rename
+  /// (`is_N`→`cardNumber`) is already reflected on [ViolatorInfo.cardNumber].
   static Future<void> saveViolations(List<ViolatorInfo> violators) async {
     final db = await database;
     await db.delete(_participantViolationsTable);
@@ -1213,7 +1222,7 @@ class DatabaseService {
       batch.insert(
         _participantViolationsTable,
         {
-          'is_N': v.isN,
+          'is_N': v.cardNumber,
           'altKatName': v.altKatName,
           'katName': v.katName,
           'qeyd': v.qeyd,
@@ -1224,15 +1233,15 @@ class DatabaseService {
     await batch.commit();
   }
 
-  /// Returns all violations as a map keyed by is_N
+  /// Returns all violations as a map keyed by card number
   static Future<Map<int, ViolatorInfo>> getAllViolations() async {
     final db = await database;
     final results = await db.query(_participantViolationsTable);
     final map = <int, ViolatorInfo>{};
     for (final row in results) {
-      final isN = row['is_N'] as int;
-      map[isN] = ViolatorInfo(
-        isN: isN,
+      final cardNumber = row['is_N'] as int;
+      map[cardNumber] = ViolatorInfo(
+        cardNumber: cardNumber,
         altKatName: row['altKatName'] as String?,
         katName: row['katName'] as String?,
         qeyd: row['qeyd'] as String?,
@@ -1242,18 +1251,19 @@ class DatabaseService {
   }
 
   /// Returns violation info for a participant, or null if no violation exists
-  static Future<ViolatorInfo?> getViolationForParticipant(int isN) async {
+  static Future<ViolatorInfo?> getViolationForParticipant(
+      int cardNumber) async {
     final db = await database;
     final results = await db.query(
       _participantViolationsTable,
       where: 'is_N = ?',
-      whereArgs: [isN],
+      whereArgs: [cardNumber],
       limit: 1,
     );
     if (results.isEmpty) return null;
     final row = results.first;
     return ViolatorInfo(
-      isN: row['is_N'] as int,
+      cardNumber: row['is_N'] as int,
       altKatName: row['altKatName'] as String?,
       katName: row['katName'] as String?,
       qeyd: row['qeyd'] as String?,
@@ -1274,26 +1284,26 @@ class DatabaseService {
   static Future<List<Participant>> getUnSyncedParticipants() async {
     final db = await database;
     final results = await db.rawQuery('''
-      SELECT is_N, id, slot_key, soy, adi, baba, gins, bina, zal, mertebe, sira, yer, photo, qeydiyyat, online
+      SELECT card_number, id, slot_key, last_name, first_name, father_name, gender, building_code, hall, floor, row, seat, photo, registered_at, online
       FROM $_registeredParticipantsTable
       WHERE online = 0
-      ORDER BY qeydiyyat ASC
+      ORDER BY registered_at ASC
     ''');
     return results.map((map) => _registeredParticipantFromMap(map)).toList();
   }
 
   /// Count of THIS device's not-yet-synced participant registrations, split by
-  /// gender (gins=1 male, gins=2 female). Used to overlay the device's own
+  /// gender (gender=1 male, gender=2 female). Used to overlay the device's own
   /// pending scans on top of the server aggregate so the displayed count never
   /// drops below reality between syncs.
   static Future<Map<String, int>> getUnsyncedParticipantGenderCounts() async {
     final db = await database;
     final men = Sqflite.firstIntValue(await db.rawQuery(
-          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gins = 1',
+          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gender = 1',
         )) ??
         0;
     final women = Sqflite.firstIntValue(await db.rawQuery(
-          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gins = 2',
+          'SELECT COUNT(*) FROM $_registeredParticipantsTable WHERE online = 0 AND gender = 2',
         )) ??
         0;
     return {'men': men, 'women': women};
@@ -1311,12 +1321,12 @@ class DatabaseService {
   /// Whether this participant still sits in the sync queue (registered offline
   /// and not yet sent to the server). Used so an offline cancel can drop the
   /// record locally without a server round-trip.
-  static Future<bool> isParticipantQueued(int isN) async {
+  static Future<bool> isParticipantQueued(int cardNumber) async {
     final db = await database;
     final results = await db.query(
       _registeredParticipantsTable,
-      where: 'is_N = ? AND online = 0',
-      whereArgs: [isN],
+      where: 'card_number = ? AND online = 0',
+      whereArgs: [cardNumber],
       limit: 1,
     );
     return results.isNotEmpty;
@@ -1346,7 +1356,7 @@ class DatabaseService {
   }
 
   /// Delete unsynced participants from the queue after a successful server sync.
-  /// NOTE: The `participants` table still holds `qeydiyyat` for local statistics.
+  /// NOTE: The `participants` table still holds `registered_at` for local statistics.
   static Future<void> clearUnSyncedParticipants() async {
     final db = await database;
     await db.delete(
@@ -1365,15 +1375,15 @@ class DatabaseService {
     );
   }
 
-  /// Delete only the specific participants (by is_N) that were successfully synced.
-  /// Safe against race conditions: newly-scanned records with the same online=0
-  /// state but different IDs are NOT touched.
+  /// Delete only the specific participants (by card_number) that were
+  /// successfully synced. Safe against race conditions: newly-scanned records
+  /// with the same online=0 state but different IDs are NOT touched.
   static Future<void> clearSyncedParticipantsByIds(List<int> ids) async {
     if (ids.isEmpty) return;
     final db = await database;
     final placeholders = ids.map((_) => '?').join(',');
     await db.rawDelete(
-      'DELETE FROM $_registeredParticipantsTable WHERE is_N IN ($placeholders) AND online = 0',
+      'DELETE FROM $_registeredParticipantsTable WHERE card_number IN ($placeholders) AND online = 0',
       ids,
     );
   }
@@ -1396,7 +1406,7 @@ class DatabaseService {
 
   /// Returns participant statistics computed entirely from the local SQLite DB.
   ///
-  /// [bina] – building code as stored in the participants table. The table
+  /// [buildingCode] – building code as stored in the participants table. The table
   /// only ever holds one slot's worth of data at a time (fully repopulated
   /// on every download, cleared on every login/slot switch — see
   /// [clearAllDatabase]), so no separate exam/session filter is needed here
@@ -1407,29 +1417,29 @@ class DatabaseService {
   /// Returns a map with keys:
   ///   allMen, allWomen, regMen, regWomen
   ///
-  /// `gins = 1` → male;  `gins = 2` → female  (values from server).
+  /// `gender = 1` → male;  `gender = 2` → female  (values from server).
   static Future<Map<String, int>> getLocalParticipantStats(
-      String bina) async {
+      String buildingCode) async {
     final db = await database;
 
     // Total by gender
     final allMenResult = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 1',
-      [bina],
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE building_code = ? AND gender = 1',
+      [buildingCode],
     );
     final allWomenResult = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 2',
-      [bina],
+      'SELECT COUNT(*) as cnt FROM $_participantsTable WHERE building_code = ? AND gender = 2',
+      [buildingCode],
     );
 
-    // Registered by gender (qeydiyyat IS NOT NULL and not empty)
+    // Registered by gender (registered_at IS NOT NULL and not empty)
     final regMenResult = await db.rawQuery(
-      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 1 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
-      [bina],
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE building_code = ? AND gender = 1 AND registered_at IS NOT NULL AND registered_at != ''",
+      [buildingCode],
     );
     final regWomenResult = await db.rawQuery(
-      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE bina = ? AND gins = 2 AND qeydiyyat IS NOT NULL AND qeydiyyat != ''",
-      [bina],
+      "SELECT COUNT(*) as cnt FROM $_participantsTable WHERE building_code = ? AND gender = 2 AND registered_at IS NOT NULL AND registered_at != ''",
+      [buildingCode],
     );
 
     return {

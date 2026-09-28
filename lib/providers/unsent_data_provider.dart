@@ -48,7 +48,7 @@ class UnsentDataProvider extends ChangeNotifier {
       // Load registered participants (only offline ones - not synced with server)
       final allParticipants = await DatabaseService.getRegisteredParticipants();
       _registeredParticipants = allParticipants
-          .where((p) => p.qeydiyyat != null && p.qeydiyyat!.isNotEmpty)
+          .where((p) => p.registeredAt != null && p.registeredAt!.isNotEmpty)
           .toList();
 
       // Load registered supervisors (only offline ones - not synced with server)
@@ -163,7 +163,7 @@ class UnsentDataProvider extends ChangeNotifier {
   // Clear synced participants from local database
   Future<void> _clearSyncedParticipants() async {
     try {
-      final ids = _registeredParticipants.map((p) => p.isN).toList();
+      final ids = _registeredParticipants.map((p) => p.cardNumber).toList();
       await DatabaseService.clearSyncedParticipantsByIds(ids);
       _registeredParticipants.clear();
     } catch (e) {

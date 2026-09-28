@@ -146,7 +146,7 @@ class ProtocolService {
   Future<ProtocolsResponse> getProtocols({
     int page = 1,
     int pageSize = 100,
-    int? bina,
+    int? buildingCode,
     String? startDate,
     String? endDate,
     String? examDate,
@@ -160,8 +160,8 @@ class ProtocolService {
       queryParams.add('pageSize=$pageSize');
 
       // Add filters
-      if (bina != null) {
-        queryParams.add('bina=$bina');
+      if (buildingCode != null) {
+        queryParams.add('buildingCode=$buildingCode');
       }
 
       if (startDate != null && startDate.isNotEmpty) {

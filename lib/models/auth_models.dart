@@ -38,7 +38,7 @@ class AuthData {
   factory AuthData.fromJson(Map<String, dynamic> json) {
     return AuthData(
       bina: json['bina'] as int,
-      userName: json['user_Name'] as String,
+      userName: json['userName'] as String,
       userPassword: json['user_Parol'] as String,
     );
   }
@@ -46,7 +46,7 @@ class AuthData {
   Map<String, dynamic> toJson() {
     return {
       'bina': bina,
-      'user_Name': userName,
+      'userName': userName,
       'user_Parol': userPassword,
     };
   }

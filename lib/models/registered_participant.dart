@@ -1,74 +1,74 @@
 class RegisteredParticipant {
-  final int isN; // ID number
-  final String soy; // Last name
-  final String adi; // First name
-  final String baba; // Father name
-  final int gins; // Gender (1-male, 0-female)
-  final String bina; // Building
-  final String zal; // Room
-  final String mertebe; // Floor
-  final String sira; // Row
-  final String yer; // Seat
+  final int cardNumber; // ID number
+  final String lastName; // Last name
+  final String firstName; // First name
+  final String fatherName; // Father name
+  final int gender; // Gender (1-male, 0-female)
+  final String buildingCode; // Building
+  final String hall; // Room
+  final String floor; // Floor
+  final String row; // Row
+  final String seat; // Seat
   final String imtTarix; // Exam date
   final String photo; // Base64 photo
-  final String qeydiyyat; // Registration date/time
+  final String registeredAt; // Registration date/time
   final bool online; // If synced with server
 
   const RegisteredParticipant({
-    required this.isN,
-    required this.soy,
-    required this.adi,
-    required this.baba,
-    required this.gins,
-    required this.bina,
-    required this.zal,
-    required this.mertebe,
-    required this.sira,
-    required this.yer,
+    required this.cardNumber,
+    required this.lastName,
+    required this.firstName,
+    required this.fatherName,
+    required this.gender,
+    required this.buildingCode,
+    required this.hall,
+    required this.floor,
+    required this.row,
+    required this.seat,
     required this.imtTarix,
     required this.photo,
-    required this.qeydiyyat,
+    required this.registeredAt,
     this.online = false,
   });
 
   factory RegisteredParticipant.fromJson(Map<String, dynamic> json) {
     return RegisteredParticipant(
-      isN: json['is_N'] ?? 0,
-      soy: json['soy'] ?? '',
-      adi: json['adi'] ?? '',
-      baba: json['baba'] ?? '',
-      gins: json['gins'] ?? 1,
-      bina: json['bina']?.toString() ?? '',
-      zal: json['zal']?.toString() ?? '',
-      mertebe: json['mertebe']?.toString() ?? '',
-      sira: json['sira']?.toString() ?? '',
-      yer: json['yer']?.toString() ?? '',
+      cardNumber: json['cardNumber'] ?? 0,
+      lastName: json['lastName'] ?? '',
+      firstName: json['firstName'] ?? '',
+      fatherName: json['fatherName'] ?? '',
+      gender: json['gender'] ?? 1,
+      buildingCode: json['buildingCode']?.toString() ?? '',
+      hall: json['hall']?.toString() ?? '',
+      floor: json['floor']?.toString() ?? '',
+      row: json['row']?.toString() ?? '',
+      seat: json['seat']?.toString() ?? '',
       imtTarix: json['imt_Tarix'] ?? '',
       photo: json['photo'] ?? '',
-      qeydiyyat: json['qeydiyyat'] ?? '',
+      registeredAt: json['registeredAt'] ?? '',
       online: (json['online'] == 1 || json['online'] == true),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'is_N': isN,
-      'soy': soy,
-      'adi': adi,
-      'baba': baba,
-      'gins': gins,
-      'bina': bina,
-      'zal': zal,
-      'mertebe': mertebe,
-      'sira': sira,
-      'yer': yer,
+      'cardNumber': cardNumber,
+      'lastName': lastName,
+      'firstName': firstName,
+      'fatherName': fatherName,
+      'gender': gender,
+      'buildingCode': buildingCode,
+      'hall': hall,
+      'floor': floor,
+      'row': row,
+      'seat': seat,
       'imt_Tarix': imtTarix,
       'photo': photo,
-      'qeydiyyat': qeydiyyat,
+      'registeredAt': registeredAt,
       'online': online ? 1 : 0,
     };
   }
 
-  String get fullName => '$soy $adi $baba'.trim();
-  String get genderText => gins == 1 ? 'Kişi' : 'Qadın';
+  String get fullName => '$lastName $firstName $fatherName'.trim();
+  String get genderText => gender == 1 ? 'Kişi' : 'Qadın';
 }

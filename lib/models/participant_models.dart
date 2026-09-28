@@ -2,25 +2,25 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 class Participant {
-  final int isN; // İş nömrəsi
-  final String adi; // Ad
-  final String soy; // Soyad
-  final String baba; // Ata adı
-  final String mertebe; // Mərtəbə
-  final String zal; // Zal
-  final String sira; // Sıra
-  final String yer; // Yer
+  final int cardNumber; // İş nömrəsi
+  final String firstName; // Ad
+  final String lastName; // Soyad
+  final String fatherName; // Ata adı
+  final String floor; // Mərtəbə
+  final String hall; // Zal
+  final String row; // Sıra
+  final String seat; // Yer
   final String? photo; // Şəkil (base64, onlayn skan və s.)
   final Uint8List? photoBytes; // Şəkil (BLOB, oflayn baza)
-  final String? qeydiyyat; // Qeydiyyat tarixi
-  final String bina; // Bina
-  final int gins; // Cins: 1 = kişi, 2 = qadın
+  final String? registeredAt; // Qeydiyyat tarixi
+  final String buildingCode; // Bina
+  final int gender; // Cins: 1 = kişi, 2 = qadın
   // Full-switch (9.2, contract §1.2/§1.3): server identity, replaces the old
   // (is_N, legacy exam-date string) pair. [id] is `Participants.Id` — used
   // for cancel-by-id and the preferred sync branch. Null only for a v8 offline
   // queue row migrated to the v9 schema before it ever reached the server
   // (see DatabaseService's v9 migration) — such rows sync via the
-  // is_N+bina+slotKey fallback branch instead (contract §1.3).
+  // cardNumber+buildingCode+slotKey fallback branch instead (contract §1.3).
   final int? id;
   // Server `ExamSessionId` this participant belongs to.
   final int? examSessionId;
@@ -32,19 +32,19 @@ class Participant {
   final String? slotKey;
 
   Participant({
-    required this.isN,
-    required this.adi,
-    required this.soy,
-    required this.baba,
-    required this.mertebe,
-    required this.zal,
-    required this.sira,
-    required this.yer,
+    required this.cardNumber,
+    required this.firstName,
+    required this.lastName,
+    required this.fatherName,
+    required this.floor,
+    required this.hall,
+    required this.row,
+    required this.seat,
     this.photo,
     this.photoBytes,
-    this.qeydiyyat,
-    required this.bina,
-    this.gins = 0,
+    this.registeredAt,
+    required this.buildingCode,
+    this.gender = 0,
     this.id,
     this.examSessionId,
     this.slotKey,
@@ -60,18 +60,18 @@ class Participant {
 
   factory Participant.fromJson(Map<String, dynamic> json) {
     return Participant(
-      isN: json['is_N'] as int,
-      adi: json['adi'] as String,
-      soy: json['soy'] as String,
-      baba: json['baba'] as String,
-      mertebe: json['mertebe'] as String,
-      zal: json['zal'] as String,
-      sira: json['sira'] as String,
-      yer: json['yer'] as String,
+      cardNumber: json['cardNumber'] as int,
+      firstName: json['firstName'] as String,
+      lastName: json['lastName'] as String,
+      fatherName: json['fatherName'] as String,
+      floor: json['floor'] as String,
+      hall: json['hall'] as String,
+      row: json['row'] as String,
+      seat: json['seat'] as String,
       photo: json['photo'] as String?,
-      qeydiyyat: json['qeydiyyat'] as String?,
-      bina: json['bina'] as String? ?? '',
-      gins: (json['gins'] as num?)?.toInt() ?? 0,
+      registeredAt: json['registeredAt'] as String?,
+      buildingCode: json['buildingCode'] as String? ?? '',
+      gender: (json['gender'] as num?)?.toInt() ?? 0,
       id: json['id'] as int?,
       examSessionId: json['examSessionId'] as int?,
     );
@@ -79,24 +79,24 @@ class Participant {
 
   Map<String, dynamic> toJson() {
     return {
-      'is_N': isN,
-      'adi': adi,
-      'soy': soy,
-      'baba': baba,
-      'mertebe': mertebe,
-      'zal': zal,
-      'sira': sira,
-      'yer': yer,
+      'cardNumber': cardNumber,
+      'firstName': firstName,
+      'lastName': lastName,
+      'fatherName': fatherName,
+      'floor': floor,
+      'hall': hall,
+      'row': row,
+      'seat': seat,
       'photo': photo,
-      'qeydiyyat': qeydiyyat,
-      'bina': bina,
-      'gins': gins,
+      'registeredAt': registeredAt,
+      'buildingCode': buildingCode,
+      'gender': gender,
       if (id != null) 'id': id,
       if (examSessionId != null) 'examSessionId': examSessionId,
     };
   }
 
-  String get fullName => '$soy $adi $baba';
+  String get fullName => '$lastName $firstName $fatherName';
 }
 
 /// Lightweight summary of one slot available at the time an exam/slot was
@@ -125,8 +125,8 @@ class SlotSummary {
 }
 
 class ExamDetails {
-  final String? adBina; // Ad Bina
-  final String? kodBina; // Kod Bina
+  final String? buildingName; // Ad Bina
+  final String? buildingCode; // Kod Bina
   final int? regManCount; // Qeydiyyatlı kişi sayı
   final int? regWomanCount; // Qeydiyyatlı qadın sayı
   final int? allManCount; // Ümumi kişi sayı
@@ -140,8 +140,8 @@ class ExamDetails {
   final List<SlotSummary> slots;
 
   ExamDetails({
-    this.adBina,
-    this.kodBina,
+    this.buildingName,
+    this.buildingCode,
     this.regManCount,
     this.regWomanCount,
     this.allManCount,
@@ -154,8 +154,8 @@ class ExamDetails {
   factory ExamDetails.fromJson(Map<String, dynamic> json) {
     final slotsJson = json['slots'] as List<dynamic>? ?? const [];
     return ExamDetails(
-      adBina: json['ad_Bina'] as String?,
-      kodBina: json['kod_Bina'] as String?,
+      buildingName: json['buildingName'] as String?,
+      buildingCode: json['buildingCode'] as String?,
       regManCount: json['regManCount'] as int?,
       regWomanCount: json['regWomanCount'] as int?,
       allManCount: json['allManCount'] as int?,
@@ -170,8 +170,8 @@ class ExamDetails {
 
   Map<String, dynamic> toJson() {
     return {
-      'ad_Bina': adBina,
-      'kod_Bina': kodBina,
+      'buildingName': buildingName,
+      'buildingCode': buildingCode,
       'regManCount': regManCount,
       'regWomanCount': regWomanCount,
       'allManCount': allManCount,

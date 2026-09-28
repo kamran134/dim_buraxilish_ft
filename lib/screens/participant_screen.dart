@@ -240,7 +240,7 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                     // Participant Info Card
                     InfoCard(
                       fullName: participant.fullName,
-                      subtitle: 'İş nömrəsi: ${participant.isN}',
+                      subtitle: 'İş nömrəsi: ${participant.cardNumber}',
                       photoWidget: PhotoWidget.participant(
                         photoData: participant.photo,
                         photoBytes: participant.photoBytes,
@@ -255,10 +255,10 @@ class _ParticipantScreenState extends State<ParticipantScreen> {
                       actionButton: null,
                       details: [
                         InfoDetail(
-                            label: 'Mərtəbə', value: participant.mertebe),
-                        InfoDetail(label: 'Zal', value: participant.zal),
-                        InfoDetail(label: 'Sıra', value: participant.sira),
-                        InfoDetail(label: 'Yer', value: participant.yer),
+                            label: 'Mərtəbə', value: participant.floor),
+                        InfoDetail(label: 'Zal', value: participant.hall),
+                        InfoDetail(label: 'Sıra', value: participant.row),
+                        InfoDetail(label: 'Yer', value: participant.seat),
                       ],
                     ),
 

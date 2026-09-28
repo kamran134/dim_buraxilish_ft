@@ -148,7 +148,7 @@ class BuildingsStatisticsTable extends StatelessWidget {
         // Код здания
         DataCell(
           Text(
-            stat.kodBina ?? '-',
+            stat.buildingCode ?? '-',
             style: _cellStyle(),
           ),
         ),
@@ -158,7 +158,7 @@ class BuildingsStatisticsTable extends StatelessWidget {
           SizedBox(
             width: 120,
             child: Text(
-              stat.adBina ?? '-',
+              stat.buildingName ?? '-',
               style: _cellStyle(),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
