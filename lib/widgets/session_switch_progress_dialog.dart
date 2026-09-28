@@ -61,7 +61,6 @@ class _SessionSwitchProgressDialogState
         httpService: widget.httpService,
         slotKey: widget.slot.key,
         slotLabel: widget.slot.label,
-        legacyDate: widget.slot.legacyDate,
         slots: widget.slots,
       );
       _persisted = true;

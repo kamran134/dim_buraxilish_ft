@@ -48,7 +48,6 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
 
   // Used to mark the currently active slot card.
   String? _currentSlotKey;
-  String? _currentImtTarix;
 
   _Phase _phase = _Phase.idle;
   int _downloadedParticipants = 0;
@@ -70,7 +69,6 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
 
     final stored = await _httpService.getExamDetailsFromStorage();
     _currentSlotKey = stored?.slotKey;
-    _currentImtTarix = stored?.imtTarix;
 
     if (!mounted) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -141,12 +139,10 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       httpService: _httpService,
       slotKey: slot.key,
       slotLabel: slot.label,
-      legacyDate: slot.legacyDate,
       slots: _slots
           .map((s) => SlotSummary(
                 key: s.key,
                 label: s.label,
-                legacyDate: s.legacyDate,
               ))
           .toList(),
       onUnsyncedRemaining: (remaining) {
@@ -362,11 +358,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
   Widget _buildSlotCard(SlotDto slot) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final busy = _phase != _Phase.idle;
-    final isActiveSlot = _currentSlotKey != null && _currentSlotKey!.isNotEmpty
-        ? slot.key == _currentSlotKey
-        : (_currentImtTarix != null &&
-            _currentImtTarix!.isNotEmpty &&
-            slot.legacyDate == _currentImtTarix);
+    final isActiveSlot = slot.key == _currentSlotKey;
     final examNames = slot.examNamesJoined;
 
     return Opacity(

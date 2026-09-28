@@ -17,7 +17,6 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   AccessTokenModel? _accessToken;
-  List<String> _examDates = [];
   Auth? _authData;
   String? _currentUserRole;
   String? _slotLabel;
@@ -35,7 +34,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   AccessTokenModel? get accessToken => _accessToken;
-  List<String> get examDates => _examDates;
   Auth? get authData => _authData;
   String? get currentUserRole => _currentUserRole;
   // Display label of the currently selected slot (from
@@ -94,7 +92,10 @@ class AuthProvider extends ChangeNotifier {
         final examDetails = await _httpService.getExamDetailsFromStorage();
         if (examDetails != null) {
           final bina = int.tryParse(examDetails.kodBina ?? '0') ?? 0;
-          _authData = Auth(bina: bina, examDate: examDetails.imtTarix ?? '');
+          _authData = Auth(
+            bina: bina,
+            examDate: _isoDateFromSlotKey(examDetails.slotKey),
+          );
           _slotLabel = examDetails.slotLabel;
 
           // Reconnect to emergency hub after app restart
@@ -129,24 +130,6 @@ class AuthProvider extends ChangeNotifier {
       _accessToken = null;
       _authData = null;
       _slotLabel = null;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // Load exam dates
-  Future<void> loadExamDates() async {
-    _setLoading(true);
-    try {
-      final result = await _httpService.getExamDates();
-      if (result.success) {
-        _examDates = result.data;
-        _clearError();
-      } else {
-        _setError(result.message);
-      }
-    } catch (e) {
-      _setError('İmtahan tarixləri yüklənmədi');
     } finally {
       _setLoading(false);
     }
@@ -198,7 +181,6 @@ class AuthProvider extends ChangeNotifier {
         // Store exam details — building only, no exam selected yet.
         final examDetails = ExamDetails(
           kodBina: bina.toString(),
-          imtTarix: '',
           adBina: adBinaFromToken,
         );
         await _httpService.storeExamDetails(examDetails);
@@ -259,16 +241,30 @@ class AuthProvider extends ChangeNotifier {
   /// after persisting the chosen slot via HttpService.storeExamDetails().
   /// Updates in-memory state (Auth.examDate + slotLabel) so every provider
   /// that reads AuthProvider sees the new slot immediately, without
-  /// requiring a re-login.
+  /// requiring a re-login. [slotKey] is the raw `yyyy-MM-ddTHH:mm` slot key;
+  /// [Auth.examDate] is derived from its date portion — a plain calendar
+  /// date, used only for display/filtering (e.g. `protocols/my-notes`), not
+  /// as an exam identity (that's the `X-Exam-Slot` header).
   void setActiveExam({
-    required String imtTarix,
+    String? slotKey,
     String? slotLabel,
   }) {
     if (_authData != null) {
-      _authData = Auth(bina: _authData!.bina, examDate: imtTarix);
+      _authData = Auth(
+        bina: _authData!.bina,
+        examDate: _isoDateFromSlotKey(slotKey),
+      );
     }
     _slotLabel = slotLabel;
     notifyListeners();
+  }
+
+  /// Extracts the plain calendar date (`yyyy-MM-dd`) from a slot key
+  /// (`yyyy-MM-ddTHH:mm`). Empty when no slot is active.
+  static String _isoDateFromSlotKey(String? slotKey) {
+    if (slotKey == null || slotKey.isEmpty) return '';
+    final tIndex = slotKey.indexOf('T');
+    return tIndex > 0 ? slotKey.substring(0, tIndex) : slotKey;
   }
 
   // Change password
@@ -324,7 +320,6 @@ class AuthProvider extends ChangeNotifier {
       _authData = null;
       _currentUserRole = null;
       _slotLabel = null;
-      _examDates.clear();
       _clearError();
 
       notifyListeners();

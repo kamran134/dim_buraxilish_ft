@@ -64,7 +64,6 @@ class SlotSwitcher {
     required HttpService httpService,
     required String slotKey,
     required String slotLabel,
-    required String legacyDate,
     required List<SlotSummary> slots,
     void Function(int remainingUnsynced)? onUnsyncedRemaining,
   }) async {
@@ -87,14 +86,13 @@ class SlotSwitcher {
     final newDetails = ExamDetails(
       kodBina: existing?.kodBina,
       adBina: existing?.adBina,
-      imtTarix: legacyDate,
       slotKey: slotKey,
       slotLabel: slotLabel,
       slots: slots,
     );
     await httpService.storeExamDetails(newDetails);
     authProvider.setActiveExam(
-      imtTarix: legacyDate,
+      slotKey: slotKey,
       slotLabel: slotLabel,
     );
   }
@@ -163,7 +161,6 @@ class SlotSwitcher {
     required HttpService httpService,
     required String slotKey,
     required String slotLabel,
-    required String legacyDate,
     required List<SlotSummary> slots,
   }) async {
     await persistSelection(
@@ -171,7 +168,6 @@ class SlotSwitcher {
       httpService: httpService,
       slotKey: slotKey,
       slotLabel: slotLabel,
-      legacyDate: legacyDate,
       slots: slots,
     );
     return downloadForRole(
