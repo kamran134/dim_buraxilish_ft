@@ -13,6 +13,12 @@ class Supervisor {
   final String registerDate;
   final int supervisorAction;
   final bool? online;
+  // Full-switch (9.2, contract §1.2/§1.3): server identity. [id] is used for
+  // cancel-by-id and the preferred sync branch; null only for a v8 offline
+  // queue row migrated to v9 before it ever reached the server — such rows
+  // sync via the cardNumber+buildingCode+slotKey fallback branch instead.
+  final int? id;
+  final int? examSessionId;
 
   const Supervisor({
     required this.buildingCode,
@@ -28,6 +34,8 @@ class Supervisor {
     required this.registerDate,
     required this.supervisorAction,
     this.online,
+    this.id,
+    this.examSessionId,
   });
 
   /// Получить полное имя нəzarətçi
@@ -48,6 +56,8 @@ class Supervisor {
       registerDate: json['registerDate'] as String? ?? '',
       supervisorAction: json['supervisorAction'] as int? ?? 0,
       online: json['online'] as bool?,
+      id: json['id'] as int?,
+      examSessionId: json['examSessionId'] as int?,
     );
   }
 
@@ -66,6 +76,8 @@ class Supervisor {
       'registerDate': registerDate,
       'supervisorAction': supervisorAction,
       if (online != null) 'online': online,
+      if (id != null) 'id': id,
+      if (examSessionId != null) 'examSessionId': examSessionId,
     };
   }
 

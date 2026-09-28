@@ -14,6 +14,13 @@ class Monitor {
   final String registerDate;
   final String image;
   final bool? online;
+  // Full-switch (9.2, contract §1.3): server row identity, used for
+  // cancel-by-id (`POST monitors/cancelregistration`). Monitors have no
+  // offline sync queue (scanning is always online — see mobile_inventory.md
+  // §2), so unlike Participant/Supervisor there is no legacy-fallback path:
+  // [id] is expected to be set on every scan response.
+  final int? id;
+  final int? examSessionId;
 
   const Monitor({
     required this.workNumber,
@@ -30,6 +37,8 @@ class Monitor {
     required this.registerDate,
     required this.image,
     this.online,
+    this.id,
+    this.examSessionId,
   });
 
   /// Получить полное имя monitor
@@ -57,6 +66,8 @@ class Monitor {
       registerDate: json['registerDate'] as String? ?? '',
       image: json['image'] as String? ?? '',
       online: json['online'] as bool?,
+      id: json['id'] as int?,
+      examSessionId: json['examSessionId'] as int?,
     );
   }
 
@@ -76,6 +87,8 @@ class Monitor {
       'registerDate': registerDate,
       'image': image,
       if (online != null) 'online': online,
+      if (id != null) 'id': id,
+      if (examSessionId != null) 'examSessionId': examSessionId,
     };
   }
 

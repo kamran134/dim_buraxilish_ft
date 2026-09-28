@@ -14,8 +14,16 @@ class Participant {
   final Uint8List? photoBytes; // Şəkil (BLOB, oflayn baza)
   final String? qeydiyyat; // Qeydiyyat tarixi
   final String bina; // Bina
-  final String imtTarix; // İmtahan tarixi
   final int gins; // Cins: 1 = kişi, 2 = qadın
+  // Full-switch (9.2, contract §1.2/§1.3): server identity, replaces the old
+  // (is_N, imt_Tarix) pair. [id] is `Participants.Id` — used for
+  // cancel-by-id and the preferred sync branch. Null only for a v8 offline
+  // queue row migrated to the v9 schema before it ever reached the server
+  // (see DatabaseService's v9 migration) — such rows sync via the
+  // is_N+bina+slotKey fallback branch instead (contract §1.3).
+  final int? id;
+  // Server `ExamSessionId` this participant belongs to.
+  final int? examSessionId;
 
   Participant({
     required this.isN,
@@ -30,8 +38,9 @@ class Participant {
     this.photoBytes,
     this.qeydiyyat,
     required this.bina,
-    required this.imtTarix,
     this.gins = 0,
+    this.id,
+    this.examSessionId,
   });
 
   /// Фото как base64 (для мест, где нужна строка): из photo, либо из photoBytes.
@@ -55,8 +64,9 @@ class Participant {
       photo: json['photo'] as String?,
       qeydiyyat: json['qeydiyyat'] as String?,
       bina: json['bina'] as String? ?? '',
-      imtTarix: json['imt_Tarix'] as String? ?? '',
       gins: (json['gins'] as num?)?.toInt() ?? 0,
+      id: json['id'] as int?,
+      examSessionId: json['examSessionId'] as int?,
     );
   }
 
@@ -73,41 +83,13 @@ class Participant {
       'photo': photo,
       'qeydiyyat': qeydiyyat,
       'bina': bina,
-      'imt_Tarix': imtTarix,
       'gins': gins,
+      if (id != null) 'id': id,
+      if (examSessionId != null) 'examSessionId': examSessionId,
     };
   }
 
   String get fullName => '$soy $adi $baba';
-}
-
-/// Lightweight summary of one session (shift) of the currently selected
-/// exam, as stashed on [ExamDetails.sessions] so the dashboard's session
-/// switcher doesn't need a fresh `GET /exams/{id}` call just to list them.
-class ExamSessionSummary {
-  final int id;
-  final String label;
-  final String? legacyImtTarix;
-
-  ExamSessionSummary({
-    required this.id,
-    required this.label,
-    this.legacyImtTarix,
-  });
-
-  factory ExamSessionSummary.fromJson(Map<String, dynamic> json) {
-    return ExamSessionSummary(
-      id: json['id'] as int,
-      label: json['label'] as String? ?? '',
-      legacyImtTarix: json['legacyImtTarix'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'label': label,
-        if (legacyImtTarix != null) 'legacyImtTarix': legacyImtTarix,
-      };
 }
 
 /// Lightweight summary of one slot available at the time an exam/slot was
@@ -116,45 +98,32 @@ class ExamSessionSummary {
 class SlotSummary {
   final String key;
   final String label;
-  final String legacyDate;
 
   SlotSummary({
     required this.key,
     required this.label,
-    required this.legacyDate,
   });
 
   factory SlotSummary.fromJson(Map<String, dynamic> json) {
     return SlotSummary(
       key: json['key'] as String? ?? '',
       label: json['label'] as String? ?? '',
-      legacyDate: json['legacyDate'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
         'key': key,
         'label': label,
-        'legacyDate': legacyDate,
       };
 }
 
 class ExamDetails {
   final String? adBina; // Ad Bina
   final String? kodBina; // Kod Bina
-  final String? imtTarix; // İmtahan tarixi (legacy string — kept for all existing endpoints)
   final int? regManCount; // Qeydiyyatlı kişi sayı
   final int? regWomanCount; // Qeydiyyatlı qadın sayı
   final int? allManCount; // Ümumi kişi sayı
   final int? allWomanCount; // Ümumi qadın sayı
-  // Legacy /exams-based exam+session picker fields. No longer written by the
-  // current (slot-based) flow — kept ONLY so a JSON blob saved by an older
-  // app version still deserializes without loss.
-  final int? examId;
-  final String? examName;
-  final int? sessionId;
-  final String? sessionLabel;
-  final List<ExamSessionSummary> sessions;
   // Slot fields (current flow — see API_slots.md). [slotKey] is what the dio
   // interceptor sends as `X-Exam-Slot`; [slotLabel] is shown by the
   // switcher; [slots] is the full slot list available at pick time so the
@@ -166,39 +135,24 @@ class ExamDetails {
   ExamDetails({
     this.adBina,
     this.kodBina,
-    this.imtTarix,
     this.regManCount,
     this.regWomanCount,
     this.allManCount,
     this.allWomanCount,
-    this.examId,
-    this.examName,
-    this.sessionId,
-    this.sessionLabel,
-    this.sessions = const [],
     this.slotKey,
     this.slotLabel,
     this.slots = const [],
   });
 
   factory ExamDetails.fromJson(Map<String, dynamic> json) {
-    final sessionsJson = json['sessions'] as List<dynamic>? ?? const [];
     final slotsJson = json['slots'] as List<dynamic>? ?? const [];
     return ExamDetails(
       adBina: json['ad_Bina'] as String?,
       kodBina: json['kod_Bina'] as String?,
-      imtTarix: json['imt_Tarix'] as String?,
       regManCount: json['regManCount'] as int?,
       regWomanCount: json['regWomanCount'] as int?,
       allManCount: json['allManCount'] as int?,
       allWomanCount: json['allWomanCount'] as int?,
-      examId: json['examId'] as int?,
-      examName: json['examName'] as String?,
-      sessionId: json['sessionId'] as int?,
-      sessionLabel: json['sessionLabel'] as String?,
-      sessions: sessionsJson
-          .map((e) => ExamSessionSummary.fromJson(e as Map<String, dynamic>))
-          .toList(),
       slotKey: json['slotKey'] as String?,
       slotLabel: json['slotLabel'] as String?,
       slots: slotsJson
@@ -211,17 +165,10 @@ class ExamDetails {
     return {
       'ad_Bina': adBina,
       'kod_Bina': kodBina,
-      'imt_Tarix': imtTarix,
       'regManCount': regManCount,
       'regWomanCount': regWomanCount,
       'allManCount': allManCount,
       'allWomanCount': allWomanCount,
-      if (examId != null) 'examId': examId,
-      if (examName != null) 'examName': examName,
-      if (sessionId != null) 'sessionId': sessionId,
-      if (sessionLabel != null) 'sessionLabel': sessionLabel,
-      if (sessions.isNotEmpty)
-        'sessions': sessions.map((s) => s.toJson()).toList(),
       if (slotKey != null) 'slotKey': slotKey,
       if (slotLabel != null) 'slotLabel': slotLabel,
       if (slots.isNotEmpty) 'slots': slots.map((s) => s.toJson()).toList(),
