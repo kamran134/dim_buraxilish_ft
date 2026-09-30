@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'device_identity_service.dart';
 import 'emergency_message_service.dart';
@@ -83,7 +84,7 @@ class PushNotificationService {
       // which arrives asynchronously after the permission prompt.
       if (Platform.isIOS && !await _waitForApnsToken()) {
         // onTokenRefresh fires once APNs catches up and uploads the token then.
-        _setStatus('APNs token yoxdur');
+        _setStatus('APNs token yoxdur (${await _nativeApnsState()})');
         return;
       }
       _fcmToken = await FirebaseMessaging.instance.getToken();
@@ -130,6 +131,29 @@ class PushNotificationService {
   }
 
   // ─── Internal ──────────────────────────────────────────────────────────────
+
+  static const _apnsChannel = MethodChannel('az.dim.buraxilish/apns');
+
+  /// What iOS itself reported to AppDelegate: distinguishes "APNs never
+  /// answered", "APNs refused (with reason)" and "APNs answered but the token
+  /// never reached Firebase".
+  Future<String> _nativeApnsState() async {
+    try {
+      final state = await _apnsChannel.invokeMapMethod<String, String>('status');
+      switch (state?['state']) {
+        case 'registered':
+          final err = state?['error'];
+          return 'iOS token verdi, Firebase almadı${err != null ? ': $err' : ''}';
+        case 'failed':
+          return 'iOS xətası: ${state?['error']}';
+        case 'pending':
+          return 'iOS cavab vermədi';
+      }
+      return 'naməlum: $state';
+    } catch (e) {
+      return 'kanal xətası: $e';
+    }
+  }
 
   Future<bool> _waitForApnsToken() async {
     for (var i = 0; i < 10; i++) {
