@@ -38,7 +38,9 @@ class DeviceIdentityService {
         _deviceName = '${info.manufacturer} ${info.model}';
       } else if (Platform.isIOS) {
         final info = await deviceInfo.iosInfo;
-        _deviceName = info.utsname.machine;
+        // modelName is the marketing name ("iPhone 16 Pro Max");
+        // utsname.machine is Apple's identifier ("iPhone17,2").
+        _deviceName = 'Apple ${info.modelName}';
       }
     } catch (_) {
       // Ignore — device name is informational, not required.
