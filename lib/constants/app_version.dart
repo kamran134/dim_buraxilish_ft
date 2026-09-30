@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Константы версий приложения
 class AppVersion {
   AppVersion._();
@@ -12,4 +14,13 @@ class AppVersion {
 
   /// Название приложения
   static const String appName = 'DIM Buraxılış';
+
+  // Apple ID of the App Store Connect record for az.dim.buraxilish.
+  // TODO(ios): fill in once the App Store Connect app record is created.
+  static const String _appStoreId = '';
+
+  /// Store page opened by the forced-update dialog.
+  static String get storeUrl => Platform.isIOS
+      ? 'https://apps.apple.com/app/id$_appStoreId'
+      : 'https://play.google.com/store/apps/details?id=com.dim.dim_buraxilish';
 }

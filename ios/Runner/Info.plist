@@ -47,7 +47,11 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Bu tətbiq QR kodları skan etmək üçün kameraya ehtiyac duyur</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Bu tətbiq QR kodları skan etmək üçün mikrofona ehtiyac duyur</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

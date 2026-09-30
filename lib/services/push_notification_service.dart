@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -56,7 +57,19 @@ class PushNotificationService {
       return;
     }
 
-    _fcmToken = await FirebaseMessaging.instance.getToken();
+    try {
+      // On iOS getToken() throws until APNs hands the app its device token,
+      // which arrives asynchronously after the permission prompt.
+      if (Platform.isIOS && !await _waitForApnsToken()) {
+        // onTokenRefresh fires once APNs catches up and uploads the token then.
+        debugPrint('[Push] APNs token not available yet.');
+        return;
+      }
+      _fcmToken = await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('[Push] getToken error: $e');
+      return;
+    }
     if (_fcmToken == null) {
       debugPrint('[Push] Could not get FCM token.');
       return;
@@ -97,6 +110,14 @@ class PushNotificationService {
   }
 
   // ─── Internal ──────────────────────────────────────────────────────────────
+
+  Future<bool> _waitForApnsToken() async {
+    for (var i = 0; i < 10; i++) {
+      if (await FirebaseMessaging.instance.getAPNSToken() != null) return true;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    return false;
+  }
 
   Future<void> _uploadToken(String fcmToken) async {
     if (_buildingCode == null) return;

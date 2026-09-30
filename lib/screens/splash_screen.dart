@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../constants/app_version.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -179,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => launchUrl(
-                  Uri.parse('https://play.google.com/store/apps/details?id=com.dim.dim_buraxilish'),
+                  Uri.parse(AppVersion.storeUrl),
                   mode: LaunchMode.externalApplication,
                 ),
                 icon: const Icon(Icons.download_rounded),
