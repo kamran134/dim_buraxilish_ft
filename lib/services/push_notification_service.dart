@@ -25,6 +25,26 @@ class PushNotificationService {
   String? _buildingCode;
   String? _fcmToken;
 
+  /// Last outcome of the registration pipeline, shown on the settings screen
+  /// so a device that never shows up in the admin device list can be diagnosed
+  /// without a debugger (release builds swallow debugPrint).
+  final ValueNotifier<String> status = ValueNotifier('başlanmayıb');
+
+  void _setStatus(String value) {
+    status.value = value;
+    debugPrint('[Push] $value');
+  }
+
+  /// Re-runs registration for the current building (tap on the status line).
+  Future<void> retry() async {
+    final code = _buildingCode;
+    if (code == null) {
+      _setStatus('bina yoxdur (login olun)');
+      return;
+    }
+    await activate(buildingCode: code);
+  }
+
   // ─── Init (call once in main) ──────────────────────────────────────────────
 
   void init() {
@@ -51,9 +71,10 @@ class PushNotificationService {
   }) async {
     _buildingCode = buildingCode;
 
+    _setStatus('icazə yoxlanılır');
     final settings = await FirebaseMessaging.instance.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      debugPrint('[Push] Permission denied.');
+      _setStatus('icazə yoxdur (denied)');
       return;
     }
 
@@ -62,20 +83,19 @@ class PushNotificationService {
       // which arrives asynchronously after the permission prompt.
       if (Platform.isIOS && !await _waitForApnsToken()) {
         // onTokenRefresh fires once APNs catches up and uploads the token then.
-        debugPrint('[Push] APNs token not available yet.');
+        _setStatus('APNs token yoxdur');
         return;
       }
       _fcmToken = await FirebaseMessaging.instance.getToken();
     } catch (e) {
-      debugPrint('[Push] getToken error: $e');
+      _setStatus('FCM token xətası: $e');
       return;
     }
     if (_fcmToken == null) {
-      debugPrint('[Push] Could not get FCM token.');
+      _setStatus('FCM token null');
       return;
     }
 
-    debugPrint('[Push] FCM token obtained.');
     await _uploadToken(_fcmToken!);
   }
 
@@ -127,13 +147,13 @@ class PushNotificationService {
     // getToken() transparently refreshes an expired JWT via the refresh token.
     final authToken = await HttpService().getToken();
     if (authToken == null) {
-      debugPrint('[Push] No valid session token, skipping upload.');
+      _setStatus('sessiya tokeni yoxdur');
       return;
     }
     try {
       final deviceId = await DeviceIdentityService.instance.getDeviceId();
       final deviceName = await DeviceIdentityService.instance.getDeviceName();
-      await http
+      final response = await http
           .post(
             Uri.parse(_tokenUrl),
             headers: {
@@ -147,10 +167,13 @@ class PushNotificationService {
               if (deviceName != null) 'deviceName': deviceName,
             }),
           )
-          .timeout(const Duration(seconds: 5));
-      debugPrint('[Push] Token uploaded.');
+          // Generous: the first request after an IIS app-pool recycle takes 5–9 s.
+          .timeout(const Duration(seconds: 15));
+      _setStatus(response.statusCode == 200
+          ? 'qeydiyyatdan keçdi (bina $_buildingCode)'
+          : 'server xətası ${response.statusCode}');
     } catch (e) {
-      debugPrint('[Push] upload error: $e');
+      _setStatus('göndərmə xətası: $e');
     }
   }
 }

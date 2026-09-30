@@ -8,8 +8,8 @@
 #      iOS provisioning profiles → Fetch profiles (App Store, az.dim.buraxilish).
 #   3. Start builds manually (no triggers below), branch of your choice.
 #
-# Version/build number come from pubspec.yaml (`version: X.Y.Z+N`), same as
-# Android. TestFlight rejects a build number it has already seen — bump +N.
+# Version name comes from pubspec.yaml (`version: X.Y.Z+N`), same as Android;
+# the build number is the latest TestFlight build + 1 (see Build IPA).
 workflows:
   ios-release:
     name: iOS Release
@@ -23,6 +23,8 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+      vars:
+        APP_STORE_APPLE_ID: 6817806719
       ios_signing:
         distribution_type: app_store
         bundle_identifier: az.dim.buraxilish
@@ -41,8 +43,22 @@ workflows:
 
       - name: Build IPA
         script: |
-          flutter build ipa --release \
+          # Build number = latest TestFlight build + 1, so iOS test builds do
+          # not require bumping pubspec's +N (which Android shares).
+          # Falls back to pubspec's +N if the lookup fails.
+          BUILD_ARGS=""
+          if LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID"); then
+            BUILD_ARGS="--build-number=$((LATEST + 1))"
+          fi
+          echo "Build number args: ${BUILD_ARGS:-<pubspec>}"
+          flutter build ipa --release $BUILD_ARGS \
             --export-options-plist=/Users/builder/export_options.plist
+
+      - name: Show signed entitlements
+        script: |
+          rm -rf /tmp/ipa && mkdir -p /tmp/ipa
+          unzip -q build/ios/ipa/*.ipa -d /tmp/ipa
+          codesign -d --entitlements - /tmp/ipa/Payload/*.app
 
     artifacts:
       - build/ios/ipa/*.ipa

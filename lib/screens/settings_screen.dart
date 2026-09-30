@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../constants/app_version.dart';
+import '../services/push_notification_service.dart';
 import '../widgets/common/logout_button.dart';
 import '../design/app_colors.dart';
 import 'offline_database_screen.dart';
@@ -374,6 +375,21 @@ class SettingsScreen extends StatelessWidget {
                 'Versiya ${AppVersion.version}',
                 style: fontProvider.labelSmall.copyWith(
                   color: isDark ? Colors.white38 : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Push registration diagnostics; tap to retry.
+              ValueListenableBuilder<String>(
+                valueListenable: PushNotificationService.instance.status,
+                builder: (context, pushStatus, _) => GestureDetector(
+                  onTap: PushNotificationService.instance.retry,
+                  child: Text(
+                    'Push: $pushStatus',
+                    style: fontProvider.labelSmall.copyWith(
+                      color: isDark ? Colors.white38 : Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
