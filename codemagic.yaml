@@ -2,7 +2,7 @@
 #
 # One-time setup in Codemagic (codemagic.io, sign in with GitHub):
 #   1. Team settings → Integrations → Developer Portal → add an App Store Connect
-#      API key named exactly "DIM Buraxilish" (Issuer ID, Key ID, .p8 file).
+#      API key named exactly "DİM Buraxılış" (Issuer ID, Key ID, .p8 file).
 #   2. Team settings → codemagic.yaml settings → Code signing identities →
 #      iOS certificates → Generate certificate (Apple Distribution), then
 #      iOS provisioning profiles → Fetch profiles (App Store, az.dim.buraxilish).
@@ -17,7 +17,7 @@ workflows:
     instance_type: mac_mini_m2
 
     integrations:
-      app_store_connect: DIM Buraxilish
+      app_store_connect: DİM Buraxılış
 
     environment:
       flutter: stable
