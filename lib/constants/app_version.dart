@@ -16,8 +16,7 @@ class AppVersion {
   static const String appName = 'DIM Buraxılış';
 
   // Apple ID of the App Store Connect record for az.dim.buraxilish.
-  // TODO(ios): fill in once the App Store Connect app record is created.
-  static const String _appStoreId = '';
+  static const String _appStoreId = '6817806719';
 
   /// Store page opened by the forced-update dialog.
   static String get storeUrl => Platform.isIOS
