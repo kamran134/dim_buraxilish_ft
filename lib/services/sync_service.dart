@@ -46,6 +46,7 @@ class SyncService extends ChangeNotifier {
   bool? _lastSyncSuccess;
   int _lastSkippedCount = 0;
   String? _lastSyncError;
+  DateTime? _lastSyncAt;
 
   final HttpService _httpService = HttpService();
 
@@ -58,6 +59,10 @@ class SyncService extends ChangeNotifier {
   bool get isTimerRunning => _syncTimer?.isActive ?? false;
   int get lastSkippedCount => _lastSkippedCount;
   String? get lastSyncError => _lastSyncError;
+
+  /// When the queue was last pushed to the server successfully (null until the
+  /// first successful sync of this session). Reported by the heartbeat.
+  DateTime? get lastSyncAt => _lastSyncAt;
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
@@ -103,6 +108,7 @@ class SyncService extends ChangeNotifier {
     _pendingSupervisors = 0;
     _lastSyncSuccess = null;
     _lastSkippedCount = 0;
+    _lastSyncAt = null;
     _isSyncing = false;
     notifyListeners();
     if (kDebugMode) debugPrint('[SyncService] Timers stopped (logout)');
@@ -226,6 +232,7 @@ class SyncService extends ChangeNotifier {
         _lastSyncSuccess = true;
       } else if (anySuccess && !anyFailure) {
         _lastSyncSuccess = true;
+        _lastSyncAt = DateTime.now();
       } else {
         _lastSyncSuccess = false;
       }

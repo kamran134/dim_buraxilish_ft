@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -9,7 +10,9 @@ import '../models/supervisor_models.dart';
 import '../models/monitor_models.dart';
 import '../models/violator_models.dart';
 import '../models/exam_models.dart';
+import '../models/session_models.dart';
 import 'database_service.dart';
+import 'session_revoke_service.dart';
 
 class HttpService {
   static const String baseUrl =
@@ -34,7 +37,12 @@ class HttpService {
 
   // Shared across all HttpService instances so concurrent 401s don't each
   // burn the single-use refresh token racing one another.
-  static Future<AccessTokenModel?>? _refreshInFlight;
+  static Future<_RefreshResult>? _refreshInFlight;
+
+  /// Marker set in `RequestOptions.extra` by the calls the session-revoke flow
+  /// itself makes (session probe, heartbeat), so a revoked-session 401 on them
+  /// never re-triggers the flow.
+  static const String _skipRevokeTriggerKey = 'skipRevokeTrigger';
 
   HttpService() {
     _dio = Dio(BaseOptions(
@@ -68,7 +76,19 @@ class HttpService {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          await removeToken();
+          if (_isSessionRevoked(error.response)) {
+            // The admin deactivated this device. Keep the token: the revoked
+            // token is still accepted by the sync endpoints, which the revoke
+            // flow needs to drain the offline queue before logging out.
+            if (error.requestOptions.extra[_skipRevokeTriggerKey] != true) {
+              unawaited(SessionRevokeService.instance.trigger(
+                reason: RevokeReason.revokedByAdmin,
+                serverMessage: _messageFromBody(error.response?.data),
+              ));
+            }
+          } else {
+            await removeToken();
+          }
         }
         handler.next(error);
       },
@@ -101,9 +121,12 @@ class HttpService {
         }
 
         final refreshed = await _refreshAccessToken(token.refreshToken);
-        if (refreshed != null) return refreshed.token;
+        if (refreshed.token != null) return refreshed.token!.token;
 
-        await removeToken();
+        // Drop the stored token only when the server actually rejected the
+        // refresh. On a network error (phone offline) keep the expired token so
+        // a later call can refresh once connectivity is back.
+        if (refreshed.rejected) await removeToken();
         return null;
       }
       return null;
@@ -113,9 +136,9 @@ class HttpService {
     }
   }
 
-  Future<AccessTokenModel?> _refreshAccessToken(String? refreshToken) {
+  Future<_RefreshResult> _refreshAccessToken(String? refreshToken) {
     if (refreshToken == null || refreshToken.isEmpty) {
-      return Future.value(null);
+      return Future.value(const _RefreshResult.rejected());
     }
     return _refreshInFlight ??=
         _performRefresh(refreshToken).whenComplete(() {
@@ -123,7 +146,7 @@ class HttpService {
     });
   }
 
-  Future<AccessTokenModel?> _performRefresh(String refreshToken) async {
+  Future<_RefreshResult> _performRefresh(String refreshToken) async {
     try {
       final deviceId = await DeviceIdentityService.instance.getDeviceId();
       final response = await _plainDio.post('/auth/refresh', data: {
@@ -136,12 +159,22 @@ class HttpService {
         final newToken =
             AccessTokenModel.fromJson(body['data'] as Map<String, dynamic>);
         await storeToken(newToken);
-        return newToken;
+        return _RefreshResult.success(newToken);
       }
+      // The server answered but did not issue a token.
+      return const _RefreshResult.rejected();
+    } on DioException catch (error) {
+      if (kDebugMode) print('Token refresh failed: $error');
+      final status = error.response?.statusCode;
+      if (status == 401 || status == 400) {
+        return const _RefreshResult.rejected();
+      }
+      // Network error, timeout, 5xx — not a verdict on the refresh token.
+      return const _RefreshResult.unavailable();
     } catch (error) {
       if (kDebugMode) print('Token refresh failed: $error');
+      return const _RefreshResult.unavailable();
     }
-    return null;
   }
 
   // Get full stored AccessToken model
@@ -1342,6 +1375,85 @@ class HttpService {
     }
   }
 
+  // =========== SESSION / HEARTBEAT ===========
+
+  /// `GET /auth/session` — asks the server whether this device's session was
+  /// revoked. Works with a revoked token. Never throws: anything inconclusive
+  /// (offline, timeout, 5xx, 404 from an older backend) is reported as
+  /// [SessionCheckOutcome.unreachable].
+  Future<SessionCheckResult> getSessionStatus({
+    Duration timeout = const Duration(seconds: 5),
+  }) {
+    return _sessionCall(
+      () => _dio.get('/auth/session', options: _revokeFlowOptions),
+      timeout,
+    );
+  }
+
+  /// `POST /devicetokens/heartbeat` — reports the device state (pending queue
+  /// sizes etc.) and learns whether the session was revoked. Works with a
+  /// revoked token. Never throws.
+  Future<SessionCheckResult> sendHeartbeat(
+    Map<String, dynamic> payload, {
+    Duration timeout = const Duration(seconds: 10),
+  }) {
+    return _sessionCall(
+      () => _dio.post('/devicetokens/heartbeat',
+          data: payload, options: _revokeFlowOptions),
+      timeout,
+    );
+  }
+
+  Options get _revokeFlowOptions =>
+      Options(extra: {_skipRevokeTriggerKey: true});
+
+  Future<SessionCheckResult> _sessionCall(
+    Future<Response<dynamic>> Function() request,
+    Duration timeout,
+  ) async {
+    try {
+      final response = await request().timeout(timeout);
+      if (response.statusCode == 200) {
+        final body = response.data;
+        final Map map = body is Map
+            ? (body['data'] is Map ? body['data'] as Map : body)
+            : const {};
+        return SessionCheckResult(
+          map['revoked'] == true
+              ? SessionCheckOutcome.revoked
+              : SessionCheckOutcome.active,
+          message: map['message'] as String?,
+        );
+      }
+      return const SessionCheckResult(SessionCheckOutcome.unreachable);
+    } on DioException catch (e) {
+      final response = e.response;
+      if (response?.statusCode == 401) {
+        return SessionCheckResult(
+          _isSessionRevoked(response)
+              ? SessionCheckOutcome.revoked
+              : SessionCheckOutcome.unauthorized,
+          message: _messageFromBody(response?.data),
+        );
+      }
+      return const SessionCheckResult(SessionCheckOutcome.unreachable);
+    } catch (_) {
+      // TimeoutException and anything else: treat as offline.
+      return const SessionCheckResult(SessionCheckOutcome.unreachable);
+    }
+  }
+
+  static bool _isSessionRevoked(Response<dynamic>? response) =>
+      response?.headers.value('x-session-revoked') == '1';
+
+  static String? _messageFromBody(dynamic body) {
+    if (body is Map && body['message'] is String) {
+      final message = body['message'] as String;
+      return message.isEmpty ? null : message;
+    }
+    return null;
+  }
+
   /// Returns the minimum required app version from server.
   /// Returns null on network error — caller should treat null as "no update needed".
   Future<String?> getMinimumAppVersion() async {
@@ -1377,4 +1489,20 @@ class HttpService {
         return 'Şəbəkə xətası: ${e.message ?? e.type.name}';
     }
   }
+}
+
+/// Result of one refresh attempt. [rejected] is true only when the server
+/// answered and refused (or there was no refresh token at all) — a network
+/// failure is neither a success nor a rejection.
+class _RefreshResult {
+  final AccessTokenModel? token;
+  final bool rejected;
+
+  const _RefreshResult.success(AccessTokenModel this.token) : rejected = false;
+  const _RefreshResult.rejected()
+      : token = null,
+        rejected = true;
+  const _RefreshResult.unavailable()
+      : token = null,
+        rejected = false;
 }

@@ -5,7 +5,10 @@ import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/emergency_message_service.dart';
+import '../models/session_models.dart';
+import '../services/heartbeat_service.dart';
 import '../services/http_service.dart';
+import '../services/session_revoke_service.dart';
 import '../services/sync_service.dart';
 import '../utils/app_version.dart';
 import '../widgets/common/common_widgets.dart';
@@ -107,6 +110,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // A previous run was interrupted mid-"device deactivated" flow (even
+    // offline): go straight back into it instead of the home screen.
+    if (await SessionRevokeService.instance.resumeIfFlagged()) return;
+
+    if (!mounted) return;
+
     // Check authentication status
     await authProvider.checkAuthStatus();
 
@@ -114,6 +123,27 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate to appropriate screen
     if (authProvider.isAuthenticated) {
+      // Ask the server whether this session is still valid. Anything
+      // inconclusive (offline, timeout, 5xx) leaves the offline behaviour
+      // untouched.
+      final session = await HttpService().getSessionStatus();
+      if (session.outcome == SessionCheckOutcome.revoked) {
+        await SessionRevokeService.instance.trigger(
+          reason: RevokeReason.revokedByAdmin,
+          serverMessage: session.message,
+        );
+        return;
+      }
+      if (session.outcome == SessionCheckOutcome.unauthorized) {
+        await SessionRevokeService.instance
+            .trigger(reason: RevokeReason.sessionExpired);
+        return;
+      }
+
+      HeartbeatService.instance.start();
+
+      if (!mounted) return;
+
       // Flush any unsynced registrations persisted from a previous session and
       // restore the pending counter (otherwise it stays 0 in memory and the
       // logout dialog could wipe unsynced data silently). Fire-and-forget.

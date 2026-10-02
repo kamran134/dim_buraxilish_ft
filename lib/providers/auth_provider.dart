@@ -9,6 +9,8 @@ import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import '../services/emergency_message_service.dart';
 import '../services/push_notification_service.dart';
+import '../services/heartbeat_service.dart';
+import '../services/session_revoke_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final HttpService _httpService = HttpService();
@@ -208,6 +210,11 @@ class AuthProvider extends ChangeNotifier {
         _clearError();
         notifyListeners();
 
+        // A fresh login ends any pending "device deactivated" state, and the
+        // heartbeat starts reporting for the new session.
+        await SessionRevokeService.instance.reset();
+        HeartbeatService.instance.start();
+
         // Flush any unsynced registrations preserved from a previous session
         // (clearAllDatabase keeps the queue). Fire-and-forget — never blocks login.
         SyncService.instance.kickstartIfPending();
@@ -302,6 +309,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     // Stop background sync timer immediately on logout
     SyncService.instance.stopTimer();
+    HeartbeatService.instance.stop();
     // Disconnect from emergency message hub
     EmergencyMessageService.instance.disconnect();
     PushNotificationService.instance.deactivate();

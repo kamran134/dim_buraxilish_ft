@@ -9,7 +9,11 @@ import '../widgets/common/common_widgets.dart';
 import 'exam_select_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  /// Shown once as a snackbar when the screen opens, e.g. after the session
+  /// was ended by the administrator.
+  final String? noticeMessage;
+
+  const LoginScreen({Key? key, this.noticeMessage}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -46,6 +50,18 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
+    final notice = widget.noticeMessage;
+    if (notice != null && notice.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(notice),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      });
+    }
   }
 
   void _initializeAnimations() {

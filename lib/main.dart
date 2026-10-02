@@ -13,6 +13,7 @@ import 'providers/notifications_provider.dart';
 import 'services/sync_service.dart';
 import 'services/emergency_message_service.dart';
 import 'services/push_notification_service.dart';
+import 'services/session_revoke_service.dart';
 import 'constants/app_version.dart';
 import 'utils/app_version.dart';
 import 'design/app_theme.dart';
@@ -28,6 +29,7 @@ void main() async {
   AppVersion.version = await getAppVersion();
   await Firebase.initializeApp();
   EmergencyMessageService.instance.init(navigatorKey);
+  SessionRevokeService.instance.init(navigatorKey);
   PushNotificationService.instance.init();
   runApp(const MyApp());
 }
