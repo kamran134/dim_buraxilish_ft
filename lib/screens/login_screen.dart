@@ -271,10 +271,13 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ],
           ),
-          child: const Icon(
-            Icons.school,
-            size: 50,
-            color: AppColors.deepBlue,
+          // Same DİM logo as the splash screen.
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(
+              'assets/images/icons/DIMLogo.png',
+              fit: BoxFit.contain,
+            ),
           ),
         ),
         const SizedBox(height: 24),

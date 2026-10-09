@@ -88,7 +88,11 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   }
 
   /// Download offline database for admin users (only monitors)
-  Future<void> downloadAdminOfflineDatabase() async {
+  ///
+  /// Returns [OfflineDownloadResult.emptyData] when the slot has no monitors
+  /// at all (not an error — the admin may continue without them),
+  /// [OfflineDownloadResult.networkError] with [errorMessage] set on failure.
+  Future<OfflineDownloadResult> downloadAdminOfflineDatabase() async {
     _setLoading(true);
     _clearMessages();
 
@@ -96,13 +100,13 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       final examDetails = await _httpService.getExamDetailsFromStorage();
       if (examDetails == null) {
         _setError('İmtahan məlumatları tapılmadı. Əvvəlcə giriş edin.');
-        return;
+        return OfflineDownloadResult.networkError;
       }
 
       final slotKey = examDetails.slotKey ?? '';
       if (slotKey.isEmpty) {
         _setError('İmtahan slotu tapılmadı.');
-        return;
+        return OfflineDownloadResult.networkError;
       }
 
       // Download ALL monitors for the active slot (admin has no building code)
@@ -114,14 +118,15 @@ class OfflineDatabaseProvider extends ChangeNotifier {
           // Invalid `X-Exam-Slot` header — never fall through to saving
           // anything for this stale/wrong slot.
           _setError(_slotErrorMessage(e));
-          return;
+          return OfflineDownloadResult.networkError;
         }
         rethrow;
       }
 
       if (monitors.isEmpty) {
-        _setError('Bu tarix üçün monitor məlumatları tapılmadı.');
-        return;
+        await DatabaseService.clearAllMonitorsOffline();
+        await _checkOfflineData();
+        return OfflineDownloadResult.emptyData;
       }
 
       print('Downloaded ${monitors.length} monitors');
@@ -133,6 +138,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       await _checkOfflineData();
 
       _setSuccess('Baza uğurla yükləndi! ${monitors.length} monitor.');
+      return OfflineDownloadResult.success;
     } catch (e) {
       print('Error downloading admin offline database: $e');
       if (e.toString().contains('401') ||
@@ -143,6 +149,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       } else {
         _setError('İnternet bağlantı yoxdur və ya server xətası!');
       }
+      return OfflineDownloadResult.networkError;
     } finally {
       _setLoading(false);
     }

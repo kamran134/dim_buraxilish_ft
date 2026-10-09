@@ -53,7 +53,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
   int _downloadedParticipants = 0;
   int _downloadedSupervisors = 0;
   String _partialErrorMessage = '';
-  bool _partialMissingParticipants = false;
+  String _partialContinueLabel = '';
 
   @override
   void initState() {
@@ -196,7 +196,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       case SlotSwitchResult.partialSuccess:
         setState(() {
           _partialErrorMessage = outcome.message ?? '';
-          _partialMissingParticipants = outcome.missingParticipants;
+          _partialContinueLabel = outcome.continueLabel ?? 'Davam et';
           _phase = _Phase.partialData;
         });
       case SlotSwitchResult.emptyData:
@@ -547,11 +547,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: Text(
-                _partialMissingParticipants
-                    ? 'Bu imtahanda iştirakçı yoxdur'
-                    : 'Bu imtahanda nəzarətçi yoxdur',
-              ),
+              child: Text(_partialContinueLabel),
             ),
           ],
         );

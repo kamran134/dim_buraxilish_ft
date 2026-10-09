@@ -15,7 +15,10 @@ class SlotSwitchOutcome {
   final SlotSwitchResult result;
   final int participantCount;
   final int supervisorCount;
-  final bool missingParticipants;
+
+  /// Label of the "continue anyway" action offered on
+  /// [SlotSwitchResult.partialSuccess] (e.g. "Bu imtahanda nəzarətçi yoxdur").
+  final String? continueLabel;
 
   /// Human-readable detail. Always set on [SlotSwitchResult.networkError]
   /// (surfaced from [OfflineDatabaseProvider.errorMessage] — never swallowed,
@@ -27,7 +30,7 @@ class SlotSwitchOutcome {
     required this.result,
     this.participantCount = 0,
     this.supervisorCount = 0,
-    this.missingParticipants = false,
+    this.continueLabel,
     this.message,
   });
 }
@@ -110,15 +113,25 @@ class SlotSwitcher {
     required OfflineDatabaseProvider offlineProvider,
   }) async {
     if (authProvider.canAccessDashboard) {
-      await offlineProvider.downloadAdminOfflineDatabase();
-      final error = offlineProvider.errorMessage;
-      if (error != null) {
-        return SlotSwitchOutcome(
-          result: SlotSwitchResult.networkError,
-          message: error,
-        );
+      final result = await offlineProvider.downloadAdminOfflineDatabase();
+      switch (result) {
+        case OfflineDownloadResult.success:
+        case OfflineDownloadResult.partialSuccess:
+          return const SlotSwitchOutcome(result: SlotSwitchResult.success);
+        case OfflineDownloadResult.emptyData:
+          // A slot without imtahan rəhbərləri is legitimate — let the admin
+          // continue, same as a monitor with no nəzarətçilər.
+          return const SlotSwitchOutcome(
+            result: SlotSwitchResult.partialSuccess,
+            message: 'İmtahan rəhbərləri yüklənmədi.',
+            continueLabel: 'Bu imtahanda imtahan rəhbərləri yoxdur',
+          );
+        case OfflineDownloadResult.networkError:
+          return SlotSwitchOutcome(
+            result: SlotSwitchResult.networkError,
+            message: offlineProvider.errorMessage,
+          );
       }
-      return const SlotSwitchOutcome(result: SlotSwitchResult.success);
     }
 
     final result = await offlineProvider.downloadOfflineDatabase();
@@ -136,10 +149,12 @@ class SlotSwitcher {
           result: SlotSwitchResult.partialSuccess,
           participantCount: offlineProvider.participantCount,
           supervisorCount: offlineProvider.supervisorCount,
-          missingParticipants: missingParticipants,
           message: missingParticipants
               ? 'İştirakçılar yüklənmədi.'
               : 'Nəzarətçilər yüklənmədi.',
+          continueLabel: missingParticipants
+              ? 'Bu imtahanda iştirakçı yoxdur'
+              : 'Bu imtahanda nəzarətçi yoxdur',
         );
       case OfflineDownloadResult.emptyData:
         return const SlotSwitchOutcome(result: SlotSwitchResult.emptyData);

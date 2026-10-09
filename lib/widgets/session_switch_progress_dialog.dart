@@ -42,7 +42,7 @@ class _SessionSwitchProgressDialogState
     extends State<SessionSwitchProgressDialog> {
   _DialogPhase _phase = _DialogPhase.syncing;
   String? _detail;
-  bool _missingParticipants = false;
+  String? _continueLabel;
   int _participants = 0;
   int _supervisors = 0;
   bool _persisted = false;
@@ -87,7 +87,7 @@ class _SessionSwitchProgressDialogState
         setState(() {
           _phase = _DialogPhase.partial;
           _detail = outcome.message;
-          _missingParticipants = outcome.missingParticipants;
+          _continueLabel = outcome.continueLabel ?? 'Davam et';
         });
       case SlotSwitchResult.emptyData:
         setState(() {
@@ -146,9 +146,7 @@ class _SessionSwitchProgressDialogState
           icon: Icons.warning_amber_rounded,
           title: 'Natamam yükləndi',
           message: _detail ?? '',
-          continueLabel: _missingParticipants
-              ? 'Bu imtahanda iştirakçı yoxdur'
-              : 'Bu imtahanda nəzarətçi yoxdur',
+          continueLabel: _continueLabel,
         );
       case _DialogPhase.empty:
         return _resultWithRetry(

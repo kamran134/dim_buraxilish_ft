@@ -970,13 +970,13 @@ class HttpService {
         return data.map((json) => Monitor.fromJson(json)).toList();
       }
       return [];
-    } on DioException catch (e) {
-      // A 400 means the `X-Exam-Slot` header was rejected — propagate so
-      // OfflineDatabaseProvider can show an explicit error instead of the
-      // generic "no data" message.
-      if (e.response?.statusCode == 400) rethrow;
-      if (kDebugMode) print('Error getting all monitors: $e');
-      return [];
+    } on DioException {
+      // Propagate every transport/HTTP error: OfflineDatabaseProvider maps a
+      // 400 to "invalid slot" and the rest to a network error. Returning []
+      // here would be indistinguishable from a slot that genuinely has no
+      // monitors (the server answers 200 with an empty list), which the admin
+      // may skip past.
+      rethrow;
     } catch (e) {
       if (kDebugMode) print('Error getting all monitors: $e');
       return [];
