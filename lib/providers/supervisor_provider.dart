@@ -188,8 +188,10 @@ class SupervisorProvider with ChangeNotifier {
 
         // Show local numbers instantly, then overlay the server aggregate
         // (sum across all scanners) — best-effort, silent when offline.
+        // Don't hold the spinner for the network call (see ParticipantProvider).
         await _recomputeStats(buildingCode);
-        await refreshServerStatistics();
+        _setLoading(false);
+        unawaited(refreshServerStatistics());
       } else {
         _supervisorDetails = const SupervisorDetails(
           allPersonCount: 0,

@@ -190,8 +190,12 @@ class ParticipantProvider with ChangeNotifier {
           if (binaInt != null) {
             // Show local numbers instantly, then overlay the server aggregate
             // (sum across all scanners) — best-effort, silent when offline.
+            // Drop the spinner before the network call: on a bad connection
+            // the GET can hang for the full dio timeout (30s connect + 120s
+            // receive) while the local numbers are already there.
             await _loadStatistics(binaInt);
-            await refreshServerStatistics();
+            _setLoading(false);
+            unawaited(refreshServerStatistics());
           }
         }
 

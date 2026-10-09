@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../models/participant_models.dart';
+import '../../services/database_service.dart';
 import '../../models/violator_models.dart';
 import '../../design/app_colors.dart';
 
@@ -56,29 +58,7 @@ class ParticipantCard extends StatelessWidget {
                         color: borderColor.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(25),
                       ),
-                      child: participant.photo != null &&
-                              participant.photo!.isNotEmpty &&
-                              participant.photo != 'null'
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(25),
-                              child: Image.memory(
-                                const Base64Decoder()
-                                    .convert(participant.photo!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 24,
-                                  );
-                                },
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+                      child: _ParticipantAvatar(participant: participant),
                     ),
                     const SizedBox(width: 12),
                     // Name block
@@ -311,5 +291,98 @@ class ParticipantCard extends StatelessWidget {
     } catch (e) {
       return dateStr;
     }
+  }
+}
+
+/// 50px avatar. Uses the photo carried by [participant] when present (base64
+/// from the sync queue / online responses, or bytes); otherwise loads the BLOB
+/// for this one participant from the offline DB — the list query skips photos
+/// (see DatabaseService.getAllParticipantsWithoutPhotos).
+class _ParticipantAvatar extends StatefulWidget {
+  final Participant participant;
+
+  const _ParticipantAvatar({required this.participant});
+
+  @override
+  State<_ParticipantAvatar> createState() => _ParticipantAvatarState();
+}
+
+class _ParticipantAvatarState extends State<_ParticipantAvatar> {
+  // Small LRU so scrolling back doesn't re-query; null = "no photo" (cached
+  // too, so rows without a photo aren't re-queried on every rebuild).
+  static const int _cacheSize = 120;
+  static final Map<int, Uint8List?> _cache = <int, Uint8List?>{};
+
+  Uint8List? _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_ParticipantAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.participant.cardNumber != widget.participant.cardNumber) {
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final inline = _inlineBytes(widget.participant);
+    if (inline != null) {
+      _bytes = inline;
+      return;
+    }
+    final card = widget.participant.cardNumber;
+    if (_cache.containsKey(card)) {
+      // Re-insert to mark as most recently used.
+      _bytes = _cache.remove(card);
+      _cache[card] = _bytes;
+      return;
+    }
+    _bytes = null;
+    DatabaseService.getParticipantPhoto(card).then((bytes) {
+      _cache[card] = bytes;
+      while (_cache.length > _cacheSize) {
+        _cache.remove(_cache.keys.first);
+      }
+      if (mounted && widget.participant.cardNumber == card) {
+        setState(() => _bytes = bytes);
+      }
+    }).catchError((_) {});
+  }
+
+  static Uint8List? _inlineBytes(Participant p) {
+    final bytes = p.photoBytes;
+    if (bytes != null && bytes.isNotEmpty) return bytes;
+    final b64 = p.photo;
+    if (b64 == null || b64.isEmpty || b64 == 'null') return null;
+    try {
+      return base64Decode(b64);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const placeholder = Icon(Icons.person, color: Colors.white, size: 24);
+    final bytes = _bytes;
+    if (bytes == null) return placeholder;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(25),
+      child: Image.memory(
+        bytes,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        // Decode at avatar size, not the full photo resolution.
+        cacheWidth: 150,
+        gaplessPlayback: true,
+        errorBuilder: (context, error, stackTrace) => placeholder,
+      ),
+    );
   }
 }

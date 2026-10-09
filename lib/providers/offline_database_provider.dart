@@ -55,19 +55,17 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   /// Check if offline data exists and get counts (like checkDownloadedOfflineDB in React Native)
   Future<void> _checkOfflineData() async {
     try {
-      // Get participant count from offline database
-      final participants = await DatabaseService.getAllParticipants();
-      _participantCount = participants.length;
+      // COUNT(*) only — loading the rows just to count them pulled every
+      // photo into memory.
+      final counts = await DatabaseService.getOfflineTableCounts();
+      _participantCount = counts['participants'] ?? 0;
       print('Found $_participantCount participants in offline database');
 
-      // Get supervisor count from offline database
-      final supervisors = await DatabaseService.getAllSupervisors();
-      _supervisorCount = supervisors.length;
+      _supervisorCount = counts['supervisors'] ?? 0;
       print('Found $_supervisorCount supervisors in offline database');
 
-      // Get all_monitors count (admin offline download)
-      final allMonitors = await DatabaseService.getAllMonitorsOffline();
-      _allMonitorCount = allMonitors.length;
+      // all_monitors (admin offline download)
+      _allMonitorCount = counts['allMonitors'] ?? 0;
       print(
           'Found $_allMonitorCount monitors in all_monitors offline database');
 

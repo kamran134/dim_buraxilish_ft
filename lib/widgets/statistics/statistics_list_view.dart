@@ -146,7 +146,9 @@ class _StatisticsListViewState extends State<StatisticsListView> {
   Future<void> _loadData() async {
     try {
       if (widget.isParticipants) {
-        final allParticipants = await DatabaseService.getAllParticipants();
+        // Photos are loaded lazily per visible card (ParticipantCard).
+        final allParticipants =
+            await DatabaseService.getAllParticipantsWithoutPhotos();
         final registeredList =
             await DatabaseService.getRegisteredParticipants();
         final violationMap = await DatabaseService.getAllViolations();

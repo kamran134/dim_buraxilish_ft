@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/statistics_type.dart';
@@ -34,6 +35,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   // показываем NoActiveSlotView вместо данных.
   bool _noActiveSlot = false;
 
+  // SyncService pulls the server aggregate only after its own sync cycles,
+  // and those run only while this device keeps scanning (idle-stop after
+  // 10 min). A device that just watches the stats would freeze on its local
+  // numbers, so poll the server aggregate while the screen is open.
+  static const Duration _pollInterval = Duration(seconds: 30);
+  Timer? _pollTimer;
+  bool _isPolling = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,10 +55,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollServerStatistics());
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _refreshController.dispose();
     super.dispose();
   }
@@ -81,10 +92,40 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     }
   }
 
-  Future<void> _loadAdminStatistics() async {
-    setState(() {
-      _isAdminLoading = true;
-    });
+  /// Silent background refresh: no spinners, keeps current numbers when
+  /// offline (the providers' refreshServerStatistics are no-ops then).
+  Future<void> _pollServerStatistics() async {
+    if (!mounted || _noActiveSlot || _isPolling || _isRefreshing) return;
+    // Only the summary tab shows the aggregate; the lists are local DB.
+    if (_currentType != StatisticsPeopleType.statistics) return;
+    _isPolling = true;
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAdmin || authProvider.isSuperAdmin) {
+        if (!_isAdminLoading) await _loadAdminStatistics(silent: true);
+      } else {
+        final participantProvider =
+            Provider.of<ParticipantProvider>(context, listen: false);
+        final supervisorProvider =
+            Provider.of<SupervisorProvider>(context, listen: false);
+        await Future.wait([
+          if (!participantProvider.isLoading)
+            participantProvider.refreshServerStatistics(),
+          if (!supervisorProvider.isLoading)
+            supervisorProvider.refreshServerStatistics(),
+        ]);
+      }
+    } finally {
+      _isPolling = false;
+    }
+  }
+
+  Future<void> _loadAdminStatistics({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isAdminLoading = true;
+      });
+    }
 
     try {
       final result = await _statisticsService.getExamStatisticsByDate();
@@ -97,7 +138,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     } catch (e) {
       print('Ошибка загрузки админ данных: $e');
     } finally {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _isAdminLoading = false;
         });

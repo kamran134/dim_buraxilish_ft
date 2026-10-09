@@ -1052,10 +1052,62 @@ class DatabaseService {
   }
 
   /// Get all participants (for offline database management)
-  static Future<List<Participant>> getAllParticipants() async {
+  ///
+  /// Never selects `photo`: a photo BLOB is ~40 KB, so a few hundred of them
+  /// overflow Android's 2 MB CursorWindow — sqflite then re-runs the query
+  /// window by window and ships ~10+ MB over the platform channel, freezing
+  /// the UI for seconds. Load photos one at a time via [getParticipantPhoto].
+  static Future<List<Participant>> getAllParticipantsWithoutPhotos() async {
     final db = await database;
-    final results = await db.query(_participantsTable);
+    final results = await db.query(
+      _participantsTable,
+      columns: _participantColumnsWithoutPhoto,
+    );
     return results.map((map) => _participantFromMap(map)).toList();
+  }
+
+  static const List<String> _participantColumnsWithoutPhoto = [
+    'id',
+    'card_number',
+    'exam_session_id',
+    'last_name',
+    'first_name',
+    'father_name',
+    'gender',
+    'building_code',
+    'hall',
+    'floor',
+    'row',
+    'seat',
+    'registered_at',
+  ];
+
+  /// Photo of one offline-DB participant (null when absent).
+  static Future<Uint8List?> getParticipantPhoto(int cardNumber) async {
+    final db = await database;
+    final results = await db.query(
+      _participantsTable,
+      columns: ['photo'],
+      where: 'card_number = ?',
+      whereArgs: [cardNumber],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return _photoBytesFromDb(results.first['photo']);
+  }
+
+  /// Row counts of the offline master tables via COUNT(*) — never loads rows.
+  static Future<Map<String, int>> getOfflineTableCounts() async {
+    final db = await database;
+    Future<int> count(String table) async =>
+        Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM $table')) ??
+        0;
+    return {
+      'participants': await count(_participantsTable),
+      'supervisors': await count(_supervisorsTable),
+      'allMonitors': await count(_allMonitorsTable),
+    };
   }
 
   /// Get all supervisors (for offline database management)
