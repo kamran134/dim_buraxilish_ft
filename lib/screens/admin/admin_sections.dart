@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../design/app_colors.dart';
-import '../buildings_statistics_screen.dart';
 import '../monitor_screen.dart';
 import '../protocol_reports_screen.dart';
 import '../settings_screen.dart';
+import 'statistics/admin_statistics_rows.dart';
+import 'statistics/admin_statistics_screen.dart';
 
 /// Tabs of the bottom bar / rail, in display order.
 enum AdminTab { home, statistics, scan, protocols }
@@ -14,7 +15,8 @@ enum AdminTab { home, statistics, scan, protocols }
 /// adding one entry here.
 ///
 /// A section with a [tab] lives in a shell tab; without one it is pushed as
-/// a normal route. [pageBuilder] is the screen to push; for tab sections it
+/// a normal route. Several sections may share a tab: the three Statistika
+/// entries differ in [statsSegment]. [pageBuilder] is the screen to push; for tab sections it
 /// is used only when the drawer is shown outside the shell.
 class AdminSection {
   final String id;
@@ -23,6 +25,7 @@ class AdminSection {
   final IconData icon;
   final List<Color> gradient;
   final AdminTab? tab;
+  final AdminStatsSegment? statsSegment;
   final WidgetBuilder? pageBuilder;
 
   const AdminSection({
@@ -32,6 +35,7 @@ class AdminSection {
     required this.icon,
     required this.gradient,
     this.tab,
+    this.statsSegment,
     this.pageBuilder,
   }) : tileTitle = tileTitle ?? drawerTitle;
 
@@ -58,12 +62,37 @@ final List<AdminSection> adminSections = [
     pageBuilder: (_) => const MonitorScreen(),
   ),
   AdminSection(
-    id: 'statistics',
-    drawerTitle: 'Statistika',
+    id: 'statistics_participants',
+    drawerTitle: 'Statistika: İştirakçılar',
     icon: Icons.analytics,
     gradient: AppColors.participantGradient,
     tab: AdminTab.statistics,
-    pageBuilder: (_) => const BuildingsStatisticsScreen(),
+    statsSegment: AdminStatsSegment.participants,
+    pageBuilder: (_) => const AdminStatisticsPage(
+      segment: AdminStatsSegment.participants,
+    ),
+  ),
+  AdminSection(
+    id: 'statistics_supervisors',
+    drawerTitle: 'Statistika: Nəzarətçilər',
+    icon: Icons.supervisor_account,
+    gradient: AppColors.participantGradient,
+    tab: AdminTab.statistics,
+    statsSegment: AdminStatsSegment.supervisors,
+    pageBuilder: (_) => const AdminStatisticsPage(
+      segment: AdminStatsSegment.supervisors,
+    ),
+  ),
+  AdminSection(
+    id: 'statistics_monitors',
+    drawerTitle: 'Statistika: İmtahan rəhbərləri',
+    icon: Icons.badge,
+    gradient: AppColors.participantGradient,
+    tab: AdminTab.statistics,
+    statsSegment: AdminStatsSegment.monitors,
+    pageBuilder: (_) => const AdminStatisticsPage(
+      segment: AdminStatsSegment.monitors,
+    ),
   ),
   AdminSection(
     id: 'protocols',

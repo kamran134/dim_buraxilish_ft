@@ -3,12 +3,17 @@ import 'package:dio/dio.dart';
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../models/participant_light_dto.dart';
+import '../models/participant_protocol_dto.dart';
 import '../models/monitor_models.dart';
 import '../models/supervisor_detail_dto.dart';
 import '../models/monitor_room_statistics.dart';
+import '../models/auth_models.dart' as auth show ResponseModel;
 import '../models/response_models.dart';
 import '../services/database_service.dart';
 import '../services/http_service.dart';
+
+/// Kinds of people whose registration the admin can look at and cancel.
+enum AdminPersonKind { participant, supervisor, monitor }
 
 /// Status code + decoded JSON body of one statistics request.
 class _ApiResponse {
@@ -547,6 +552,176 @@ class StatisticsService {
 
     localStats.sort((a, b) => a.roomName.compareTo(b.roomName));
     return localStats;
+  }
+
+  // ---- Admin drill-down (Statistika → building → person) ----
+
+  /// Runs [parse] over the `data` of a successful 200 response; any other
+  /// outcome becomes an error result with the server (or [fallback]) message.
+  Future<DataResult<T>> _fetch<T>(
+    String path,
+    Map<String, dynamic> query,
+    T Function(dynamic data) parse,
+    String fallback,
+  ) async {
+    try {
+      final response = await _get(path, query);
+      if (response.statusCode != 200) {
+        return DataResult<T>.error(message: _serverError(response));
+      }
+      final body = response.body ?? {};
+      if (body['success'] != true) {
+        return DataResult<T>.error(message: body['message'] ?? fallback);
+      }
+      return DataResult<T>.success(
+        data: parse(body['data']),
+        message: body['message'] ?? '',
+      );
+    } catch (e) {
+      return DataResult<T>.error(message: 'Şəbəkə xətası: $e');
+    }
+  }
+
+  List<Map<String, dynamic>> _asMapList(dynamic data) => [
+        for (final item in (data as List<dynamic>? ?? const []))
+          Map<String, dynamic>.from(item as Map),
+      ];
+
+  /// One participant with photo (`getburaxilish`).
+  Future<DataResult<ParticipantLightDto>> getParticipantDetail({
+    required int cardNumber,
+    required String buildingCode,
+  }) =>
+      _fetch(
+        '/buraxilishes/getburaxilish',
+        {'cardNumber': cardNumber, 'buildingCode': buildingCode},
+        (data) => ParticipantLightDto.fromJson(
+          Map<String, dynamic>.from(data as Map),
+        ),
+        'İştirakçı tapılmadı',
+      );
+
+  /// Protocol record of a participant; the data is null when there is none.
+  Future<DataResult<ParticipantProtocolDto?>> getParticipantProtocol(
+    int cardNumber,
+  ) =>
+      _fetch<ParticipantProtocolDto?>(
+        '/buraxilishes/getparticipantprotocol',
+        {'cardNumber': cardNumber},
+        (data) => data is Map
+            ? ParticipantProtocolDto.fromJson(Map<String, dynamic>.from(data))
+            : null,
+        'Protokol alınmadı',
+      );
+
+  /// Card numbers of the participants with a violation in the building.
+  Future<Set<int>> getViolatorCardNumbers(String buildingCode) async {
+    final violators =
+        await _httpService.getViolatorsInBuilding(buildingCode: buildingCode);
+    return {for (final violator in violators) violator.cardNumber};
+  }
+
+  /// One supervisor with photo (`GetSupervisorDetailDto`).
+  Future<DataResult<SupervisorDetailDto>> getSupervisorDetail({
+    required String cardNumber,
+    required int buildingCode,
+  }) =>
+      _fetch(
+        '/supervisors/GetSupervisorDetailDto',
+        {'cardNumber': cardNumber, 'buildingCode': buildingCode},
+        (data) => SupervisorDetailDto.fromJson(
+          Map<String, dynamic>.from(data as Map),
+        ),
+        'Nəzarətçi tapılmadı',
+      );
+
+  /// All imtahan rəhbərləri of a building, without photos.
+  Future<DataResult<List<Monitor>>> getMonitorsInBuilding(
+    String buildingCode,
+  ) =>
+      _fetch(
+        '/monitors/GetAllMonitorDetailDtoInExamDateAndBuilding',
+        {'buildingCode': buildingCode, 'withImages': false},
+        (data) => [for (final json in _asMapList(data)) Monitor.fromJson(json)],
+        'İmtahan rəhbərləri alınmadı',
+      );
+
+  /// One imtahan rəhbəri with photo (`GetMonitorDetailDto`).
+  Future<DataResult<Monitor>> getMonitorDetail({
+    required int workNumber,
+    required int buildingCode,
+  }) =>
+      _fetch(
+        '/monitors/GetMonitorDetailDto',
+        {'workNumber': workNumber, 'buildingCode': buildingCode},
+        (data) => Monitor.fromJson(Map<String, dynamic>.from(data as Map)),
+        'İmtahan rəhbəri tapılmadı',
+      );
+
+  /// Imtahan rəhbərləri of one room: the API first, then the offline
+  /// `all_monitors` cache (filled on admin login), with the locally scanned
+  /// registrations overlaid; registered people first. Falls back to the
+  /// locally scanned people alone when nothing else is available.
+  Future<List<Monitor>> getRoomMonitors(int roomId) async {
+    List<Monitor> all = [];
+
+    if (await hasActiveSlot()) {
+      try {
+        all = await _httpService.getMonitorsByRoomId(roomId: roomId);
+      } catch (_) {
+        // API unavailable, the offline cache is tried below.
+      }
+    }
+
+    if (all.isEmpty) {
+      all = await DatabaseService.getAllMonitorsByRoomOffline(roomId);
+    }
+
+    final registered = await DatabaseService.getRegisteredMonitorsByRoom(roomId);
+    if (all.isEmpty) return registered;
+
+    final registeredByWorkNumber = {for (final m in registered) m.workNumber: m};
+    final merged = all.map((m) {
+      final local = registeredByWorkNumber[m.workNumber];
+      if (local == null) return m;
+      return Monitor(
+        workNumber: m.workNumber,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        middleName: m.middleName,
+        idCardPin: m.idCardPin,
+        buildingCode: m.buildingCode,
+        buildingName: m.buildingName,
+        roomId: m.roomId,
+        roomName: m.roomName,
+        examDate: m.examDate,
+        registerDate: local.registerDate,
+        image: m.image.isNotEmpty ? m.image : local.image,
+        phone: m.phone,
+        online: m.online,
+        id: m.id ?? local.id,
+        examSessionId: m.examSessionId,
+      );
+    }).toList()
+      ..sort((a, b) {
+        if (a.isRegistered && !b.isRegistered) return -1;
+        if (!a.isRegistered && b.isRegistered) return 1;
+        return 0;
+      });
+    return merged;
+  }
+
+  /// Cancels the registration of a participant / supervisor / monitor by
+  /// server row id.
+  Future<auth.ResponseModel> cancelRegistration(AdminPersonKind kind, int id) {
+    switch (kind) {
+      case AdminPersonKind.participant:
+        return _httpService.cancelParticipantRegistration(id: id);
+      case AdminPersonKind.supervisor:
+        return _httpService.cancelSupervisorRegistration(id: id);
+      case AdminPersonKind.monitor:
+        return _httpService.cancelMonitorRegistration(id: id);
+    }
   }
 
 }

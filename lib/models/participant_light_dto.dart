@@ -18,6 +18,10 @@ class ParticipantLightDto {
   final int? id;
   final int? examSessionId;
 
+  /// Base64 photo — only present in the single-participant response
+  /// (`getburaxilish`), never in the building list.
+  final String? photo;
+
   ParticipantLightDto({
     this.cardNumber,
     this.lastName,
@@ -36,6 +40,7 @@ class ParticipantLightDto {
     this.registeredAt,
     this.id,
     this.examSessionId,
+    this.photo,
   });
 
   factory ParticipantLightDto.fromJson(Map<String, dynamic> json) {
@@ -61,6 +66,7 @@ class ParticipantLightDto {
           : null,
       id: json['id'] as int?,
       examSessionId: json['examSessionId'] as int?,
+      photo: json['photo'] as String?,
     );
   }
 

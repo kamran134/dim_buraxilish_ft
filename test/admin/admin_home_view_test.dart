@@ -242,8 +242,8 @@ void main() {
       // "Əsas" is the page title only, not a tile.
       expect(find.byType(AdminMenuTile), findsNWidgets(adminSections.length - 1));
 
-      await tester.tap(find.text('Statistika'));
-      expect(opened?.id, 'statistics');
+      await tester.tap(find.text('Statistika: İştirakçılar'));
+      expect(opened?.id, 'statistics_participants');
     });
 
     testWidgets('tapping a building row reports the building', (tester) async {
@@ -297,10 +297,13 @@ void main() {
   });
 
   group('adminSections', () {
-    test('every tab appears exactly once and ids are unique', () {
+    test('every tab is reachable and ids are unique', () {
       final tabs = adminSections.map((s) => s.tab).whereType<AdminTab>();
       expect(tabs.toSet(), AdminTab.values.toSet());
-      expect(tabs.length, AdminTab.values.length);
+      // Only Statistika has several entries, one per segment.
+      final stats = adminSections.where((s) => s.statsSegment != null);
+      expect(stats.length, 3);
+      expect(tabs.length, AdminTab.values.length + 2);
       final ids = adminSections.map((s) => s.id);
       expect(ids.toSet().length, ids.length);
     });

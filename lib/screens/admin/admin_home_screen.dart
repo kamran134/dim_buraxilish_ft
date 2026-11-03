@@ -10,10 +10,10 @@ import '../../services/statistics_event_bus.dart';
 import '../../services/statistics_service.dart';
 import '../../utils/role_helper.dart';
 import '../../widgets/admin/admin_widgets.dart';
-import '../building_details_screen.dart';
 import '../exam_select_screen.dart';
 import 'admin_home_view.dart';
 import 'admin_sections.dart';
+import 'statistics/admin_building_screen.dart';
 
 /// Loader of the Əsas tab: fetches the dashboard statistics for the active
 /// slot, polls every 30 s while the tab is [active], reloads on a slot
@@ -182,7 +182,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   void _openBuilding(ExamDetailsDto building) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BuildingDetailsScreen(building: building),
+        builder: (_) => AdminBuildingScreen(
+          buildingCode: building.buildingCode ?? '',
+          buildingName: building.buildingName,
+        ),
       ),
     );
   }
@@ -197,9 +200,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return AdminHomeView(
-      userName:
-          RoleHelper.getUserNameFromToken(auth.accessToken?.token) ??
-              'İstifadəçi',
+      userName: RoleHelper.getUserNameFromToken(auth.accessToken?.token) ??
+          'İstifadəçi',
       roleLabel: RoleHelper.getRoleDescription(auth.currentUserRole),
       examBar: AdminExamBar.connected(onSwitched: () => _load()),
       stats: _stats,

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../../design/app_theme.dart';
 import '../../widgets/admin/admin_layout.dart';
 import '../../widgets/admin_drawer.dart';
-import '../buildings_statistics_screen.dart';
 import '../monitor_screen.dart';
 import '../protocol_reports_screen.dart';
 import 'admin_home_screen.dart';
 import 'admin_sections.dart';
+import 'statistics/admin_statistics_rows.dart';
+import 'statistics/admin_statistics_screen.dart';
 
 /// Root of the admin area: four tabs (Əsas, Statistika, Skan, Protokollar)
 /// behind a bottom bar — or a NavigationRail from `medium` width up — plus
@@ -32,6 +33,7 @@ class _AdminShellState extends State<AdminShell> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late AdminTab _tab;
+  AdminStatsSegment _statsSegment = AdminStatsSegment.participants;
   final Set<AdminTab> _visited = {};
 
   @override
@@ -54,6 +56,8 @@ class _AdminShellState extends State<AdminShell> {
   void _openSection(AdminSection section) {
     final tab = section.tab;
     if (tab != null) {
+      final segment = section.statsSegment;
+      if (segment != null) setState(() => _statsSegment = segment);
       _select(tab);
     } else {
       pushAdminSection(Navigator.of(context), section);
@@ -69,8 +73,13 @@ class _AdminShellState extends State<AdminShell> {
           onOpenSection: _openSection,
         );
       case AdminTab.statistics:
-        // Old screen until stage 2.
-        return const BuildingsStatisticsScreen();
+        return AdminStatisticsScreen(
+          segment: _statsSegment,
+          onSegmentChanged: (segment) =>
+              setState(() => _statsSegment = segment),
+          active: _tab == AdminTab.statistics,
+          onMenu: _openMenu,
+        );
       case AdminTab.scan:
         return MonitorScreen(inShell: true, onMenu: _openMenu);
       case AdminTab.protocols:
@@ -102,7 +111,11 @@ class _AdminShellState extends State<AdminShell> {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        drawer: AdminDrawer(selectedTab: _tab, onSelectTab: _select),
+        drawer: AdminDrawer(
+          selectedTab: _tab,
+          selectedSegment: _statsSegment,
+          onSelectSection: _openSection,
+        ),
         body: layout.useRail
             ? Row(
                 children: [
