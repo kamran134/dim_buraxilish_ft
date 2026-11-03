@@ -66,7 +66,6 @@
 | `push_notification_service.dart` | FCM: разрешение, получение/загрузка/удаление токена (`/devicetokens`), обработка открытия по тапу (foreground/background/terminated через `getInitialMessage`) |
 | `statistics_service.dart` | REST-запросы статистики по зданиям/залам/мониторам для дашборда. Full-switch (9.2): методы больше не принимают `examDate` — `getActiveSlotExamDate()` заменён на `hasActiveSlot()` (bool) |
 | `statistics_event_bus.dart` | Broadcast `StreamController<String>` — событие «статистика обновилась» |
-| `storage_service.dart` | Обёртка над `shared_preferences` |
 | `protocol_service.dart` | Работа с протоколами (заметки/отчёты) |
 | `admin_service.dart` | Админские эндпоинты вне `StatisticsService`: статус и отзыв устройств (`admin/*`), срочные сообщения (`emergencymessages/*`), профиль (`auth/me`). Идёт через dio `HttpService` (JWT, refresh, `X-Exam-Slot` — из интерцептора), возвращает `Result`/`DataResult` вместо исключений |
 
@@ -88,8 +87,6 @@
 | `monitor_screen.dart` | Сканирование/регистрация imtahan rəhbərləri (роль `monitor`); для админа — вкладка «Skan» (`inShell`, `ScanActivityGuard`) |
 | `monitor_search_screen.dart` | Поиск imtahan rəhbəri (debounce 400мс); общий для обеих ролей |
 | `statistics_screen.dart` | Статистика роли `monitor` (по залам/зданию); админская статистика — в `screens/admin/statistics/` |
-| `registered_people_screen.dart` | Список уже зарегистрированных |
-| `database_people_screen.dart` | Просмотр локальной офлайн-базы людей |
 | `offline_database_screen.dart` | Управление скачиванием офлайн-базы |
 | `unsent_data_screen.dart` | Несинхронизированная очередь, ручной sync |
 | `protocol_notes_screen.dart` | Заметки протокола экзамена (вкладка «Protokollar» экранов участников/супервайзеров) |
@@ -231,13 +228,11 @@ Full-switch (9.2): запросы больше не несут строкову�
 
 Full-switch (9.2) удалил весь ранее выявленный мёртвый код (0 импортов вне собственного файла/группы, ссылался на удалённые из контракта поля/сигнатуры и не собрался бы после миграции): `lib/patterns.dart`, `lib/core/` (`auth_strategy.dart`, `commands.dart`, `service_factory.dart`), `lib/repositories/` (`auth_repository.dart`, `participant_repository.dart`), `lib/providers/enhanced_participant_provider.dart`, `lib/services/http_service_cleaned.dart`, `lib/screens/dashboard_screen.dart`, `lib/widgets/exam_date_dropdown.dart`.
 
-Остаётся: `lib/providers/participant_provider.dart` — `_isOnlineMode = false` захардкожено, геттер есть, значение никогда не меняется (мёртвая ветка логики, унаследовано из старого отчёта, не в рамках full-switch). `lib/models/registered_participant.dart`/`registered_supervisor.dart` — те же 0-импортов-вовне модели, всё ещё несут легаси-поле `imt_Tarix`/`examDate`; вне зоны `mobile_inventory.md`, не тронуты.
-
-Не проверено так же тщательно (не хватило времени пройтись по каждому из файлов): `lib/services/storage_service.dart`, `lib/screens/database_people_screen.dart` vs `registered_people_screen.dart` (не сравнивались функционально).
+Остаётся: `lib/providers/participant_provider.dart` — `_isOnlineMode = false` захардкожено, геттер есть, значение никогда не меняется (мёртвая ветка логики, унаследовано из старого отчёта, не в рамках full-switch).
 
 Admin redesign (этап 5) удалил `lib/screens/protocol_reports_screen.dart` (заменён `AdminProtocolReportsScreen`; в `participant_screen.dart`/`supervisor_screen.dart` вкладка «Protokollar» всегда ведёт на `ProtocolNotesScreen`) и старые админские экраны статистики/дашборда (`real_dashboard_screen`, `buildings_statistics_screen`, `rooms_statistics_screen`, `building_details_screen`, `room_monitors_screen`).
 
-Недостижимые из `main.dart` файлы на момент этапа 5 (0 импортов, были такими и до редизайна, не тронуты): `lib/core/result.dart`, `lib/models/registered_participant.dart`, `lib/models/registered_supervisor.dart`, `lib/screens/database_people_screen.dart`, `lib/screens/registered_people_screen.dart`, `lib/services/storage_service.dart`, `lib/utils/app_logger.dart`, `lib/utils/device_detector.dart`, `lib/utils/exceptions.dart`, `lib/widgets/app_drawer.dart`, `lib/widgets/default_screen_widget.dart`, `lib/widgets/person_info_widget.dart`.
+После редизайна удалены и файлы, недостижимые из `main.dart` ещё до него (0 импортов): `lib/core/result.dart`, `lib/models/registered_participant.dart`, `lib/models/registered_supervisor.dart`, `lib/screens/database_people_screen.dart`, `lib/screens/registered_people_screen.dart`, `lib/services/storage_service.dart`, `lib/utils/app_logger.dart`, `lib/utils/device_detector.dart`, `lib/utils/exceptions.dart`, `lib/widgets/app_drawer.dart`, `lib/widgets/default_screen_widget.dart`, `lib/widgets/person_info_widget.dart`, а также неиспользуемый `ProtocolService.getProtocolById`.
 
 ## 15. Админский UI-кит (`lib/widgets/admin/`)
 

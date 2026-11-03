@@ -212,25 +212,4 @@ class ProtocolService {
       );
     }
   }
-
-  /// Get protocol by ID
-  Future<ProtocolResponse> getProtocolById(int id) async {
-    try {
-      final response = await _dio.get('/protocols/$id');
-
-      return ProtocolResponse.fromJson(response.data);
-    } catch (e) {
-      if (e is DioException) {
-        return ProtocolResponse(
-          success: false,
-          message: e.response?.data?['message'] ?? 'Protokol tapılmadı',
-        );
-      }
-
-      return const ProtocolResponse(
-        success: false,
-        message: 'Şəbəkə xətası baş verdi',
-      );
-    }
-  }
 }
