@@ -4,6 +4,7 @@ library admin_widgets;
 export 'admin_action_button.dart';
 export 'admin_card.dart';
 export 'admin_exam_bar.dart';
+export 'admin_filter_chips.dart';
 export 'admin_grid.dart';
 export 'admin_key_value_list.dart';
 export 'admin_layout.dart';

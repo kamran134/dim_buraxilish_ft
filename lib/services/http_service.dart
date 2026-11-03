@@ -104,6 +104,12 @@ class HttpService {
     return _dio.get(path, queryParameters: query);
   }
 
+  /// Authenticated POST through the same dio as [get] (same interceptor,
+  /// same error behaviour).
+  Future<Response<dynamic>> post(String path, {Object? data}) {
+    return _dio.post(path, data: data);
+  }
+
   // Get stored JWT token. If it has expired, transparently try to renew it
   // via the refresh token before giving up — otherwise a phone left logged
   // in past the access-token lifetime silently stops working (including FCM

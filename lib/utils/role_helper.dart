@@ -90,6 +90,26 @@ class RoleHelper {
     }
   }
 
+  /// Время выдачи токена (claim `iat`) — момент входа в систему.
+  static DateTime? getIssuedAtFromToken(String? token) {
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final normalizedPayload = base64Url.normalize(parts[1]);
+      final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
+      final Map<String, dynamic> claims = json.decode(decodedPayload);
+
+      final iat = claims['iat'];
+      if (iat is! num) return null;
+      return DateTime.fromMillisecondsSinceEpoch(iat.toInt() * 1000);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Извлекает имя пользователя из JWT токена (unique_name / name / sub,
   /// как в веб-админке)
   static String? getUserNameFromToken(String? token) {

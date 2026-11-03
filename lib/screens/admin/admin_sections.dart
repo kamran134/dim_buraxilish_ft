@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../design/app_colors.dart';
 import '../monitor_screen.dart';
 import '../settings_screen.dart';
+import 'account/admin_change_password_screen.dart';
+import 'account/admin_profile_screen.dart';
+import 'devices/admin_devices_screen.dart';
+import 'emergency/admin_emergency_screen.dart';
 import 'participants/admin_all_participants_screen.dart';
 import 'protocols/admin_protocol_reports_screen.dart';
 import 'statistics/admin_statistics_rows.dart';
@@ -43,9 +47,7 @@ class AdminSection {
   bool get isHome => tab == AdminTab.home;
 }
 
-/// Sections in drawer order. Later stages append their screens here
-/// (Cihazların statusu, Təcili elan, Profil, Şifrəni dəyiş) — they are hidden
-/// until a screen exists.
+/// Sections in drawer order.
 final List<AdminSection> adminSections = [
   const AdminSection(
     id: 'home',
@@ -109,6 +111,34 @@ final List<AdminSection> adminSections = [
     gradient: AppColors.orangeGradient,
     tab: AdminTab.protocols,
     pageBuilder: (_) => const AdminProtocolReportsScreen(),
+  ),
+  AdminSection(
+    id: 'devices',
+    drawerTitle: 'Cihazların statusu',
+    icon: Icons.phonelink_setup,
+    gradient: AppColors.blueGradient,
+    pageBuilder: (_) => const AdminDevicesScreen(),
+  ),
+  AdminSection(
+    id: 'emergency',
+    drawerTitle: 'Təcili elan',
+    icon: Icons.campaign,
+    gradient: AppColors.notificationGradient,
+    pageBuilder: (_) => const AdminEmergencyScreen(),
+  ),
+  AdminSection(
+    id: 'profile',
+    drawerTitle: 'Profil',
+    icon: Icons.person,
+    gradient: AppColors.greenGradient,
+    pageBuilder: (_) => const AdminProfileScreen(),
+  ),
+  AdminSection(
+    id: 'change_password',
+    drawerTitle: 'Şifrəni dəyiş',
+    icon: Icons.key,
+    gradient: AppColors.purpleGradient,
+    pageBuilder: (_) => const AdminChangePasswordScreen(),
   ),
   AdminSection(
     id: 'settings',
