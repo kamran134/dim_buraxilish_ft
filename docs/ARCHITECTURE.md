@@ -68,6 +68,7 @@
 | `statistics_event_bus.dart` | Broadcast `StreamController<String>` — событие «статистика обновилась» |
 | `storage_service.dart` | Обёртка над `shared_preferences` |
 | `protocol_service.dart` | Работа с протоколами (заметки/отчёты) |
+| `admin_service.dart` | Админские эндпоинты вне `StatisticsService`: статус и отзыв устройств (`admin/*`), срочные сообщения (`emergencymessages/*`), профиль (`auth/me`). Идёт через dio `HttpService` (JWT, refresh, `X-Exam-Slot` — из интерцептора), возвращает `Result`/`DataResult` вместо исключений |
 
 Провайдеры обращаются к `HttpService` напрямую (нет отдельного repository-слоя).
 
@@ -77,29 +78,41 @@
 
 | Экран | Назначение |
 |---|---|
-| `splash_screen.dart` | Стартовый экран, решает, показывать логин или дашборд |
+| `splash_screen.dart` | Стартовый экран, решает, показывать логин или дашборд (админ → `AdminShell`, остальные → `MainScreen`) |
 | `login_screen.dart` | Форма логина (юзернейм/пароль — без даты экзамена, экзамен/слот выбирается после входа на `exam_select_screen.dart`) |
 | `main_screen.dart` | Обёртка с нижней навигацией |
 | `home_screen.dart` | Домашний экран после входа |
 | `exam_select_screen.dart` | Выбор слота (дата+время) после логина или для переключения — список из `GET /slots`/`GET /slots/all` |
-| `real_dashboard_screen.dart` | Актуальный дашборд (самый большой файл проекта) |
 | `participant_screen.dart` | Сканирование/регистрация участников |
 | `supervisor_screen.dart` | Сканирование/регистрация супервайзеров |
-| `monitor_screen.dart` | Сканирование/регистрация мониторов на входе в здание |
-| `monitor_search_screen.dart` | Поиск монитора (debounce 400мс) |
-| `room_monitors_screen.dart` | Список мониторов по залу/комнате |
-| `building_details_screen.dart` | Детали по зданию (для статистики) |
-| `buildings_statistics_screen.dart` | Статистика по всем зданиям |
-| `rooms_statistics_screen.dart` | Статистика по залам |
-| `statistics_screen.dart` | Общий экран статистики (агрегатор вкладок) |
+| `monitor_screen.dart` | Сканирование/регистрация imtahan rəhbərləri (роль `monitor`); для админа — вкладка «Skan» (`inShell`, `ScanActivityGuard`) |
+| `monitor_search_screen.dart` | Поиск imtahan rəhbəri (debounce 400мс); общий для обеих ролей |
+| `statistics_screen.dart` | Статистика роли `monitor` (по залам/зданию); админская статистика — в `screens/admin/statistics/` |
 | `registered_people_screen.dart` | Список уже зарегистрированных |
 | `database_people_screen.dart` | Просмотр локальной офлайн-базы людей |
 | `offline_database_screen.dart` | Управление скачиванием офлайн-базы |
 | `unsent_data_screen.dart` | Несинхронизированная очередь, ручной sync |
-| `protocol_notes_screen.dart` | Заметки протокола экзамена |
-| `protocol_reports_screen.dart` | Отчёты протокола |
+| `protocol_notes_screen.dart` | Заметки протокола экзамена (вкладка «Protokollar» экранов участников/супервайзеров) |
 | `notifications_screen.dart` | Список emergency/push уведомлений |
 | `settings_screen.dart` | Тема/шрифт/настройки |
+
+### Админская область (`lib/screens/admin/`)
+
+Роли `admin`/`superadmin` после логина и выбора слота (`exam_select_screen.dart`, `splash_screen.dart`) попадают в `AdminShell`; экраны роли `monitor` (`MainScreen` → `HomeScreen`) админ не видит и наоборот. Каждый экран разделён на **загрузчик** (`…Screen`, State с сервисами, таймерами, навигацией) и **чистый `…View`** (данные и колбэки на входе, без сервисов) — View тестируется виджет-тестами из `test/admin/` без сети.
+
+- `admin_shell.dart` — оболочка: 4 вкладки в `IndexedStack` (состояние сохраняется): **Əsas** (`AdminHomeScreen`), **Statistika** (`AdminStatisticsScreen`), **Skan** (`MonitorScreen(inShell: true)`), **Protokollar** (`AdminProtocolReportsScreen`). Нижняя `NavigationBar` на compact, `NavigationRail` на medium+. Системная «назад» на любой вкладке кроме Əsas возвращает на Əsas.
+- `admin_sections.dart` — единый список `adminSections` (`AdminSection`): из него строятся пункты drawer (`widgets/admin_drawer.dart` на `BaseDrawer`) и плитки быстрых переходов на Əsas. Секция с `tab` переключает вкладку, без неё — `Navigator.push(pageBuilder)`. Три пункта Statistika различаются `statsSegment`. Новый экран админа = одна запись здесь.
+- `admin_home_screen.dart` / `admin_home_view.dart` — Əsas: сводка (участники, nəzarətçilər, imtahan rəhbərləri), 5 зданий с минимальной регистрацией, плитки переходов; опрос 30 с, pull-to-refresh, перезагрузка при смене слота.
+- `statistics/` — Statistika: `AdminStatisticsScreen`/`View` (сегменты İştirakçılar / Nəzarətçilər / İmtahan rəhbərləri, поиск, сортировка), `AdminBuildingScreen` (участники/nəzarətçilər/imtahan rəhbərləri здания, фильтры, нарушители), `AdminRoomMonitorsScreen` (imtahan rəhbərləri зала), `AdminPersonDetailScreen`/`View` (карточка человека + отмена регистрации с подтверждением, протокол участника), `admin_*_rows.dart`/`admin_person_tile.dart` — строки списков.
+- `participants/` — Bütün iştirakçılar: серверный поиск + бесконечная прокрутка (`searchparticipants` / `getallparticipantswithpagination`), тап → карточка участника.
+- `protocols/` — Protokol hesabatları: фильтры, группировка, просмотр записи (`ProtocolService.getProtocols`).
+- `scan/` — Skan: `admin_scan_views.dart` / `admin_monitor_search_view.dart` — оформление `MonitorScreen`/`MonitorSearchScreen` (логика `MonitorProvider` не менялась); `ScanActivityGuard` останавливает камеру, когда вкладка скрыта, поверх открыт маршрут или приложение ушло в фон (сам не перезапускает).
+- `devices/` — Cihazların statusu (`admin/downloadstatus`, `admin/devicelogins`, отзыв `admin/devices/revoke` с подтверждением, фильтры, чистая логика в `admin_devices_logic.dart`).
+- `emergency/` — Təcili elan: выбор зданий, текст, отправка с подтверждением, история; `emergency_draft.dart` — модель черновика.
+- `account/` — Profil (`auth/me`) и Şifrəni dəyiş (`password/changepassword`).
+- `admin_auto_refresh.dart` — mixin `AdminAutoRefresh`: опрос каждые 30 с для экранов, открытых поверх оболочки; таймер работает только пока экран реально виден (стоп при opaque-маршруте сверху и при уходе приложения в фон, при возвращении — немедленное обновление).
+
+Слово «monitor» в UI запрещено: роль `monitor` = «Ümumi imtahan rəhbəri», люди в залах — «imtahan rəhbəri / imtahan rəhbərləri». Идентификаторы в коде остаются `monitor*` (контракт API).
 
 ## 7. Auth
 
@@ -164,7 +177,7 @@
 
 - `statistics_service.dart` (702 строки) — REST-запросы статистики зданий/залов/мониторов.
 - `statistics_event_bus.dart` — singleton broadcast-стрим `onStatisticsUpdate`: подписчики — экраны статистики, издатель — `SyncService` после успешного синка и провайдеры после локальной регистрации.
-- Экраны: `statistics_screen.dart`, `buildings_statistics_screen.dart`, `rooms_statistics_screen.dart`, `building_details_screen.dart`, `room_monitors_screen.dart`.
+- Экраны: роль `monitor` — `statistics_screen.dart`; админ — `screens/admin/statistics/` (см. разделы 6 и 15). `StatisticsService` обслуживает обе стороны (в т.ч. поиск/пагинацию участников, карточки людей, протокол участника).
 
 ## 12. Настройки/тема/шрифт
 
@@ -192,6 +205,17 @@ Full-switch (9.2, contract §1): `X-Exam-Slot` (интерцептор `HttpServ
 | — | POST | `/supervisorbuildings/delete` | |
 | ещё ~15 GET/POST (эндпоинты участников/супервайзеров/мониторов/статистики/синка, строки 344–1348) | GET/POST | см. `docs/API.md` бэкенда — контроллеры `BuraxilishesController`, `SupervisorsController`, `MonitorsController`, `StatisticsController` | не расписаны построчно — полный проход по каждому вызову не делался |
 | `checkAppVersion()` (примерно) | GET | `/admin/appversion` | проверка обновлений |
+| `AdminService.getDownloadStatus()` | GET | `/admin/downloadstatus` | Cihazların statusu: скачивание офлайн-базы по зданиям |
+| `AdminService.getDeviceLogins()` | GET | `/admin/devicelogins` | устройства/входы за дату |
+| `AdminService.revokeDevices()` | POST | `/admin/devices/revoke` | отзыв устройств (с подтверждением в UI) |
+| `AdminService.getCurrentUser()` | GET | `/auth/me` | Profil |
+| `AdminService.sendEmergencyMessage()` | POST | `/emergencymessages/send` | Təcili elan |
+| `AdminService.getEmergencyHistory()` | GET | `/emergencymessages/history?take=` | история срочных сообщений |
+| `HttpService` (смена пароля) | POST | `/password/changepassword` | Şifrəni dəyiş (вызов существовал, переиспользован) |
+| `StatisticsService` (админские экраны) | GET | `/buraxilishes/searchparticipants`, `/buraxilishes/getallparticipantswithpagination`, `/buraxilishes/getburaxilish`, `/buraxilishes/getparticipantprotocol`, `/buraxilishes/getallviolatorsinexamdate`, `/supervisors/GetSupervisorDetailDto`, `/monitors/GetMonitorDetailDto`, `/monitors/GetAllMonitorDetailDtoInExamDateAndBuilding` | Bütün iştirakçılar, карточки людей, нарушители |
+| `ProtocolService.getProtocols()` | GET | `/protocols` | Protokol hesabatları (админ); `/protocols/my-notes`, `/protocols/my-note` — заметки роли `monitor` |
+
+Все админские вызовы несут `X-Exam-Slot` через интерцептор; новых эндпоинтов вне списка веб-сервисов нет.
 
 Другие HTTP-клиенты помимо `HttpService`:
 - `emergency_message_service.dart` — SignalR hub `https://eservices.dim.gov.az/buraxilishScan/api/hubs/emergency` + REST через `package:http` на `/emergencyacks/acknowledge` и `/emergencyacks/pending`.
@@ -210,3 +234,36 @@ Full-switch (9.2) удалил весь ранее выявленный мёрт
 Остаётся: `lib/providers/participant_provider.dart` — `_isOnlineMode = false` захардкожено, геттер есть, значение никогда не меняется (мёртвая ветка логики, унаследовано из старого отчёта, не в рамках full-switch). `lib/models/registered_participant.dart`/`registered_supervisor.dart` — те же 0-импортов-вовне модели, всё ещё несут легаси-поле `imt_Tarix`/`examDate`; вне зоны `mobile_inventory.md`, не тронуты.
 
 Не проверено так же тщательно (не хватило времени пройтись по каждому из файлов): `lib/services/storage_service.dart`, `lib/screens/database_people_screen.dart` vs `registered_people_screen.dart` (не сравнивались функционально).
+
+Admin redesign (этап 5) удалил `lib/screens/protocol_reports_screen.dart` (заменён `AdminProtocolReportsScreen`; в `participant_screen.dart`/`supervisor_screen.dart` вкладка «Protokollar» всегда ведёт на `ProtocolNotesScreen`) и старые админские экраны статистики/дашборда (`real_dashboard_screen`, `buildings_statistics_screen`, `rooms_statistics_screen`, `building_details_screen`, `room_monitors_screen`).
+
+Недостижимые из `main.dart` файлы на момент этапа 5 (0 импортов, были такими и до редизайна, не тронуты): `lib/core/result.dart`, `lib/models/registered_participant.dart`, `lib/models/registered_supervisor.dart`, `lib/screens/database_people_screen.dart`, `lib/screens/registered_people_screen.dart`, `lib/services/storage_service.dart`, `lib/utils/app_logger.dart`, `lib/utils/device_detector.dart`, `lib/utils/exceptions.dart`, `lib/widgets/app_drawer.dart`, `lib/widgets/default_screen_widget.dart`, `lib/widgets/person_info_widget.dart`.
+
+## 15. Админский UI-кит (`lib/widgets/admin/`)
+
+Все экраны админки собираются только из этого кита (импорт — `admin_widgets.dart`); эталон визуального языка — экраны роли `monitor` (`GradientBackground`, `ScreenHeader`, `BaseDrawer`). Спецификация и этапы — `docs/admin-redesign/SPEC.md` (все 5 этапов выполнены).
+
+| Виджет | Назначение |
+|---|---|
+| `AdminPage` (`.list`, `.builder`) | Каркас: градиент + шапка (заголовок, подзаголовок, «назад»/«меню», `actions`, закреплённый `headerBottom`) + тело с `maxWidth`; `inShell` — внутри вкладки, без своего Scaffold; `onRefresh` → `RefreshIndicator`; `.builder` — ленивые длинные списки |
+| `AdminLayout` | Брейкпоинты по ширине, `columns`/`maxContentWidth`/`horizontalPadding`/`useRail` |
+| `AdminGrid` | Непрокручиваемая сетка плиток/карточек (равная высота рядов, без aspect ratio — не переполняется при крупном шрифте) |
+| `AdminCard`, `AdminGlassCard` | Белая карточка 95 % (тёмная — `surfaceDark`) / «стеклянный» hero-блок |
+| `AdminStatTile`, `AdminProgressRow` (+ `colorForRate`), `AdminMenuTile` | Число+подпись; строка «X / Y — %» с прогрессом; плитка меню |
+| `AdminListTile` (+ `codeLeading`), `AdminStatusBadge`, `AdminPersonHeader`, `AdminKeyValueList` | Списки, статусы, шапка и поля карточки человека |
+| `AdminSearchField` (debounce 400 мс), `AdminSegmented`, `AdminSortMenu`, `AdminFilterChips`, `AdminPhoneChips`, `AdminActionButton` | Поиск, сегменты, сортировка, фильтры, телефоны, кнопки действий |
+| `AdminLoading` / `AdminEmptyState` / `AdminErrorState` | Состояния на градиенте (белые), ошибка с «Yenidən cəhd et» |
+| `AdminExamBar` (`.connected`) | Строка активного экзамена + «Dəyiş» (переключатель слота) |
+| `AdminStyle` | Цвета, зависящие от темы |
+
+### Правила
+
+- **Цвета и стиль:** только `lib/design/app_colors.dart`, `app_spacing.dart`, `app_text_styles.dart`; никаких `Color(0x…)` и `Colors.<оттенок>` (допустимы `Colors.white*`/`black`/`transparent`), `withValues(alpha:)` вместо `withOpacity`, никаких `AppBar` с заливкой — шапка белым по градиенту. Статусы — success/warning/error из `AppColors`.
+- **Адаптивность:** `AdminLayout` — `compact < 600`, `medium 600–1024`, `expanded ≥ 1024`. Плитки меню 2/3/4 колонки, карточки 1/2/3, `maxContentWidth` — вся ширина / 840 / 1200, горизонтальный отступ 16/24/32. На `medium+` вместо нижней панели — `NavigationRail`. Длинные названия — `maxLines` + `ellipsis`; тап-цели ≥ 48×48; списки — `ListView.builder`/`SliverList`.
+- **Загрузчик + View:** сервисы, таймеры и навигация — только в `…Screen`; `…View` чистый. Автообновление — `AdminAutoRefresh`, камера — `ScanActivityGuard`.
+- **Тексты:** азербайджанский; «monitor» в UI запрещён (см. раздел 6).
+- **Новый экран админа:** `AdminSection` в `admin_sections.dart` → он появится в drawer и на Əsas.
+
+### Матрица тестов (`test/admin/`)
+
+Для каждого `…View` — виджет-тест через `testAdminMatrix` (`admin_test_harness.dart`): размеры 320×568, 360×640, 412×915, 740×360 (ландшафт), 800×1280, 1280×800 × `textScaler` 1.0/1.5 × светлая/тёмная тема; проверки — `tester.takeException() == null` и ключевые тексты. Ленивые списки внутри `AdminPage.list` разворачиваются `expandViewport(tester, width)`.

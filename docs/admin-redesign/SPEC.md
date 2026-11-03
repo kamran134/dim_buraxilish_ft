@@ -132,7 +132,7 @@
 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` в конце. В конце этапа — короткий отчёт:
 что сделано, файлы, результат analyze/test/build, что не удалось.
 
-### Этап 1 — кит, оболочка, Əsas
+### Этап 1 — кит, оболочка, Əsas — ✅ выполнен
 1. Кит `lib/widgets/admin/` целиком (2.1) + `AdminLayout` (2.2) + тесты кита.
 2. `AdminShell` + новая нижняя панель/rail + переписанный `admin_drawer.dart` (3). Пункты drawer для
    экранов следующих этапов пока ведут на существующие старые экраны, если они есть
@@ -148,7 +148,7 @@
 4. Роутинг админа на `AdminShell`. Удалить `real_dashboard_screen.dart` и всё, что после этого стало
    неиспользуемым (проверить grep'ом; общие с monitor виджеты не удалять).
 
-### Этап 2 — Statistika
+### Этап 2 — Statistika — ✅ выполнен
 1. Вкладка Statistika: `AdminSegmented` İştirakçılar / Nəzarətçilər / İmtahan rəhbərləri, у каждого
    сегмента — сводка сверху + список зданий (`AdminProgressRow`/`AdminListTile`), `AdminSearchField`
    (код/название здания), `AdminSortMenu`. Состав/колонки — из веб-компонентов `binalar-statistic`,
@@ -167,7 +167,7 @@
 4. Удалить админскую ветку из `statistics_screen.dart` (`_loadAdminStatistics`, `_buildAdminStatisticsView`,
    `isAdmin` в `StatisticsTabBar` и т. п.) — поведение для роли monitor не должно измениться ни на пиксель.
 
-### Этап 3 — Skan, Protokollar, Bütün iştirakçılar
+### Этап 3 — Skan, Protokollar, Bütün iştirakçılar — ✅ выполнен
 1. `monitor_screen.dart`, `monitor_search_screen.dart` — переодеть на кит/эталон (убрать сырые цвета),
    добавить `inShell`. Логика провайдера, сканера, ручного ввода, подтверждений — без изменений.
 2. Protokol hesabatları — новый экран на ките по вебу `protocol-reports` (фильтры, группировка, просмотр
@@ -176,14 +176,14 @@
 3. Bütün iştirakçılar — новый экран: `buraxilishes/searchparticipants` + `getallparticipantswithpagination`,
    бесконечная прокрутка, поиск, тап → детали участника из этапа 2.
 
-### Этап 4 — Cihazların statusu, Təcili elan, Profil, Şifrə
+### Этап 4 — Cihazların statusu, Təcili elan, Profil, Şifrə — ✅ выполнен
 1. Cihazların statusu — по вебу `device-download-status` (`admin/downloadstatus`, `admin/devicelogins`,
    `admin/devices/revoke` с подтверждением), автообновление 30 с, фильтры, бейджи онлайн/офлайн/неотправленные.
 2. Təcili elan — по вебу `emergency-message`: выбор зданий (поиск, «выбрать все»), текст, отправка
    `emergencymessages/send` с подтверждением, история `emergencymessages/history`.
 3. Profil (`auth/me`) и Şifrəni dəyiş (`password/changepassword`; в `HttpService` вызов уже есть — переиспользовать).
 
-### Этап 5 — зачистка и документация
+### Этап 5 — зачистка и документация — ✅ выполнен
 1. Grep на неиспользуемые файлы/виджеты после этапов 1–4, удалить мёртвое (только то, на что 0 ссылок).
 2. Проверить, что в админских экранах нет сырых цветов, `AppBar` с заливкой и слова «monitor» в UI.
 3. Обновить `docs/ARCHITECTURE.md` §6 (экраны) и §13 (новые эндпоинты), добавить раздел про админ-кит.
