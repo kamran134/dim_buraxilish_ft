@@ -15,7 +15,7 @@ import '../widgets/common/common_widgets.dart';
 import 'exam_select_screen.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
-import 'real_dashboard_screen.dart';
+import 'admin/admin_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen>
       final targetScreen = !authProvider.hasActiveExam
           ? const ExamSelectScreen()
           : (authProvider.canAccessDashboard
-              ? const RealDashboardScreen()
+              ? const AdminShell()
               : const MainScreen());
 
       Navigator.of(context).pushReplacement(

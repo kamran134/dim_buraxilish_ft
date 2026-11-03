@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// (and derived stats) that the header/menu read from ParticipantProvider.
   /// The actual sync/clear/persist/download flow lives in
   /// SlotSwitcher via showSessionSwitcherSheet — shared with
-  /// ExamSelectScreen and RealDashboardScreen instead of duplicated here.
+  /// ExamSelectScreen and the admin exam bar instead of duplicated here.
   Future<void> _showSessionSwitcher() async {
     setState(() => _switchingSession = true);
     try {

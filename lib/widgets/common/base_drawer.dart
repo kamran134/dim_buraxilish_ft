@@ -10,11 +10,15 @@ class DrawerMenuItem {
   final VoidCallback onTap;
   final bool isEnabled;
 
+  /// Highlights the item as the current destination.
+  final bool isSelected;
+
   const DrawerMenuItem({
     required this.icon,
     required this.title,
     required this.onTap,
     this.isEnabled = true,
+    this.isSelected = false,
   });
 }
 
@@ -145,6 +149,7 @@ class BaseDrawer extends StatelessWidget {
                               title: item.title,
                               onTap: item.onTap,
                               isEnabled: item.isEnabled,
+                              isSelected: item.isSelected,
                               isDark: isDark,
                             ))
                         .toList(),
@@ -223,6 +228,7 @@ class BaseDrawer extends StatelessWidget {
     required String title,
     required VoidCallback onTap,
     required bool isEnabled,
+    bool isSelected = false,
     required bool isDark,
   }) {
     final Color textColor = isEnabled
@@ -234,6 +240,8 @@ class BaseDrawer extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(
         enabled: isEnabled,
+        selected: isSelected,
+        selectedTileColor: AppColors.primary.withValues(alpha: 0.12),
         leading: Icon(
           icon,
           color: textColor,

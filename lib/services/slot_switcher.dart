@@ -48,7 +48,7 @@ class SlotSwitchOutcome {
 /// scanning, it only calls their existing public methods, same as the
 /// exam+session version this replaces (formerly `ExamSessionSwitcher`).
 ///
-/// Used by ExamSelectScreen, RealDashboardScreen and HomeScreen so this flow
+/// Used by ExamSelectScreen, the admin exam bar and HomeScreen so this flow
 /// only exists once.
 class SlotSwitcher {
   const SlotSwitcher._();

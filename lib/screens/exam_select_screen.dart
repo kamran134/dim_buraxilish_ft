@@ -11,7 +11,7 @@ import '../services/slot_switcher.dart';
 import '../services/http_service.dart';
 import '../widgets/common/common_widgets.dart';
 import 'main_screen.dart';
-import 'real_dashboard_screen.dart';
+import 'admin/admin_shell.dart';
 
 /// Loading state of the slot list itself (the `GET slots`/`GET slots/all`
 /// call).
@@ -131,7 +131,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
 
     // a)-c): flush the unsynced queue, wipe the offline tables, persist the
     // newly picked slot and update AuthProvider — shared with
-    // RealDashboardScreen's and HomeScreen's switchers via SlotSwitcher so
+    // AdminHomeScreen's and HomeScreen's switchers via SlotSwitcher so
     // this logic only exists once.
     setState(() => _phase = _Phase.syncingQueue);
     await SlotSwitcher.persistSelection(
@@ -224,7 +224,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             authProvider.canAccessDashboard
-                ? const RealDashboardScreen()
+                ? const AdminShell()
                 : const MainScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

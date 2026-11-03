@@ -14,7 +14,12 @@ import '../design/app_colors.dart';
 import '../design/app_text_styles.dart';
 
 class MonitorScreen extends StatefulWidget {
-  const MonitorScreen({super.key});
+  /// Shown as a tab of the admin shell: the initial state has a drawer
+  /// button ([onMenu]) instead of "back" — there is nothing to go back to.
+  final bool inShell;
+  final VoidCallback? onMenu;
+
+  const MonitorScreen({super.key, this.inShell = false, this.onMenu});
 
   @override
   State<MonitorScreen> createState() => _MonitorScreenState();
@@ -84,6 +89,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
             // Header
             ScreenHeader(
               title: 'İmtahan rəhbərləri',
+              leadingIcon: widget.inShell ? Icons.menu : Icons.arrow_back,
+              onBackPressed: widget.inShell ? widget.onMenu : null,
+              showBackButton: !widget.inShell || widget.onMenu != null,
             ),
 
             // Content

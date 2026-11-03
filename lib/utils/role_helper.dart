@@ -90,6 +90,29 @@ class RoleHelper {
     }
   }
 
+  /// Извлекает имя пользователя из JWT токена (unique_name / name / sub,
+  /// как в веб-админке)
+  static String? getUserNameFromToken(String? token) {
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final normalizedPayload = base64Url.normalize(parts[1]);
+      final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
+      final Map<String, dynamic> claims = json.decode(decodedPayload);
+
+      for (final key in ['unique_name', 'name', 'sub']) {
+        final value = claims[key];
+        if (value is String && value.trim().isNotEmpty) return value.trim();
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Получает описание роли на азербайджанском языке
   static String getRoleDescription(String? role) {
     if (role == null) return 'İstifadəçi';

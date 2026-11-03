@@ -12,6 +12,9 @@ class ScreenHeader extends StatelessWidget {
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
 
+  /// Icon of the leading button (a menu icon turns it into a drawer opener).
+  final IconData leadingIcon;
+
   const ScreenHeader({
     super.key,
     required this.title,
@@ -22,6 +25,7 @@ class ScreenHeader extends StatelessWidget {
     this.showBackButton = true,
     this.actions,
     this.bottom,
+    this.leadingIcon = Icons.arrow_back,
   });
 
   @override
@@ -37,7 +41,7 @@ class ScreenHeader extends StatelessWidget {
                 IconButton(
                   onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
                   icon: Icon(
-                    Icons.arrow_back,
+                    leadingIcon,
                     color: iconColor,
                     size: 28,
                   ),

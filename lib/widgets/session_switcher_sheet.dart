@@ -13,7 +13,7 @@ import 'session_switch_progress_dialog.dart';
 /// the user pick a different slot, confirms, then runs the shared
 /// [SessionSwitchProgressDialog] flow.
 ///
-/// Used by both RealDashboardScreen (admin) and HomeScreen/MainScreen
+/// Used by both the admin exam bar (AdminExamBar) and HomeScreen/MainScreen
 /// (monitor) so the picker and the switch flow only exist once. [onSwitched]
 /// is called after a switch actually completes (success, or "davam et" on
 /// partial/empty data) so the caller can refresh whatever it shows
