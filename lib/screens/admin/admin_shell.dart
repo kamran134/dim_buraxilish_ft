@@ -4,9 +4,9 @@ import '../../design/app_theme.dart';
 import '../../widgets/admin/admin_layout.dart';
 import '../../widgets/admin_drawer.dart';
 import '../monitor_screen.dart';
-import '../protocol_reports_screen.dart';
 import 'admin_home_screen.dart';
 import 'admin_sections.dart';
+import 'protocols/admin_protocol_reports_screen.dart';
 import 'statistics/admin_statistics_rows.dart';
 import 'statistics/admin_statistics_screen.dart';
 
@@ -81,10 +81,13 @@ class _AdminShellState extends State<AdminShell> {
           onMenu: _openMenu,
         );
       case AdminTab.scan:
-        return MonitorScreen(inShell: true, onMenu: _openMenu);
+        return MonitorScreen(
+          inShell: true,
+          onMenu: _openMenu,
+          active: _tab == AdminTab.scan,
+        );
       case AdminTab.protocols:
-        // Old screen until stage 3.
-        return const ProtocolReportsScreen();
+        return AdminProtocolReportsScreen(inShell: true, onMenu: _openMenu);
     }
   }
 

@@ -13,6 +13,7 @@ class AdminSearchField extends StatefulWidget {
   final TextEditingController? controller;
   final Duration debounce;
   final TextInputType? keyboardType;
+  final bool autofocus;
 
   const AdminSearchField({
     super.key,
@@ -21,6 +22,7 @@ class AdminSearchField extends StatefulWidget {
     this.controller,
     this.debounce = const Duration(milliseconds: 400),
     this.keyboardType,
+    this.autofocus = false,
   });
 
   @override
@@ -80,6 +82,7 @@ class _AdminSearchFieldState extends State<AdminSearchField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: _controller,
+      autofocus: widget.autofocus,
       keyboardType: widget.keyboardType,
       textInputAction: TextInputAction.search,
       onSubmitted: _submit,

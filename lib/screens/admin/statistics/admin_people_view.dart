@@ -4,6 +4,7 @@ import '../../../design/app_theme.dart';
 import '../../../widgets/admin/admin_widgets.dart';
 import '../../../widgets/common/message_display.dart';
 import 'admin_person_rows.dart';
+import 'admin_person_tile.dart';
 import 'admin_statistics_rows.dart';
 
 /// The people of a building (split into İştirakçılar / Nəzarətçilər /
@@ -121,7 +122,7 @@ class _AdminPeopleViewState extends State<AdminPeopleView> {
           );
         }
         final row = rows[index - 2];
-        return _PersonTile(
+        return AdminPersonTile(
           row: row,
           onTap: widget.onOpenPerson == null
               ? null
@@ -203,51 +204,6 @@ class _AdminPeopleViewState extends State<AdminPeopleView> {
           onChanged: (value) => setState(() => _query = value),
         ),
       ],
-    );
-  }
-}
-
-class _PersonTile extends StatelessWidget {
-  final AdminPersonRow row;
-  final VoidCallback? onTap;
-
-  const _PersonTile({required this.row, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final detail = row.detail;
-    final subtitle = [
-      row.identifier,
-      if (detail != null && detail.isNotEmpty) detail,
-    ].join('\n');
-
-    return AdminListTile(
-      title: row.name,
-      subtitle: subtitle,
-      onTap: onTap,
-      leading: Icon(
-        row.registered ? Icons.check_circle : Icons.cancel,
-        color: row.registered ? AppColors.success : AppColors.error,
-      ),
-      trailing: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (row.violator) ...[
-            const AdminStatusBadge(
-              status: AdminStatus.warning,
-              label: 'Pozuntu',
-            ),
-            AppSpacing.verticalGapXS,
-          ],
-          AdminStatusBadge(
-            status: row.registered
-                ? AdminStatus.registered
-                : AdminStatus.notRegistered,
-            label: row.registered ? 'Keçib' : 'Keçməyib',
-          ),
-        ],
-      ),
     );
   }
 }

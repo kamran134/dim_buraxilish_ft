@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../models/exam_details_dto.dart';
 import '../models/exam_statistics_dto.dart';
 import '../models/participant_light_dto.dart';
+import '../models/participants_page.dart';
 import '../models/participant_protocol_dto.dart';
 import '../models/monitor_models.dart';
 import '../models/supervisor_detail_dto.dart';
@@ -613,6 +614,52 @@ class StatisticsService {
             : null,
         'Protokol alınmadı',
       );
+
+  /// One page of all participants of the active slot, or of the search
+  /// result when [searchTerm] is not blank (surname, name, patronymic or work
+  /// number). Photos are not included.
+  Future<DataResult<ParticipantsPage>> getParticipantsPage({
+    int page = 1,
+    int pageSize = 50,
+    String searchTerm = '',
+    String sortColumn = 'lastName',
+    String sortDirection = 'asc',
+  }) {
+    final term = searchTerm.trim();
+    final query = <String, dynamic>{
+      if (term.isNotEmpty) 'searchTerm': term,
+      'page': page,
+      'pageSize': pageSize,
+      'sortColumn': sortColumn,
+      'sortDirection': sortDirection,
+    };
+    return _fetch(
+      term.isEmpty
+          ? '/buraxilishes/getallparticipantswithpagination'
+          : '/buraxilishes/searchparticipants',
+      query,
+      (data) =>
+          ParticipantsPage.fromJson(Map<String, dynamic>.from(data as Map)),
+      'İştirakçılar alınmadı',
+    );
+  }
+
+  /// Card numbers of every participant with a violation in the active slot
+  /// (`getallviolatorsinexamdate`). Optional decoration: any failure gives an
+  /// empty set.
+  Future<Set<int>> getAllViolatorCardNumbers() async {
+    final result = await _fetch<Set<int>>(
+      '/buraxilishes/getallviolatorsinexamdate',
+      const {},
+      (data) => {
+        for (final json in _asMapList(data))
+          if ((json['cardNumber'] as num?) != null)
+            (json['cardNumber'] as num).toInt(),
+      },
+      'Pozuntular alınmadı',
+    );
+    return result.data ?? <int>{};
+  }
 
   /// Card numbers of the participants with a violation in the building.
   Future<Set<int>> getViolatorCardNumbers(String buildingCode) async {

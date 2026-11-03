@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../design/app_colors.dart';
 import '../monitor_screen.dart';
-import '../protocol_reports_screen.dart';
 import '../settings_screen.dart';
+import 'participants/admin_all_participants_screen.dart';
+import 'protocols/admin_protocol_reports_screen.dart';
 import 'statistics/admin_statistics_rows.dart';
 import 'statistics/admin_statistics_screen.dart';
 
@@ -43,8 +44,8 @@ class AdminSection {
 }
 
 /// Sections in drawer order. Later stages append their screens here
-/// (Bütün iştirakçılar, Cihazların statusu, Təcili elan, Profil, Şifrəni
-/// dəyiş) — they are hidden until a screen exists.
+/// (Cihazların statusu, Təcili elan, Profil, Şifrəni dəyiş) — they are hidden
+/// until a screen exists.
 final List<AdminSection> adminSections = [
   const AdminSection(
     id: 'home',
@@ -95,12 +96,19 @@ final List<AdminSection> adminSections = [
     ),
   ),
   AdminSection(
+    id: 'all_participants',
+    drawerTitle: 'Bütün iştirakçılar',
+    icon: Icons.groups,
+    gradient: AppColors.participantGradient,
+    pageBuilder: (_) => const AdminAllParticipantsScreen(),
+  ),
+  AdminSection(
     id: 'protocols',
     drawerTitle: 'Protokol hesabatları',
     icon: Icons.assessment,
     gradient: AppColors.orangeGradient,
     tab: AdminTab.protocols,
-    pageBuilder: (_) => const ProtocolReportsScreen(),
+    pageBuilder: (_) => const AdminProtocolReportsScreen(),
   ),
   AdminSection(
     id: 'settings',

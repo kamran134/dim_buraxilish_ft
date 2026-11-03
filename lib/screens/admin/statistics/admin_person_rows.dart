@@ -36,6 +36,7 @@ class AdminPersonRow {
   static List<AdminPersonRow> participants(
     List<ParticipantLightDto> people, {
     Set<int> violators = const {},
+    bool showBuilding = false,
   }) =>
       [
         for (final p in people)
@@ -44,6 +45,8 @@ class AdminPersonRow {
             name: p.fullName.isEmpty ? '—' : p.fullName,
             identifier: 'İş №: ${p.cardNumber ?? '—'}',
             detail: _join([
+              if (showBuilding && (p.buildingCode ?? '').isNotEmpty)
+                'Bina: ${p.buildingCode}',
               if ((p.hall ?? '').isNotEmpty) 'Zal: ${p.hall}',
               if ((p.floor ?? '').isNotEmpty) 'Mərtəbə: ${p.floor}',
               if ((p.row ?? '').isNotEmpty) 'Sıra: ${p.row}',
