@@ -1096,6 +1096,20 @@ class DatabaseService {
     return _photoBytesFromDb(results.first['photo']);
   }
 
+  /// Card numbers of the participants that have no photo yet (NULL or empty
+  /// BLOB) — what a resumed photo download still has to fetch. Selects only
+  /// `card_number`, never `photo` (see the CursorWindow note on
+  /// [getAllParticipantsWithoutPhotos]).
+  static Future<List<int>> getCardNumbersWithoutPhoto() async {
+    final db = await database;
+    final results = await db.query(
+      _participantsTable,
+      columns: ['card_number'],
+      where: 'photo IS NULL OR length(photo) = 0',
+    );
+    return results.map((row) => row['card_number'] as int).toList();
+  }
+
   /// Row counts of the offline master tables via COUNT(*) — never loads rows.
   static Future<Map<String, int>> getOfflineTableCounts() async {
     final db = await database;

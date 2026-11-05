@@ -158,6 +158,7 @@ class AuthProvider extends ChangeNotifier {
 
       // Clear all SQLite database on login
       await DatabaseService.clearAllDatabase();
+      await _httpService.clearOfflineDownloadStage();
 
       final response = await _httpService.login(userName, password);
 

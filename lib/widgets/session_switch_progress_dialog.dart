@@ -5,7 +5,9 @@ import '../models/participant_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/offline_database_provider.dart';
 import '../services/slot_switcher.dart';
+import '../screens/offline_resume_screen.dart';
 import '../services/http_service.dart';
+import 'offline_download_progress.dart';
 
 enum _DialogPhase { syncing, downloading, success, partial, empty, error }
 
@@ -125,7 +127,7 @@ class _SessionSwitchProgressDialogState
       case _DialogPhase.syncing:
         return _spinner('Göndərilməmiş məlumat göndərilir...');
       case _DialogPhase.downloading:
-        return _spinner('Məlumatlar yüklənir...');
+        return const OfflineDownloadProgress(color: AppColors.primary);
       case _DialogPhase.success:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -163,6 +165,23 @@ class _SessionSwitchProgressDialogState
     }
   }
 
+  /// "Bağla" after a failed or empty download. For non-admin roles the local
+  /// database is already wiped once [_persisted], so closing the dialog would
+  /// leave the user on a screen without data — send them to the resume screen
+  /// (which retries the download and offers logout) instead.
+  void _close() {
+    if (!widget.authProvider.canAccessDashboard &&
+        _persisted &&
+        _phase != _DialogPhase.partial) {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const OfflineResumeScreen()),
+        (route) => false,
+      );
+      return;
+    }
+    Navigator.of(context).pop(false);
+  }
+
   Widget _spinner(String text) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -196,7 +215,7 @@ class _SessionSwitchProgressDialogState
           runSpacing: 8,
           children: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: _close,
               child: const Text('Bağla'),
             ),
             ElevatedButton.icon(

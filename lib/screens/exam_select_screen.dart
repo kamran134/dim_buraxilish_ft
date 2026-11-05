@@ -10,6 +10,7 @@ import '../providers/offline_database_provider.dart';
 import '../services/slot_switcher.dart';
 import '../services/http_service.dart';
 import '../widgets/common/common_widgets.dart';
+import '../widgets/offline_download_progress.dart';
 import 'main_screen.dart';
 import 'admin/admin_shell.dart';
 
@@ -54,6 +55,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
   int _downloadedSupervisors = 0;
   String _partialErrorMessage = '';
   String _partialContinueLabel = '';
+  String? _networkErrorMessage;
 
   @override
   void initState() {
@@ -104,8 +106,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Təsdiq'),
-        content: Text(
-            '${slot.label} seçilsin? Offline baza yenidən yüklənəcək.'),
+        content:
+            Text('${slot.label} seçilsin? Offline baza yenidən yüklənəcək.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -202,7 +204,10 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
       case SlotSwitchResult.emptyData:
         setState(() => _phase = _Phase.emptyData);
       case SlotSwitchResult.networkError:
-        setState(() => _phase = _Phase.networkError);
+        setState(() {
+          _networkErrorMessage = outcome.message;
+          _phase = _Phase.networkError;
+        });
     }
   }
 
@@ -237,44 +242,50 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
   @override
   Widget build(BuildContext context) {
     final busy = _phase != _Phase.idle;
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: const Text('İmtahan seçin', style: AppTextStyles.appBarTitle),
-            backgroundColor: AppColors.lightBlue,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
-          ),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.lightBlue, AppColors.darkBlue],
-              ),
+    // The system back button must not leave a running (or half-finished)
+    // download: the local database is already wiped at this point.
+    return PopScope(
+      canPop: !busy,
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title:
+                  const Text('İmtahan seçin', style: AppTextStyles.appBarTitle),
+              backgroundColor: AppColors.lightBlue,
+              elevation: 0,
+              iconTheme: const IconThemeData(color: Colors.white),
             ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  Expanded(child: _buildBody()),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: LogoutButton(
-                      type: LogoutButtonType.settings,
-                      title: 'Çıxış',
-                      textColor: Colors.white,
-                      iconColor: Colors.white,
-                      backgroundColor: Colors.white,
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.lightBlue, AppColors.darkBlue],
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Expanded(child: _buildBody()),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: LogoutButton(
+                        type: LogoutButtonType.settings,
+                        title: 'Çıxış',
+                        textColor: Colors.white,
+                        iconColor: Colors.white,
+                        backgroundColor: Colors.white,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        if (busy) _buildPhaseOverlay(),
-      ],
+          if (busy) _buildPhaseOverlay(),
+        ],
+      ),
     );
   }
 
@@ -465,15 +476,13 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
           subtitle: 'Zəhmət olmasa gözləyin...',
         );
       case _Phase.downloading:
-        return _overlaySpinner(
-          title: 'Məlumatlar yüklənir',
-          subtitle: 'Zəhmət olmasa gözləyin...',
-        );
+        return const OfflineDownloadProgress(color: Colors.white);
       case _Phase.success:
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 64),
+            const Icon(Icons.check_circle_rounded,
+                color: Colors.white, size: 64),
             const SizedBox(height: 24),
             const Text(
               'Baza yükləndi!',
@@ -500,7 +509,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 56),
+            const Icon(Icons.warning_amber_rounded,
+                color: Colors.white, size: 56),
             const SizedBox(height: 20),
             const Text(
               'Natamam yükləndi',
@@ -533,7 +543,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
             const SizedBox(height: 12),
@@ -545,7 +556,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: Text(_partialContinueLabel),
             ),
@@ -562,7 +574,7 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
         return _overlayError(
           icon: Icons.wifi_off_rounded,
           title: 'İnternet bağlantısı kəsildi',
-          subtitle:
+          subtitle: _networkErrorMessage ??
               'Məlumatlar yüklənmədi.\nBağlantını yoxlayıb yenidən cəhd edin.',
         );
       case _Phase.idle:
@@ -580,7 +592,8 @@ class _ExamSelectScreenState extends State<ExamSelectScreen> {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.12),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
           ),
           child: const Padding(
             padding: EdgeInsets.all(16),

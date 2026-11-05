@@ -4,6 +4,7 @@ import '../constants/app_version.dart';
 import '../design/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/database_service.dart';
 import '../services/emergency_message_service.dart';
 import '../models/session_models.dart';
 import '../services/heartbeat_service.dart';
@@ -15,6 +16,7 @@ import '../widgets/common/common_widgets.dart';
 import 'exam_select_screen.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
+import 'offline_resume_screen.dart';
 import 'admin/admin_shell.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -151,11 +153,18 @@ class _SplashScreenState extends State<SplashScreen>
 
       // Token valid, but no exam selected yet (fresh login, or an app
       // restart before ExamSelectScreen ran) — send the user there first.
-      final targetScreen = !authProvider.hasActiveExam
-          ? const ExamSelectScreen()
-          : (authProvider.canAccessDashboard
-              ? const AdminShell()
-              : const MainScreen());
+      final Widget targetScreen;
+      if (!authProvider.hasActiveExam) {
+        targetScreen = const ExamSelectScreen();
+      } else if (authProvider.canAccessDashboard) {
+        targetScreen = const AdminShell();
+      } else if (await _offlineDownloadUnfinished()) {
+        targetScreen = const OfflineResumeScreen();
+      } else {
+        targetScreen = const MainScreen();
+      }
+
+      if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -178,6 +187,22 @@ class _SplashScreenState extends State<SplashScreen>
           transitionDuration: const Duration(milliseconds: 500),
         ),
       );
+    }
+  }
+
+  /// True when a previous offline download was cut short: either its stage
+  /// marker is still set, or both master tables are empty (the second check
+  /// catches runs interrupted on an older version that wrote no marker).
+  /// With no marker and data present nothing is fetched, so launching offline
+  /// keeps working.
+  Future<bool> _offlineDownloadUnfinished() async {
+    try {
+      if (await HttpService().getOfflineDownloadStage() != null) return true;
+      final counts = await DatabaseService.getOfflineTableCounts();
+      return (counts['participants'] ?? 0) == 0 &&
+          (counts['supervisors'] ?? 0) == 0;
+    } catch (_) {
+      return false;
     }
   }
 
