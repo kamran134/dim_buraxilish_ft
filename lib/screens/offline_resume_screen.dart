@@ -6,6 +6,7 @@ import '../providers/offline_database_provider.dart';
 import '../services/slot_switcher.dart';
 import '../widgets/common/common_widgets.dart';
 import '../widgets/offline_download_progress.dart';
+import 'admin/admin_shell.dart';
 import 'main_screen.dart';
 
 enum _ResumePhase { downloading, success, partialData, emptyData, networkError }
@@ -15,7 +16,10 @@ enum _ResumePhase { downloading, success, partialData, emptyData, networkError }
 /// wiped on every logout, so the app is never entered with incomplete data:
 /// SplashScreen sends non-admin users here until the download is complete.
 ///
-/// There is no way back from here except retrying or logging out.
+/// There is no way back from here except retrying or logging out. Admin roles
+/// get one more exit, `Panelə keç`, when the download fails: the emergency
+/// messages are sent from the panel, so a bad connection must not lock it. The
+/// stage marker stays set, so the next launch resumes the download again.
 class OfflineResumeScreen extends StatefulWidget {
   const OfflineResumeScreen({super.key});
 
@@ -41,6 +45,7 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final offlineProvider =
         Provider.of<OfflineDatabaseProvider>(context, listen: false);
+    final isAdmin = authProvider.canAccessDashboard;
 
     setState(() => _phase = _ResumePhase.downloading);
     final outcome = await SlotSwitcher.downloadForRole(
@@ -51,6 +56,11 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
 
     switch (outcome.result) {
       case SlotSwitchResult.success:
+        if (isAdmin) {
+          // Admin downloads have no counters to show — straight into the panel.
+          _openNextScreen();
+          return;
+        }
         setState(() {
           _phase = _ResumePhase.success;
           _participants = outcome.participantCount;
@@ -58,8 +68,12 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
         });
         await Future.delayed(const Duration(milliseconds: 1200));
         if (!mounted) return;
-        _openMainScreen();
+        _openNextScreen();
       case SlotSwitchResult.partialSuccess:
+        if (isAdmin) {
+          _openNextScreen();
+          return;
+        }
         setState(() {
           _phase = _ResumePhase.partialData;
           _message = outcome.message ?? '';
@@ -80,11 +94,14 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
     }
   }
 
-  void _openMainScreen() {
+  /// Where the user lands once the download is done (or, for admins, skipped).
+  void _openNextScreen() {
+    final isAdmin =
+        Provider.of<AuthProvider>(context, listen: false).canAccessDashboard;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const MainScreen(),
+            isAdmin ? const AdminShell() : const MainScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -177,7 +194,7 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
             _retryButton(),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: _openMainScreen,
+              onPressed: _openNextScreen,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
@@ -215,6 +232,22 @@ class _OfflineResumeScreenState extends State<OfflineResumeScreen> {
         _body(_message),
         const SizedBox(height: 28),
         _retryButton(),
+        if (Provider.of<AuthProvider>(context, listen: false)
+            .canAccessDashboard) ...[
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _openNextScreen,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('Panelə keç'),
+          ),
+        ],
         const SizedBox(height: 12),
         const LogoutButton(
           type: LogoutButtonType.settings,

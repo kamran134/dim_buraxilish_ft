@@ -9,9 +9,9 @@ class PhotoPartResult {
   const PhotoPartResult({required this.received, required this.serverCount});
 }
 
-/// Downloads the missing participant photos in several parallel requests and
-/// keeps retrying only what is still missing until everything the server has
-/// is stored. No Dio and no SQLite in here — everything arrives through the
+/// Downloads the missing photos of one set (participants, supervisors or
+/// monitors) in several parallel requests and keeps retrying only what is
+/// still missing until everything the server has is stored. No Dio and no SQLite in here — everything arrives through the
 /// constructor callbacks, so the whole retry/resume logic is unit-testable.
 ///
 /// Why parallel: on a mobile network one connection to the server is capped
@@ -23,7 +23,8 @@ class PhotoDownloadRunner {
   /// Consecutive rounds without a single new photo before giving up.
   static const int maxStalledRounds = 3;
 
-  /// Card numbers of participants that still have no photo in the local DB.
+  /// Keys (card numbers or row ids) of the rows that still have no photo in
+  /// the local DB.
   final Future<List<int>> Function() loadMissing;
 
   /// Requests [cards] from the server and feeds every parsed batch to the
@@ -38,7 +39,8 @@ class PhotoDownloadRunner {
   /// [run] instead of being retried.
   final bool Function(Object error) isFatal;
 
-  final int totalParticipants;
+  /// Number of rows in the set, with or without a photo.
+  final int total;
   final void Function(int done, int total)? onProgress;
 
   /// Called before the pause that precedes a retry round.
@@ -50,7 +52,7 @@ class PhotoDownloadRunner {
     required this.fetchPart,
     required this.saveBatch,
     required this.isFatal,
-    required this.totalParticipants,
+    required this.total,
     this.onProgress,
     this.onRetry,
     this.retryDelay = const Duration(seconds: 2),
@@ -67,8 +69,8 @@ class PhotoDownloadRunner {
 
     void reportProgress() {
       onProgress?.call(
-        totalParticipants - (initialMissing ?? 0) + savedThisRun,
-        totalParticipants - noPhoto.length,
+        total - (initialMissing ?? 0) + savedThisRun,
+        total - noPhoto.length,
       );
     }
 

@@ -156,10 +156,11 @@ class _SplashScreenState extends State<SplashScreen>
       final Widget targetScreen;
       if (!authProvider.hasActiveExam) {
         targetScreen = const ExamSelectScreen();
+      } else if (await _offlineDownloadUnfinished(
+          checkEmptyTables: !authProvider.canAccessDashboard)) {
+        targetScreen = const OfflineResumeScreen();
       } else if (authProvider.canAccessDashboard) {
         targetScreen = const AdminShell();
-      } else if (await _offlineDownloadUnfinished()) {
-        targetScreen = const OfflineResumeScreen();
       } else {
         targetScreen = const MainScreen();
       }
@@ -191,13 +192,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   /// True when a previous offline download was cut short: either its stage
-  /// marker is still set, or both master tables are empty (the second check
-  /// catches runs interrupted on an older version that wrote no marker).
-  /// With no marker and data present nothing is fetched, so launching offline
-  /// keeps working.
-  Future<bool> _offlineDownloadUnfinished() async {
+  /// marker is still set, or (with [checkEmptyTables]) both master tables are
+  /// empty — that second check catches runs interrupted on an older version
+  /// that wrote no marker. Admin roles skip it: they have no participant or
+  /// supervisor tables to begin with. With no marker and data present nothing
+  /// is fetched, so launching offline keeps working.
+  Future<bool> _offlineDownloadUnfinished(
+      {required bool checkEmptyTables}) async {
     try {
       if (await HttpService().getOfflineDownloadStage() != null) return true;
+      if (!checkEmptyTables) return false;
       final counts = await DatabaseService.getOfflineTableCounts();
       return (counts['participants'] ?? 0) == 0 &&
           (counts['supervisors'] ?? 0) == 0;

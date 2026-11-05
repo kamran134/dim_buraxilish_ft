@@ -8,7 +8,7 @@ class _FatalError implements Exception {}
 
 /// In-memory stand-in for the server + SQLite pair the runner talks to.
 class _Fake {
-  /// All participants (card numbers 1..total).
+  /// All rows of the set (keys 1..total).
   final int total;
 
   /// Cards the "server" has a photo for.
@@ -80,7 +80,7 @@ class _Fake {
         fetchPart: fetchPart,
         saveBatch: saveBatch,
         isFatal: (e) => e is _FatalError,
-        totalParticipants: total,
+        total: total,
         onProgress: (done, total) => progress.add((done, total)),
         onRetry: () => retries++,
         retryDelay: Duration.zero,

@@ -805,25 +805,65 @@ class HttpService {
     return [];
   }
 
-  /// Fetch the photos of [cardNumbers] as a binary stream (BXP1 protocol, see
-  /// [parseBxp1Stream]) and hand them to [onBatch] as they arrive.
-  ///
-  /// Cards without a photo are simply absent from the response, so the
-  /// returned [PhotoPartResult.serverCount] can be below the number of cards
-  /// requested. The caller keeps each request to at most 1000 cards (server
-  /// limit, 400 otherwise).
-  ///
-  /// For a stream response dio's `receiveTimeout` is an idle timeout (reset on
-  /// every chunk), so a stalled connection fails after a minute instead of
-  /// hanging for the whole download.
+  /// Fetch the photos of [cardNumbers] (participants), see [_fetchPhotoStream].
+  /// The caller keeps each request to at most 1000 cards (server limit, 400
+  /// otherwise).
   Future<PhotoPartResult> fetchParticipantPhotos({
     required String buildingCode,
     required List<int> cardNumbers,
     required Future<void> Function(PhotoBatch batch) onBatch,
-  }) async {
-    final response = await _dio.post(
+  }) {
+    return _fetchPhotoStream(
       '/buraxilishes/getparticipantphotosstream',
-      data: {'buildingCode': buildingCode, 'cardNumbers': cardNumbers},
+      {'buildingCode': buildingCode, 'cardNumbers': cardNumbers},
+      onBatch,
+    );
+  }
+
+  /// Fetch the photos of the supervisors with the given server row [ids]
+  /// (at most 1000 per request), see [_fetchPhotoStream]. Records are keyed
+  /// by `id` and carry the raw image bytes.
+  Future<PhotoPartResult> fetchSupervisorPhotos({
+    required String buildingCode,
+    required List<int> ids,
+    required Future<void> Function(PhotoBatch batch) onBatch,
+  }) {
+    return _fetchPhotoStream(
+      '/supervisors/getphotosstream',
+      // The supervisor endpoint takes the building code as a number.
+      {'buildingCode': int.tryParse(buildingCode) ?? 0, 'ids': ids},
+      onBatch,
+    );
+  }
+
+  /// Fetch the photos of the monitors (exam leaders) with the given server row
+  /// [ids] (at most 1000 per request), see [_fetchPhotoStream]. Admin only —
+  /// the slot comes from the `X-Exam-Slot` header, no building code.
+  Future<PhotoPartResult> fetchMonitorPhotos({
+    required List<int> ids,
+    required Future<void> Function(PhotoBatch batch) onBatch,
+  }) {
+    return _fetchPhotoStream('/monitors/getphotosstream', {'ids': ids}, onBatch);
+  }
+
+  /// POSTs [body] to [path] and parses the answer as a BXP1 photo stream (see
+  /// [parseBxp1Stream]), handing the photos to [onBatch] as they arrive.
+  ///
+  /// Rows without a photo are simply absent from the response, so the
+  /// returned [PhotoPartResult.serverCount] can be below the number of keys
+  /// requested.
+  ///
+  /// For a stream response dio's `receiveTimeout` is an idle timeout (reset on
+  /// every chunk), so a stalled connection fails after a minute instead of
+  /// hanging for the whole download.
+  Future<PhotoPartResult> _fetchPhotoStream(
+    String path,
+    Map<String, dynamic> body,
+    Future<void> Function(PhotoBatch batch) onBatch,
+  ) async {
+    final response = await _dio.post(
+      path,
+      data: body,
       options: Options(
         responseType: ResponseType.stream,
         receiveTimeout: const Duration(seconds: 60),
@@ -848,7 +888,8 @@ class HttpService {
   }) async {
     final response = await _dio.get(
       '/supervisors/GetAllSupervisorDetailDtoInExamDateAndBuilding',
-      queryParameters: {'buildingCode': buildingCode},
+      // Photos come separately via [fetchSupervisorPhotos].
+      queryParameters: {'buildingCode': buildingCode, 'withImages': false},
       options: Options(receiveTimeout: const Duration(minutes: 5)),
     );
 
@@ -882,12 +923,14 @@ class HttpService {
     }
   }
 
-  /// Get ALL monitors with images for the active slot (admin — no building
-  /// code needed).
+  /// Get ALL monitors for the active slot (admin — no building code needed),
+  /// WITHOUT images: those come separately via [fetchMonitorPhotos].
   Future<List<Monitor>> getAllMonitors() async {
     try {
-      final response =
-          await _dio.get('/monitors/GetAllMonitorDetailDtoInExamDate');
+      final response = await _dio.get(
+        '/monitors/GetAllMonitorDetailDtoInExamDate',
+        queryParameters: {'withImages': false},
+      );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'] ?? [];

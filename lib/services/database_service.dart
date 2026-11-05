@@ -8,6 +8,7 @@ import '../models/monitor_models.dart';
 import '../models/supervisor_models.dart';
 import '../models/violator_models.dart';
 import '../models/notification_message.dart';
+import 'bxp1_parser.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -1122,6 +1123,51 @@ class DatabaseService {
       'supervisors': await count(_supervisorsTable),
       'allMonitors': await count(_allMonitorsTable),
     };
+  }
+
+  /// Server row ids of the supervisors that have no photo yet — what a
+  /// resumed photo download still has to fetch. Selects only `id`, never
+  /// `image` (it is a base64 string of tens of KB per row).
+  static Future<List<int>> getSupervisorIdsWithoutImage() =>
+      _idsWithoutImage(_supervisorsTable);
+
+  /// Same as [getSupervisorIdsWithoutImage] for the admin monitors table.
+  static Future<List<int>> getMonitorIdsWithoutImage() =>
+      _idsWithoutImage(_allMonitorsTable);
+
+  static Future<List<int>> _idsWithoutImage(String table) async {
+    final db = await database;
+    final results = await db.query(
+      table,
+      columns: ['id'],
+      where: "id IS NOT NULL AND (image IS NULL OR image = '')",
+    );
+    return results.map((row) => row['id'] as int).toList();
+  }
+
+  /// Merge a batch of downloaded supervisor photos (keyed by server row id)
+  /// into the supervisors table. `image` stays a base64 string, which is what
+  /// the screens read. One transaction per batch.
+  static Future<void> updateSupervisorImages(PhotoBatch batch) =>
+      _updateImages(_supervisorsTable, batch);
+
+  /// Same as [updateSupervisorImages] for the admin monitors table.
+  static Future<void> updateMonitorImages(PhotoBatch batch) =>
+      _updateImages(_allMonitorsTable, batch);
+
+  static Future<void> _updateImages(String table, PhotoBatch batch) async {
+    if (batch.isEmpty) return;
+    final db = await database;
+    final dbBatch = db.batch();
+    for (final entry in batch) {
+      dbBatch.update(
+        table,
+        {'image': base64Encode(entry.value)},
+        where: 'id = ?',
+        whereArgs: [entry.key],
+      );
+    }
+    await dbBatch.commit(noResult: true);
   }
 
   /// Get all supervisors (for offline database management)

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/offline_database_provider.dart';
 
-/// Progress of [OfflineDatabaseProvider.downloadOfflineDatabase], shared by
-/// every screen that runs the download: an indeterminate bar while the lists
-/// load, then a determinate one with `done / total · percent` while the
-/// photos come in.
+/// Progress of the offline download, shared by every screen that runs it: an
+/// indeterminate bar while a list loads, then a determinate one with
+/// `done / total · percent` while that list's photos come in. The caption
+/// names whose data is being loaded.
 ///
 /// [color] is used for the text and the bar (its track is a faded copy), so
 /// pass white on a dark card and the primary color on a light one.
@@ -30,7 +30,7 @@ class OfflineDownloadProgress extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              photos ? 'Şəkillər yüklənir' : 'Məlumatlar yüklənir',
+              _title(provider.downloadTarget),
               textAlign: TextAlign.center,
               style: _style(color, 17, FontWeight.w700),
             ),
@@ -71,6 +71,19 @@ class OfflineDownloadProgress extends StatelessWidget {
         );
       },
     );
+  }
+
+  static String _title(OfflineDownloadTarget? target) {
+    switch (target) {
+      case OfflineDownloadTarget.participants:
+        return 'İştirakçıların məlumatları yüklənir';
+      case OfflineDownloadTarget.supervisors:
+        return 'Nəzarətçilərin məlumatları yüklənir';
+      case OfflineDownloadTarget.monitors:
+        return 'İmtahan rəhbərlərinin məlumatları yüklənir';
+      case null:
+        return 'Məlumatlar yüklənir';
+    }
   }
 
   static TextStyle _style(Color color, double size,

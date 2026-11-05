@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../services/bxp1_parser.dart';
 import '../services/http_service.dart';
 import '../services/photo_download_runner.dart';
 import '../utils/app_version.dart';
@@ -12,10 +13,12 @@ import '../models/monitor_models.dart';
 
 enum OfflineDownloadResult { success, partialSuccess, emptyData, networkError }
 
-/// Which part of [OfflineDatabaseProvider.downloadOfflineDatabase] is running,
-/// so the progress widget can show an indeterminate bar for the lists and a
-/// determinate one for the photos.
+/// Which part of a download is running, so the progress widget can show an
+/// indeterminate bar for the lists and a determinate one for the photos.
 enum OfflineDownloadPhase { data, photos }
+
+/// Whose data a download is currently fetching (names the progress caption).
+enum OfflineDownloadTarget { participants, supervisors, monitors }
 
 /// Provider for managing offline database operations
 /// Handles downloading and deleting offline data for participants and supervisors
@@ -33,6 +36,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   int? _photosDone;
   int? _photosTotal;
   OfflineDownloadPhase? _downloadPhase;
+  OfflineDownloadTarget? _downloadTarget;
   bool _photosRetrying = false;
 
   // Getters
@@ -48,6 +52,8 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   int? get photosTotal => _photosTotal;
   // Null while no download runs.
   OfflineDownloadPhase? get downloadPhase => _downloadPhase;
+  // Null while no download runs.
+  OfflineDownloadTarget? get downloadTarget => _downloadTarget;
   // True while a failed photo round is waiting to be retried.
   bool get photosRetrying => _photosRetrying;
 
@@ -102,12 +108,19 @@ class OfflineDatabaseProvider extends ChangeNotifier {
 
   /// Download offline database for admin users (only monitors)
   ///
+  /// Same scheme as [downloadOfflineDatabase]: a light list first, then the
+  /// photos in parallel streams, with the stage marker kept until every photo
+  /// is in so an interrupted run resumes instead of leaving a half-loaded
+  /// table.
+  ///
   /// Returns [OfflineDownloadResult.emptyData] when the slot has no monitors
   /// at all (not an error — the admin may continue without them),
   /// [OfflineDownloadResult.networkError] with [errorMessage] set on failure.
   Future<OfflineDownloadResult> downloadAdminOfflineDatabase() async {
     _setLoading(true);
     _clearMessages();
+    _resetProgress(OfflineDownloadTarget.monitors);
+    _enableWakelock();
 
     try {
       final examDetails = await _httpService.getExamDetailsFromStorage();
@@ -122,35 +135,59 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         return OfflineDownloadResult.networkError;
       }
 
-      // Download ALL monitors for the active slot (admin has no building code)
-      List<Monitor> monitors;
-      try {
-        monitors = await _httpService.getAllMonitors();
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 400) {
-          // Invalid `X-Exam-Slot` header — never fall through to saving
-          // anything for this stale/wrong slot.
-          _setError(_slotErrorMessage(e));
-          return OfflineDownloadResult.networkError;
+      // The list is already saved by an earlier run — only photos are left.
+      final stage = await _httpService.getOfflineDownloadStage();
+      final counts = await DatabaseService.getOfflineTableCounts();
+      final resumePhotos = stage == OfflineDownloadStage.photos &&
+          (counts['allMonitors'] ?? 0) > 0;
+
+      if (!resumePhotos) {
+        // Download ALL monitors for the active slot (admin has no building
+        // code), without photos.
+        List<Monitor> monitors;
+        try {
+          monitors = await _httpService.getAllMonitors();
+        } on DioException catch (e) {
+          if (e.response?.statusCode == 400) {
+            // Invalid `X-Exam-Slot` header — never fall through to saving
+            // anything for this stale/wrong slot.
+            _setError(_slotErrorMessage(e));
+            return OfflineDownloadResult.networkError;
+          }
+          rethrow;
         }
-        rethrow;
-      }
 
-      if (monitors.isEmpty) {
+        if (monitors.isEmpty) {
+          await DatabaseService.clearAllMonitorsOffline();
+          await _httpService.clearOfflineDownloadStage();
+          await _checkOfflineData();
+          return OfflineDownloadResult.emptyData;
+        }
+
+        print('Downloaded ${monitors.length} monitors');
+
+        // Clear existing and save. The marker goes up right before the old
+        // data is replaced and flips to `photos` once the list is in.
+        await _httpService.setOfflineDownloadStage(OfflineDownloadStage.data);
         await DatabaseService.clearAllMonitorsOffline();
-        await _checkOfflineData();
-        return OfflineDownloadResult.emptyData;
+        await DatabaseService.saveAllMonitors(monitors);
+        await _httpService.setOfflineDownloadStage(OfflineDownloadStage.photos);
       }
-
-      print('Downloaded ${monitors.length} monitors');
-
-      // Clear existing and save
-      await DatabaseService.clearAllMonitorsOffline();
-      await DatabaseService.saveAllMonitors(monitors);
 
       await _checkOfflineData();
 
-      _setSuccess('Baza uğurla yükləndi! ${monitors.length} monitor.');
+      final failure = await _downloadPhotoSet(
+        target: OfflineDownloadTarget.monitors,
+        loadMissing: DatabaseService.getMonitorIdsWithoutImage,
+        fetchPart: (ids, onBatch) =>
+            _httpService.fetchMonitorPhotos(ids: ids, onBatch: onBatch),
+        saveBatch: DatabaseService.updateMonitorImages,
+        total: _allMonitorCount,
+      );
+      if (failure != null) return failure;
+      await _httpService.clearOfflineDownloadStage();
+
+      _setSuccess('Baza uğurla yükləndi! $_allMonitorCount monitor.');
       return OfflineDownloadResult.success;
     } catch (e) {
       print('Error downloading admin offline database: $e');
@@ -164,13 +201,15 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       }
       return OfflineDownloadResult.networkError;
     } finally {
+      _disableWakelock();
+      _clearProgress();
       _setLoading(false);
     }
   }
 
-  /// Download offline database (participants and supervisors, then photos).
-  /// Returns [OfflineDownloadResult] so the caller can react without relying
-  /// on the provider's error/success message state.
+  /// Download offline database (participants and supervisors, then the photos
+  /// of both). Returns [OfflineDownloadResult] so the caller can react without
+  /// relying on the provider's error/success message state.
   ///
   /// The download is all-or-nothing from the user's point of view: a stage
   /// marker (see [OfflineDownloadStage]) is kept in secure storage from just
@@ -180,11 +219,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
   Future<OfflineDownloadResult> downloadOfflineDatabase() async {
     _setLoading(true);
     _clearMessages();
-    _photosDone = null;
-    _photosTotal = null;
-    _photosRetrying = false;
-    _downloadPhase = OfflineDownloadPhase.data;
-    notifyListeners();
+    _resetProgress(OfflineDownloadTarget.participants);
     _enableWakelock();
 
     try {
@@ -201,7 +236,8 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       final stage = await _httpService.getOfflineDownloadStage();
       final counts = await DatabaseService.getOfflineTableCounts();
       final resumePhotos = stage == OfflineDownloadStage.photos &&
-          (counts['participants'] ?? 0) > 0;
+          ((counts['participants'] ?? 0) > 0 ||
+              (counts['supervisors'] ?? 0) > 0);
 
       if (!resumePhotos) {
         bool hadNetworkError = false;
@@ -227,7 +263,9 @@ class OfflineDatabaseProvider extends ChangeNotifier {
           hadNetworkError = true;
         }
 
-        // Step 2: supervisors
+        // Step 2: supervisors (light — no photos either)
+        _downloadTarget = OfflineDownloadTarget.supervisors;
+        notifyListeners();
         List<Supervisor> supervisors = [];
         try {
           final result = await _httpService.getSupervisorsByBuilding(
@@ -265,10 +303,10 @@ class OfflineDatabaseProvider extends ChangeNotifier {
           return OfflineDownloadResult.networkError;
         }
 
-        // Step 4: save (participants land in SQLite first, without photos —
-        // the photo UPDATE below needs existing card_number rows to match).
-        // The marker goes up right before the old data is replaced and flips
-        // to `photos` once the lists are in.
+        // Step 4: save (the lists land in SQLite first, without photos — the
+        // photo UPDATEs below need existing rows to match against). The
+        // marker goes up right before the old data is replaced and flips to
+        // `photos` once the lists are in.
         await _httpService.setOfflineDownloadStage(OfflineDownloadStage.data);
         await _saveOfflineData(participants, supervisors, violators);
         await _httpService.setOfflineDownloadStage(OfflineDownloadStage.photos);
@@ -281,14 +319,38 @@ class OfflineDatabaseProvider extends ChangeNotifier {
         return OfflineDownloadResult.emptyData;
       }
 
-      // Step 5: photos. Without participants there is nothing to attach them to.
+      // Step 5: photos of the participants, then of the supervisors. Without
+      // rows there is nothing to attach photos to.
       if (_participantCount > 0) {
-        _downloadPhase = OfflineDownloadPhase.photos;
-        notifyListeners();
-
-        final failure = await _downloadPhotos(buildingCode);
+        final failure = await _downloadPhotoSet(
+          target: OfflineDownloadTarget.participants,
+          loadMissing: DatabaseService.getCardNumbersWithoutPhoto,
+          fetchPart: (cards, onBatch) => _httpService.fetchParticipantPhotos(
+            buildingCode: buildingCode,
+            cardNumbers: cards,
+            onBatch: onBatch,
+          ),
+          saveBatch: DatabaseService.updateParticipantPhotos,
+          total: _participantCount,
+        );
         if (failure != null) return failure;
       }
+
+      if (_supervisorCount > 0) {
+        final failure = await _downloadPhotoSet(
+          target: OfflineDownloadTarget.supervisors,
+          loadMissing: DatabaseService.getSupervisorIdsWithoutImage,
+          fetchPart: (ids, onBatch) => _httpService.fetchSupervisorPhotos(
+            buildingCode: buildingCode,
+            ids: ids,
+            onBatch: onBatch,
+          ),
+          saveBatch: DatabaseService.updateSupervisorImages,
+          total: _supervisorCount,
+        );
+        if (failure != null) return failure;
+      }
+
       await _httpService.clearOfflineDownloadStage();
 
       // One of them is missing — the server really returned an empty list.
@@ -306,26 +368,54 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       return OfflineDownloadResult.networkError;
     } finally {
       _disableWakelock();
-      _photosRetrying = false;
-      _downloadPhase = null;
+      _clearProgress();
       _setLoading(false);
     }
   }
 
-  /// Runs the parallel photo download for everything still missing. Returns
-  /// null when all photos are stored, otherwise the result to hand back (the
-  /// error message is already set).
-  Future<OfflineDownloadResult?> _downloadPhotos(String buildingCode) async {
+  /// Progress state at the start of a download: the list phase of [target].
+  void _resetProgress(OfflineDownloadTarget target) {
+    _photosDone = null;
+    _photosTotal = null;
+    _photosRetrying = false;
+    _downloadTarget = target;
+    _downloadPhase = OfflineDownloadPhase.data;
+    notifyListeners();
+  }
+
+  void _clearProgress() {
+    _photosRetrying = false;
+    _downloadTarget = null;
+    _downloadPhase = null;
+  }
+
+  /// Runs the parallel photo download of one set (participants, supervisors
+  /// or monitors) for everything still missing. [total] is the number of rows
+  /// in the set; the progress counters restart for each set. Returns null
+  /// when all photos are stored, otherwise the result to hand back (the error
+  /// message is already set).
+  Future<OfflineDownloadResult?> _downloadPhotoSet({
+    required OfflineDownloadTarget target,
+    required Future<List<int>> Function() loadMissing,
+    required Future<PhotoPartResult> Function(
+            List<int> ids, Future<void> Function(PhotoBatch) onBatch)
+        fetchPart,
+    required Future<void> Function(PhotoBatch) saveBatch,
+    required int total,
+  }) async {
+    _downloadTarget = target;
+    _downloadPhase = OfflineDownloadPhase.photos;
+    _photosDone = null;
+    _photosTotal = null;
+    _photosRetrying = false;
+    notifyListeners();
+
     final runner = PhotoDownloadRunner(
-      loadMissing: DatabaseService.getCardNumbersWithoutPhoto,
-      fetchPart: (cards, onBatch) => _httpService.fetchParticipantPhotos(
-        buildingCode: buildingCode,
-        cardNumbers: cards,
-        onBatch: onBatch,
-      ),
-      saveBatch: DatabaseService.updateParticipantPhotos,
+      loadMissing: loadMissing,
+      fetchPart: fetchPart,
+      saveBatch: saveBatch,
       isFatal: _isFatalPhotoError,
-      totalParticipants: _participantCount,
+      total: total,
       onProgress: (done, total) {
         _photosDone = done;
         _photosTotal = total;
@@ -342,7 +432,7 @@ class OfflineDatabaseProvider extends ChangeNotifier {
       final complete = await runner.run();
       if (!complete) {
         _setError(
-            'Şəkillər tam yüklənmədi: ${_photosDone ?? 0} / ${_photosTotal ?? 0}. İnternet bağlantısını yoxlayıb yenidən cəhd edin.');
+            'Məlumatlar tam yüklənmədi: ${_photosDone ?? 0} / ${_photosTotal ?? 0}. İnternet bağlantısını yoxlayıb yenidən cəhd edin.');
         return OfflineDownloadResult.networkError;
       }
       return null;

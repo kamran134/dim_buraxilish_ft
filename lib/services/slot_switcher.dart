@@ -59,11 +59,11 @@ class SlotSwitcher {
   /// newly picked slot and update [authProvider] so every provider that
   /// reads it sees the change immediately.
   ///
-  /// For non-admin roles the offline-download stage marker is set to
+  /// For every role the offline-download stage marker is set to
   /// [OfflineDownloadStage.data] before anything is wiped: from here on the
   /// local database is empty, so a relaunch must resume the download instead
-  /// of opening the app. Admin roles use the online dashboard and are not
-  /// gated, so they get no marker.
+  /// of opening the app (OfflineResumeScreen; admin roles can still step into
+  /// the panel from there, see its doc comment).
   ///
   /// Call this once per switch. To retry only the download after a failed
   /// [downloadForRole], call [downloadForRole] again directly — re-running
@@ -89,9 +89,7 @@ class SlotSwitcher {
       }
     }
 
-    if (!authProvider.canAccessDashboard) {
-      await httpService.setOfflineDownloadStage(OfflineDownloadStage.data);
-    }
+    await httpService.setOfflineDownloadStage(OfflineDownloadStage.data);
     await DatabaseService.clearAllDatabase();
 
     final existing = await httpService.getExamDetailsFromStorage();
@@ -117,9 +115,8 @@ class SlotSwitcher {
   /// — see [OfflineDatabaseProvider.downloadOfflineDatabase]).
   ///
   /// Safe to call again on its own to retry just the download, and also the
-  /// entry point of OfflineResumeScreen: for non-admin roles the download
-  /// picks up at the photos when the stage marker says the lists are already
-  /// saved. [SlotSwitchResult.partialSuccess] means only that the server
+  /// entry point of OfflineResumeScreen: the download picks up at the photos
+  /// when the stage marker says the lists are already saved. [SlotSwitchResult.partialSuccess] means only that the server
   /// returned an empty participant or supervisor list — a photo failure is a
   /// [SlotSwitchResult.networkError] with its own message.
   static Future<SlotSwitchOutcome> downloadForRole({

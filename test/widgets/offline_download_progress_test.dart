@@ -10,6 +10,8 @@ class _FakeProvider extends ChangeNotifier implements OfflineDatabaseProvider {
   @override
   OfflineDownloadPhase? downloadPhase;
   @override
+  OfflineDownloadTarget? downloadTarget;
+  @override
   int? photosDone;
   @override
   int? photosTotal;
@@ -17,11 +19,13 @@ class _FakeProvider extends ChangeNotifier implements OfflineDatabaseProvider {
   bool photosRetrying = false;
 
   void update({
+    OfflineDownloadTarget? target,
     OfflineDownloadPhase? phase,
     int? done,
     int? total,
     bool retrying = false,
   }) {
+    downloadTarget = target ?? downloadTarget;
     downloadPhase = phase;
     photosDone = done;
     photosTotal = total;
@@ -34,8 +38,13 @@ class _FakeProvider extends ChangeNotifier implements OfflineDatabaseProvider {
 }
 
 Future<_FakeProvider> _pump(WidgetTester tester,
-    {OfflineDownloadPhase? phase, int? done, int? total, bool retrying = false}) async {
+    {OfflineDownloadTarget? target,
+    OfflineDownloadPhase? phase,
+    int? done,
+    int? total,
+    bool retrying = false}) async {
   final provider = _FakeProvider()
+    ..downloadTarget = target
     ..downloadPhase = phase
     ..photosDone = done
     ..photosTotal = total
@@ -59,14 +68,50 @@ LinearProgressIndicator _bar(WidgetTester tester) =>
 void main() {
   testWidgets('data phase: indeterminate bar and the data caption',
       (tester) async {
-    await _pump(tester, phase: OfflineDownloadPhase.data);
+    await _pump(tester,
+        target: OfflineDownloadTarget.participants,
+        phase: OfflineDownloadPhase.data);
 
-    expect(find.text('Məlumatlar yüklənir'), findsOneWidget);
-    expect(find.text('Şəkillər yüklənir'), findsNothing);
+    expect(find.text('İştirakçıların məlumatları yüklənir'), findsOneWidget);
     expect(_bar(tester).value, isNull);
     expect(find.textContaining('%'), findsNothing);
     expect(find.text('Tətbiqi bağlamayın'), findsOneWidget);
     expect(find.text('Bağlantı bərpa olunur...'), findsNothing);
+  });
+
+  testWidgets('caption names whose data is loading, in both phases',
+      (tester) async {
+    const titles = {
+      OfflineDownloadTarget.participants: 'İştirakçıların məlumatları yüklənir',
+      OfflineDownloadTarget.supervisors: 'Nəzarətçilərin məlumatları yüklənir',
+      OfflineDownloadTarget.monitors: 'İmtahan rəhbərlərinin məlumatları yüklənir',
+    };
+    for (final phase in OfflineDownloadPhase.values) {
+      for (final entry in titles.entries) {
+        await _pump(tester,
+            target: entry.key, phase: phase, done: 1, total: 2);
+        expect(find.text(entry.value), findsOneWidget);
+      }
+    }
+  });
+
+  testWidgets('no target: generic caption', (tester) async {
+    await _pump(tester, phase: OfflineDownloadPhase.photos, done: 1, total: 2);
+    expect(find.text('Məlumatlar yüklənir'), findsOneWidget);
+  });
+
+  testWidgets('the word "Şəkillər" never appears', (tester) async {
+    for (final target in [null, ...OfflineDownloadTarget.values]) {
+      for (final phase in [null, ...OfflineDownloadPhase.values]) {
+        await _pump(tester,
+            target: target,
+            phase: phase,
+            done: 1,
+            total: 2,
+            retrying: true);
+        expect(find.textContaining('Şəkillər'), findsNothing);
+      }
+    }
   });
 
   testWidgets('null phase is treated like the data phase', (tester) async {
@@ -79,9 +124,12 @@ void main() {
   testWidgets('photos phase: determinate bar, counts and percent',
       (tester) async {
     await _pump(tester,
-        phase: OfflineDownloadPhase.photos, done: 312, total: 758);
+        target: OfflineDownloadTarget.participants,
+        phase: OfflineDownloadPhase.photos,
+        done: 312,
+        total: 758);
 
-    expect(find.text('Şəkillər yüklənir'), findsOneWidget);
+    expect(find.text('İştirakçıların məlumatları yüklənir'), findsOneWidget);
     expect(find.text('312 / 758 · 41%'), findsOneWidget);
     expect(_bar(tester).value, closeTo(312 / 758, 1e-9));
   });
@@ -136,12 +184,15 @@ void main() {
 
   testWidgets('follows the provider from the data to the photos phase',
       (tester) async {
-    final provider = await _pump(tester, phase: OfflineDownloadPhase.data);
-    expect(find.text('Məlumatlar yüklənir'), findsOneWidget);
+    final provider = await _pump(tester,
+        target: OfflineDownloadTarget.supervisors,
+        phase: OfflineDownloadPhase.data);
+    expect(find.text('Nəzarətçilərin məlumatları yüklənir'), findsOneWidget);
+    expect(_bar(tester).value, isNull);
 
     provider.update(phase: OfflineDownloadPhase.photos, done: 1, total: 4);
     await tester.pump();
-    expect(find.text('Şəkillər yüklənir'), findsOneWidget);
+    expect(find.text('Nəzarətçilərin məlumatları yüklənir'), findsOneWidget);
     expect(find.text('1 / 4 · 25%'), findsOneWidget);
   });
 }
